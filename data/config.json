@@ -1,0 +1,157 @@
+{
+  "branding": {
+    "companyName": "CTY HOÀNG QUÂN – Electronics & Energy",
+    "siteTitle": "Hoàng Quân – Tư vấn Pin lưu trữ Hybrid",
+    "logoUrl": "/assets/logo-default.jpg",
+    "faviconUrl": "/assets/favicon.png",
+    "logoHeight": 54,
+    "hotlineLabel": "Hotline tư vấn kỹ thuật",
+    "showHotline": true,
+    "showAdminLink": false,
+    "hotlines": [
+      {
+        "number": "0913 350 597",
+        "tel": "0913350597",
+        "zalo": "0913350597",
+        "label": "Tư vấn kỹ thuật"
+      },
+      {
+        "number": "0345 128 688",
+        "tel": "0345128688",
+        "zalo": "0345128688",
+        "label": "Báo giá & Lắp đặt"
+      }
+    ]
+  },
+  "hero": {
+    "show": true,
+    "badge": "Giải pháp Điện Mặt Trời Hybrid",
+    "title": "Tư vấn dung lượng Pin lưu trữ – Hệ thống Hybrid",
+    "subtitle": "Từ hóa đơn tiền điện EVN của khách, quy đổi ra sản lượng kWh và tính dung lượng pin cần lưu cho buổi tối.",
+    "style": "gradient",
+    "align": "left"
+  },
+  "theme": {
+    "preset": "hoangquan-orange",
+    "primary": "#F26A1B",
+    "primaryDeep": "#D9560B",
+    "gradientEnd": "#FFB400",
+    "bg": "#F3F5F9",
+    "cardBg": "#FFFFFF",
+    "ink": "#111827",
+    "inkMuted": "#4B5563",
+    "dayColor": "#F59E0B",
+    "nightColor": "#1E293B",
+    "accentGood": "#15803D",
+    "radius": 18,
+    "shadowLevel": "medium",
+    "fontFamily": "system",
+    "maxWidth": 1160,
+    "stickyResult": true,
+    "darkMode": false
+  },
+  "sections": {
+    "showCustomerName": true,
+    "showCustomerPhone": true,
+    "showCustomerAddress": true,
+    "showQuickChips": true,
+    "showSliders": true,
+    "showAdvancedSettings": true,
+    "showDayNightBar": true,
+    "showCalcSteps": true,
+    "showTierTable": true,
+    "showScenarioTable": true,
+    "showComboSection": true,
+    "showComboPrices": false,
+    "showPrintButton": true,
+    "showFooterNotes": true,
+    "showContactCta": true,
+    "card1Title": "Mức tiêu thụ điện của khách",
+    "card2Title": "Thông số tính pin lưu trữ",
+    "resultTitle": "Dung lượng pin cần lưu trữ",
+    "tierTableTitle": "Chi tiết hóa đơn theo bậc thang (biểu giá 5 bậc từ 01/11/2026)",
+    "scenarioTableTitle": "So sánh theo tỷ lệ dùng điện buổi tối",
+    "comboTitle": "Gợi ý Combo lắp đặt trọn bộ (Inverter + Pin mặt trời + Pin lưu trữ)",
+    "printTitle": "PHIẾU TƯ VẤN PIN LƯU TRỮ HYBRID",
+    "printButtonText": "In / Lưu PDF phiếu tư vấn"
+  },
+  "defaults": {
+    "mode": "bill",
+    "bill": 2000000,
+    "kwh": 625,
+    "eve": 70,
+    "dod": 90,
+    "eff": 95,
+    "mod": 5.12,
+    "vat": 8,
+    "days": 30,
+    "sunHours": 4,
+    "billChips": [
+      1000000,
+      2000000,
+      3000000,
+      5000000,
+      8000000
+    ],
+    "kwhChips": [
+      300,
+      500,
+      625,
+      1000,
+      1500
+    ],
+    "scenarios": [
+      50,
+      60,
+      70,
+      80,
+      90
+    ]
+  },
+  "tariffs": {
+    "note": "Biểu giá mặc định: 5 bậc, áp dụng từ 01/11/2026 (Quyết định 2892/QĐ-BCT). Khi EVN điều chỉnh giá, cập nhật trực tiếp tại trang Quản trị.",
+    "tiers": [
+      {
+        "label": "0 – 100",
+        "size": 100,
+        "price": 1901
+      },
+      {
+        "label": "101 – 200",
+        "size": 100,
+        "price": 2289
+      },
+      {
+        "label": "201 – 400",
+        "size": 200,
+        "price": 2894
+      },
+      {
+        "label": "401 – 700",
+        "size": 300,
+        "price": 3456
+      },
+      {
+        "label": "Từ 701",
+        "size": null,
+        "price": 3844
+      }
+    ]
+  },
+  "footer": {
+    "notesTitle": "Lưu ý sử dụng",
+    "notes": [
+      "Áp dụng cho 01 hộ / 01 định mức điện sinh hoạt, tính đủ tháng theo biểu giá 5 bậc.",
+      "Không bao gồm các khoản điều chỉnh, truy thu, nợ kỳ trước, phí dịch vụ hoặc trường hợp nhiều định mức / hộ thuê trọ.",
+      "Kết quả quy đổi từ tiền hóa đơn là ước tính; muốn chính xác nhất hãy nhập đúng sản lượng kWh trên hóa đơn.",
+      "Dung lượng pin là kết quả tính toán sơ bộ để tư vấn; thiết kế chi tiết cần khảo sát thực tế."
+    ],
+    "companyLine": "CTY HOÀNG QUÂN – Electronics & Energy · 0913 350 597 · 0345 128 688",
+    "ctaTitle": "Liên hệ ngay để được tư vấn & khảo sát miễn phí",
+    "ctaSubtitle": "Gọi trực tiếp hoặc kết nối qua Zalo để nhận báo giá chi tiết và phương án lắp đặt phù hợp nhất.",
+    "ctaAddress": "",
+    "callBtnText": "Gọi ngay",
+    "zaloBtnText": "Chat Zalo"
+  },
+  "updatedAt": "2026-11-25T06:55:40.232Z"
+}

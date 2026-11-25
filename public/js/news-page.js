@@ -8,11 +8,21 @@
     medium: '0 2px 6px rgba(15,23,42,.04), 0 12px 28px rgba(15,23,42,.07)',
     strong: '0 4px 12px rgba(15,23,42,.08), 0 20px 44px rgba(15,23,42,.14)'
   };
+  const LIKES_KEY = 'hq_news_likes_v1';
 
   let CFG = null;
   let ARTICLES = [];
   let activeCat = 'all';
   let searchQ = '';
+  let currentArticle = null;
+  let fontSizePx = 15.5;
+
+  function getLikesMap() {
+    try { return JSON.parse(localStorage.getItem(LIKES_KEY) || '{}') || {}; } catch { return {}; }
+  }
+  function saveLikesMap(m) {
+    try { localStorage.setItem(LIKES_KEY, JSON.stringify(m)); } catch {}
+  }
 
   function esc(str) {
     return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -30,6 +40,11 @@
     if (!d) return '';
     const m = String(d).match(/^(\d{4})-(\d{2})-(\d{2})$/);
     return m ? `${m[3]}/${m[2]}/${m[1]}` : d;
+  }
+
+  function estimateReadMins(text) {
+    const words = String(text || '').trim().split(/\s+/).filter(Boolean).length;
+    return Math.max(1, Math.round(words / 180));
   }
 
   function getPrimaryContact() {
@@ -90,35 +105,130 @@
     $('footerCompany').textContent = f.companyLine || b.companyName || '';
   }
 
-  function openArticleModal(a) {
+  function updateReadProgress() {
+    if ($('newsArticleView').hidden) return;
+    const h = document.documentElement;
+    const maxScroll = Math.max(1, h.scrollHeight - window.innerHeight);
+    const pct = Math.min(100, Math.max(0, (window.scrollY / maxScroll) * 100));
+    $('readProgressBar').style.width = pct.toFixed(1) + '%';
+  }
+  window.addEventListener('scroll', updateReadProgress, { passive: true });
+
+  function updateLikeUI(artId) {
+    const map = getLikesMap();
+    const entry = map[artId] || { liked: false, count: 12 };
+    $('btnLikeArt').classList.toggle('liked', Boolean(entry.liked));
+    $('artLikeCount').textContent = entry.count;
+  }
+
+  function openStandaloneArticle(a, pushUrl = true) {
     if (!a) return;
-    $('nmCover').src = a.imageUrl || '/assets/prod-panel.jpg';
-    $('nmCover').alt = a.title || '';
-    $('nmCat').textContent = a.category || 'Tin tức';
-    $('nmDate').textContent = a.publishedAt ? '📅 ' + formatDate(a.publishedAt) : '';
-    $('nmAuthor').textContent = a.author ? '✍️ ' + a.author : '';
-    $('nmTitle').textContent = a.title || '';
-    $('nmSummary').textContent = a.summary || '';
-    $('nmSummary').hidden = !a.summary;
+    currentArticle = a;
+    $('newsListView').hidden = true;
+    $('newsArticleView').hidden = false;
+    $('readProgressTrack').hidden = false;
+    $('readProgressBar').style.width = '0%';
+
+    document.title = `${a.title} – Hoàng Quân Electronics & Energy`;
+    $('artCat').textContent = a.category || 'Tin tức';
+    $('artDate').textContent = a.publishedAt ? '📅 ' + formatDate(a.publishedAt) : '';
+    $('artAuthor').textContent = a.author ? '✍️ ' + a.author : '';
+    $('artReadTime').textContent = `⏱ ~${estimateReadMins(a.content)} phút đọc`;
+    $('artTitle').textContent = a.title || '';
+    $('artSummary').textContent = a.summary || '';
+    $('artSummary').hidden = !a.summary;
+    $('artCover').src = a.imageUrl || '/assets/prod-panel.jpg';
+    $('artCover').alt = a.title || '';
+
     const paras = String(a.content || '').split(/\r?\n\r?\n+/).map(p => p.trim()).filter(Boolean);
-    $('nmContent').innerHTML = paras.map(p => `<p>${esc(p).replace(/\r?\n/g, '<br>')}</p>`).join('') || '<p>Nội dung đang được cập nhật.</p>';
+    $('artContent').innerHTML = paras.map(p => `<p>${esc(p).replace(/\r?\n/g, '<br>')}</p>`).join('') || '<p>Nội dung đang được cập nhật.</p>';
+    $('artContent').style.fontSize = fontSizePx + 'px';
+    $('artShareMsg').hidden = true;
+
+    updateLikeUI(a.id);
 
     const { tel, zalo } = getPrimaryContact();
-    $('nmActions').innerHTML = `
+    $('artActions').innerHTML = `
       <a class="cta-btn call" style="flex:1;justify-content:center" href="tel:${tel}">📞 Gọi ngay</a>
       ${zalo ? `<a class="cta-btn zalo" style="flex:1;justify-content:center" href="https://zalo.me/${zalo}" target="_blank" rel="noopener">💬 Tư vấn Zalo</a>` : ''}
     `;
-    $('newsModal').hidden = false;
-    document.body.style.overflow = 'hidden';
+
+    // Related articles
+    const related = ARTICLES.filter(x => x && x.published !== false && x.id !== a.id).slice(0, 3);
+    $('relatedNewsWrap').hidden = !related.length;
+    $('relatedNewsGrid').innerHTML = related.map((r, idx) => `
+      <article class="card news-card" data-open-rel="${idx}">
+        <div class="news-cover">
+          <img src="${esc(r.imageUrl || '/assets/prod-panel.jpg')}" alt="${esc(r.title)}" loading="lazy">
+          <span class="prod-cat-tag">${esc(r.category || 'Tin tức')}</span>
+        </div>
+        <div class="news-card-body">
+          <div class="news-meta-line"><span>📅 ${esc(formatDate(r.publishedAt))}</span></div>
+          <h3 class="news-title">${esc(r.title)}</h3>
+          <div class="news-readmore">Đọc bài viết →</div>
+        </div>
+      </article>
+    `).join('');
+    $('relatedNewsGrid').querySelectorAll('[data-open-rel]').forEach(c => {
+      c.onclick = () => openStandaloneArticle(related[+c.dataset.openRel], true);
+    });
+
+    if (pushUrl && window.history && window.history.pushState) {
+      window.history.pushState({ articleId: a.id }, '', `/news?id=${encodeURIComponent(a.id)}`);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  function closeNewsModal() {
-    $('newsModal').hidden = true;
-    document.body.style.overflow = '';
+  function showNewsList(pushUrl = true) {
+    currentArticle = null;
+    $('newsArticleView').hidden = true;
+    $('readProgressTrack').hidden = true;
+    $('newsListView').hidden = false;
+    document.title = 'Tin tức & Kiến thức – Hoàng Quân Electronics & Energy';
+    if (pushUrl && window.history && window.history.pushState) {
+      window.history.pushState({}, '', '/news');
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
-  $('nmClose').onclick = closeNewsModal;
-  $('newsModal').addEventListener('click', e => { if (e.target === $('newsModal')) closeNewsModal(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('newsModal').hidden) closeNewsModal(); });
+
+  $('btnBackNews').onclick = () => showNewsList(true);
+  if ($('navNewsLink')) {
+    $('navNewsLink').addEventListener('click', e => {
+      if (!$('newsArticleView').hidden) {
+        e.preventDefault();
+        showNewsList(true);
+      }
+    });
+  }
+  $('btnFontInc').onclick = () => { fontSizePx = Math.min(20, fontSizePx + 1.5); $('artContent').style.fontSize = fontSizePx + 'px'; };
+  $('btnFontDec').onclick = () => { fontSizePx = Math.max(13, fontSizePx - 1.5); $('artContent').style.fontSize = fontSizePx + 'px'; };
+  $('btnLikeArt').onclick = () => {
+    if (!currentArticle) return;
+    const map = getLikesMap();
+    const entry = map[currentArticle.id] || { liked: false, count: 12 };
+    entry.liked = !entry.liked;
+    entry.count = Math.max(0, entry.count + (entry.liked ? 1 : -1));
+    map[currentArticle.id] = entry;
+    saveLikesMap(map);
+    updateLikeUI(currentArticle.id);
+  };
+  $('btnShareArt').onclick = () => {
+    const url = window.location.href;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).catch(() => {});
+    }
+    $('artShareMsg').hidden = false;
+    setTimeout(() => { $('artShareMsg').hidden = true; }, 2600);
+  };
+
+  window.addEventListener('popstate', () => {
+    const id = new URLSearchParams(window.location.search).get('id');
+    if (id) {
+      const found = ARTICLES.find(a => a.id === id);
+      if (found) return openStandaloneArticle(found, false);
+    }
+    showNewsList(false);
+  });
 
   function renderNews() {
     const pub = ARTICLES.filter(a => a && a.published !== false);
@@ -155,7 +265,7 @@
     `).join('');
 
     $('newsGrid').querySelectorAll('[data-open-news]').forEach(card => {
-      card.onclick = () => openArticleModal(list[+card.dataset.openNews]);
+      card.onclick = () => openStandaloneArticle(list[+card.dataset.openNews], true);
     });
   }
 
@@ -176,5 +286,10 @@
     applyTheme(cfgData.config);
     ARTICLES = Array.isArray(newsData.articles) ? newsData.articles : [];
     renderNews();
+    const initialId = new URLSearchParams(window.location.search).get('id');
+    if (initialId) {
+      const found = ARTICLES.find(a => a.id === initialId);
+      if (found) openStandaloneArticle(found, false);
+    }
   }).catch(err => console.error(err));
 })();
