@@ -47,8 +47,10 @@ async function handleAdminCatalog(req, res, pathname, method, authState) {
     return sendJson(res, 200, { leads: leadStore.loadLeads() }), true;
   }
   if (pathname === '/api/admin/leads' && (method === 'PUT' || method === 'PATCH')) {
-    if (!requireAdmin(req, res, authState, ['leads'])) return true;
+    const curUser = requireAdmin(req, res, authState, ['leads']);
+    if (!curUser) return true;
     const body = await readJsonBody(req, 64 * 1024);
+    if (curUser.role !== 'admin') delete body.assignedTo;
     const updated = leadStore.updateLead(String(body.id || ''), body);
     if (!updated) return sendJson(res, 404, { error: 'Không tìm thấy khách hàng.' }), true;
     triggerRealtimeSheetPush('lead', updated);

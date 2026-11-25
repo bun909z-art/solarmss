@@ -924,7 +924,7 @@
           ${c.batterySummary ? `<div>• Pin lưu trữ: ${escapeAttr(c.batterySummary)}</div>` : ''}
           ${c.accessoriesSummary ? `<div style="font-size:11px;color:#7C2D12">• Phụ kiện: ${escapeAttr(c.accessoriesSummary)}</div>` : ''}
         </div>` : '<div style="font-size:11.5px;color:#94A3B8;font-style:italic">Khách chưa bấm chọn Combo cụ thể.</div>'}
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;font-size:11.5px">
+        ${(!CURRENT_USER || CURRENT_USER.role === 'admin') ? `<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;font-size:11.5px">
           <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
             <span style="font-weight:700;color:#475569">👤 Phụ trách:</span>
             <select class="f-input" data-l-assign="${escapeAttr(l.id)}" style="width:auto;padding:3px 7px;font-size:11.5px">
@@ -934,7 +934,7 @@
             ${l.webhookSentAt ? '<span style="background:#DBEAFE;color:#1E40AF;padding:2px 6px;border-radius:99px;font-weight:700">🗄 CSDL OK</span>' : ''}
           </div>
           <button type="button" class="btn-ghost small" data-l-push="${escapeAttr(l.id)}" style="padding:3px 8px;font-size:11px">📤 Đẩy Bot/CSDL</button>
-        </div>
+        </div>` : ''}
         <div style="display:grid;grid-template-columns:130px 1fr;gap:6px;align-items:center">
           <select class="f-input" data-l-status="${escapeAttr(l.id)}" style="font-weight:700;color:${stColor}">
             <option value="new" ${st === 'new' ? 'selected' : ''}>🆕 Mới</option>

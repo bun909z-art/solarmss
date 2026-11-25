@@ -566,30 +566,6 @@
               <option value="cancelled">❌ Hủy</option>
             </select>
           </div>
-          
-          <details style="margin-bottom:12px;background:#F8FAFC;border:1px solid #CBD5E1;border-radius:10px;padding:10px">
-            <summary style="cursor:pointer;font-size:13px;font-weight:800;color:#0F172A">🔗 Đẩy dữ liệu sang Webhook CSDL &amp; Tài khoản phụ trách</summary>
-            <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
-              <div class="field-row" style="margin:0">
-                <label class="f-lbl">Tài khoản phụ trách khách hàng mới</label>
-                <select id="int_defaultAssignee" class="f-input"><option value="admin">admin</option></select>
-              </div>
-              <div class="toggle-row" style="margin:0">
-                <span>Tự động đẩy sang Bot/CSDL khi khách chọn Combo</span>
-                <input type="checkbox" id="int_autoPushOnSubmit" checked>
-              </div>
-              <div class="toggle-row" style="margin:0">
-                <span>Bật đẩy dữ liệu sang CSDL ngoài / Google Sheet / Zalo Bot (Webhook)</span>
-                <input type="checkbox" id="int_webhookEnabled">
-              </div>
-              <input type="url" id="int_webhookUrl" class="f-input" placeholder="https://... (API CSDL / Apps Script / n8n / Make)">
-              <input type="text" id="int_webhookSecret" class="f-input" placeholder="Mã bảo mật X-HQ-Secret (tùy chọn)">
-              <div class="two-col">
-                <button type="button" class="btn-primary full" id="btnSaveInteg">💾 Lưu kết nối Bot/CSDL</button>
-                <button type="button" class="btn-ghost full" id="btnTestInteg">🧪 Gửi thử Bot/CSDL</button>
-              </div>
-            </div>
-          </details>
           <div id="leadsListEditor" class="list-editor"></div>
         </section>
 
@@ -840,6 +816,30 @@
           <h3>Danh sách tài khoản (<span id="usersCount">0</span>)</h3>
           <div id="usersListEditor" class="list-editor"></div>
 
+          <hr class="sep">
+          <details style="margin-bottom:12px;background:#F8FAFC;border:1px solid #CBD5E1;border-radius:10px;padding:10px">
+            <summary style="cursor:pointer;font-size:13px;font-weight:800;color:#0F172A">🔗 Đẩy dữ liệu sang Webhook CSDL &amp; Tài khoản phụ trách</summary>
+            <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
+              <div class="field-row" style="margin:0">
+                <label class="f-lbl">Tài khoản phụ trách khách hàng mới</label>
+                <select id="int_defaultAssignee" class="f-input"><option value="admin">admin</option></select>
+              </div>
+              <div class="toggle-row" style="margin:0">
+                <span>Tự động đẩy sang Bot/CSDL khi khách chọn Combo</span>
+                <input type="checkbox" id="int_autoPushOnSubmit" checked>
+              </div>
+              <div class="toggle-row" style="margin:0">
+                <span>Bật đẩy dữ liệu sang CSDL ngoài / Google Sheet / Zalo Bot (Webhook)</span>
+                <input type="checkbox" id="int_webhookEnabled">
+              </div>
+              <input type="url" id="int_webhookUrl" class="f-input" placeholder="https://... (API CSDL / Apps Script / n8n / Make)">
+              <input type="text" id="int_webhookSecret" class="f-input" placeholder="Mã bảo mật X-HQ-Secret (tùy chọn)">
+              <div class="two-col">
+                <button type="button" class="btn-primary full" id="btnSaveInteg">💾 Lưu kết nối Bot/CSDL</button>
+                <button type="button" class="btn-ghost full" id="btnTestInteg">🧪 Gửi thử Bot/CSDL</button>
+              </div>
+            </div>
+          </details>
           <hr class="sep">
           <h3>🤖 Thông báo khách hàng qua Telegram Bot</h3>
           <div class="toggle-row">
