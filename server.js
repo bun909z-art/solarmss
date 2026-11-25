@@ -229,12 +229,12 @@ const server = http.createServer(async (req, res) => {
         return sendJson(res, 401, { error: 'Mật khẩu quản trị không đúng.' });
       }
       const token = auth.createSessionToken(authState.sessionSecret, authState.username);
-      auth.setSessionCookie(res, token);
-      return sendJson(res, 200, { ok: true, username: authState.username });
+      auth.setSessionCookie(res, token, req);
+      return sendJson(res, 200, { ok: true, username: authState.username, token });
     }
 
     if (pathname === '/api/admin/logout' && method === 'POST') {
-      auth.clearSessionCookie(res);
+      auth.clearSessionCookie(res, req);
       return sendJson(res, 200, { ok: true });
     }
 
