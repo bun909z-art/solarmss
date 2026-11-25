@@ -54,7 +54,36 @@
     return p.specText || 'Phụ kiện lắp đặt';
   }
 
+  
+  function applyMaintenanceNav(cfg) {
+    const mt = cfg && cfg.maintenance;
+    const isRestrict = Boolean(mt && mt.enabled && mt.mode === 'allow_page');
+    const allowed = (mt && mt.allowedRoute) || '/tuvan';
+    const nav = document.querySelector('.main-nav');
+    if (nav) {
+      let visibleCount = 0;
+      nav.querySelectorAll('a.nav-link').forEach(a => {
+        const href = a.getAttribute('href') || '/';
+        const show = !isRestrict || href === allowed;
+        a.hidden = !show;
+        if (show) visibleCount++;
+      });
+      // When restricted to 1 single page, hide the redundant 1-item nav pill bar so Logo & Hotline align cleanly!
+      nav.hidden = isRestrict && visibleCount <= 1;
+    }
+    document.body.classList.toggle('maint-single-page', isRestrict);
+    // Hide cross-page shortcut buttons pointing to blocked routes
+    if (isRestrict) {
+      document.querySelectorAll('a[href="/tuvan"], a[href="/products"], a[href="/news"], a.home-more-link, a.home-quick-card').forEach(el => {
+        const href = el.getAttribute('href');
+        if (href && href !== allowed && !el.closest('.main-nav')) el.hidden = true;
+      });
+      if ($('homeQuickGrid') && allowed === '/') $('homeQuickGrid').hidden = true;
+    }
+  }
+
   function applyTheme(cfg) {
+    applyMaintenanceNav(cfg);
     CFG = cfg;
     const t = cfg.theme || {}, b = cfg.branding || {}, f = cfg.footer || {};
     const r = document.documentElement.style;

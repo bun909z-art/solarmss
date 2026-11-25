@@ -5,18 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quản trị giao diện – Hoàng Quân Pin Hybrid</title>
 <link rel="icon" type="image/png" href="/assets/favicon.png">
-<link rel="stylesheet" href="/css/admin.css?v=23">
+<link rel="stylesheet" href="/css/admin.css?v=31">
 </head>
 <body>
 
 <!-- Login Screen -->
 <div class="login-screen" id="loginScreen">
   <div class="login-card">
-    <img src="/assets/logo-default.jpg" alt="Hoàng Quân" class="login-logo">
     <h1>Quản trị giao diện</h1>
     <p>Đăng nhập để tùy chỉnh màu sắc, bố cục, thương hiệu và biểu giá EVN.</p>
     <form id="loginForm">
-      <label class="f-lbl" for="loginPass">Mật khẩu quản trị</label>
+      <label class="f-lbl" for="loginUser">Tên đăng nhập</label>
+      <input type="text" id="loginUser" class="f-input" placeholder="Nhập tên đăng nhập..." autocomplete="username" required style="margin-bottom:12px">
+      <label class="f-lbl" for="loginPass">Mật khẩu</label>
       <input type="password" id="loginPass" class="f-input" placeholder="Nhập mật khẩu..." required autocomplete="current-password">
       <div class="login-err" id="loginErr"></div>
       <button type="submit" class="btn-primary full" style="margin-top:14px">Đăng nhập</button>
@@ -40,6 +41,7 @@
       <a class="btn-ghost" href="/" target="_blank" rel="noopener">Mở trang thực tế ↗</a>
       <button type="button" class="btn-ghost danger" id="btnReset">Khôi phục mặc định</button>
       <button type="button" class="btn-primary" id="btnSave">Lưu cấu hình</button>
+      <span id="currentUserBadge" style="font-size:12px;font-weight:800;padding:6px 10px;border-radius:999px;background:#FFF7ED;color:#C2410C;border:1px solid #FED7AA"></span>
       <button type="button" class="btn-ghost" id="btnLogout">Đăng xuất</button>
     </div>
   </header>
@@ -57,7 +59,8 @@
         <button type="button" class="tab-btn" data-tab="news">Tin tức</button>
         <button type="button" class="tab-btn" data-tab="leads">Khách hàng (<span id="leadsTabCount">0</span>)</button>
         <button type="button" class="tab-btn" data-tab="footer">Chân trang</button>
-        <button type="button" class="tab-btn" data-tab="security">Bảo mật &amp; Backup</button>
+        <button type="button" class="tab-btn" data-tab="security">Sao lưu &amp; Bảo trì</button>
+        <button type="button" class="tab-btn" data-tab="users" id="tabBtnUsers" hidden>Tài khoản</button>
       </nav>
 
       <div class="adm-panel-scroll">
@@ -590,7 +593,44 @@
 
         <!-- TAB 6: SECURITY & BACKUP -->
         <section class="tab-pane" id="tab-security">
-          <h3>Đổi mật khẩu quản trị</h3>
+          <h3>Chế độ Bảo trì trang web</h3>
+          <div id="maintStatusBox" style="padding:10px 12px;border-radius:10px;font-size:12.5px;font-weight:800;margin-bottom:10px;background:#ECFDF5;color:#047857;border:1px solid #A7F3D0">
+            🟢 Website đang hoạt động bình thường
+          </div>
+          <div class="field-row">
+            <label class="f-lbl">Hành vi khi bật bảo trì</label>
+            <select id="m_mode" class="f-input">
+              <option value="error404">Báo lỗi 404 — Đang bảo trì toàn bộ trang khách</option>
+              <option value="allow_page">Chỉ cho phép khách truy cập 1 trang chỉ định</option>
+            </select>
+          </div>
+          <div class="field-row" id="mAllowedWrap" hidden>
+            <label class="f-lbl">Trang được phép truy cập trong lúc bảo trì</label>
+            <select id="m_allowedRoute" class="f-input">
+              <option value="/">Trang chủ (/)</option>
+              <option value="/tuvan">Trang Tư vấn (/tuvan)</option>
+              <option value="/products">Trang Sản phẩm tham khảo (/products)</option>
+              <option value="/news">Trang Tin tức (/news)</option>
+            </select>
+          </div>
+          <div class="two-col" style="margin-bottom:12px">
+            <button type="button" class="btn-primary full" id="btnToggleMaint">🔧 Bật bảo trì ngay</button>
+            <button type="button" class="btn-ghost full" id="btnSaveMaint">💾 Lưu cài đặt bảo trì</button>
+          </div>
+
+          <hr class="sep">
+          <h3>Sao lưu &amp; Khôi phục toàn bộ dữ liệu</h3>
+          <p class="hint">Xuất 1 tệp JSON duy nhất chứa toàn bộ: Giao diện, Trang chủ, Biểu giá EVN, Kho sản phẩm, Tin tức và Dữ liệu khách hàng.</p>
+          <div class="two-col" style="margin-top:10px">
+            <button type="button" class="btn-primary full" id="btnFullBackup">⬇ Sao lưu toàn bộ</button>
+            <label class="btn-ghost full" style="text-align:center;cursor:pointer">
+              ⬆ Khôi phục toàn bộ
+              <input type="file" id="fullRestoreFile" accept="application/json" hidden>
+            </label>
+          </div>
+
+          <hr class="sep">
+          <h3>Đổi mật khẩu tài khoản</h3>
           <form id="passForm">
             <div class="field-row">
               <label class="f-lbl">Mật khẩu hiện tại</label>
@@ -614,6 +654,43 @@
             </label>
           </div>
         </section>
+
+        <!-- TAB USERS (SUPER ADMIN ONLY) -->
+        <section class="tab-pane" id="tab-users">
+          <h3>Tạo tài khoản người dùng mới</h3>
+          <div class="two-col">
+            <div class="field-row">
+              <label class="f-lbl">Tên đăng nhập</label>
+              <input type="text" id="nu_username" class="f-input" placeholder="VD: nhanvien1">
+            </div>
+            <div class="field-row">
+              <label class="f-lbl">Tên hiển thị</label>
+              <input type="text" id="nu_display" class="f-input" placeholder="VD: Nguyễn Văn A">
+            </div>
+          </div>
+          <div class="two-col">
+            <div class="field-row">
+              <label class="f-lbl">Mật khẩu (tối thiểu 6 ký tự)</label>
+              <input type="password" id="nu_password" class="f-input" placeholder="••••••">
+            </div>
+            <div class="field-row">
+              <label class="f-lbl">Vai trò</label>
+              <select id="nu_role" class="f-input">
+                <option value="staff">Nhân viên (phân quyền)</option>
+                <option value="admin">Admin (Full tính năng)</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-row" id="nuPermsWrap">
+            <label class="f-lbl">Chọn các mục được phép sử dụng:</label>
+            <div id="nuPermsGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px"></div>
+          </div>
+          <button type="button" class="btn-primary full" id="btnCreateUser">+ Tạo tài khoản</button>
+
+          <hr class="sep">
+          <h3>Danh sách tài khoản (<span id="usersCount">0</span>)</h3>
+          <div id="usersListEditor" class="list-editor"></div>
+        </section>
       </div>
     </aside>
 
@@ -636,6 +713,6 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="/js/admin.js?v=23"></script>
+<script src="/js/admin.js?v=31"></script>
 </body>
 </html>

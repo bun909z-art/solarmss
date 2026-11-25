@@ -2156,3 +2156,35 @@ body.dark-mode .slider-dot { background: rgba(255, 255, 255, 0.25); }
     padding-top: 14px !important;
   }
 }
+
+/* V15 Nav & Header Polish */
+.main-nav { max-width: 100%; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
+.main-nav::-webkit-scrollbar { display: none; }
+
+/* ==================== IMAGE COPY PROTECTION ==================== */
+img {
+  -webkit-user-drag: none;
+  user-drag: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.prod-img-wrap img,
+.pd-img-stage img,
+.news-cover img,
+.article-cover-full img,
+.fslide-img img,
+.combo-thumb img,
+.combo-spec-row img,
+.brand img {
+  pointer-events: none;
+}
+
+/* Balanced header layout when Maintenance restricts to a single allowed page */
+body.maint-single-page .topbar-inner {
+  justify-content: space-between;
+  gap: 16px;
+}
+body.maint-single-page .main-nav[hidden] {
+  display: none !important;
+}

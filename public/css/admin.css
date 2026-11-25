@@ -389,3 +389,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .adm-preview { height: 56vh; }
   .preview-stage { padding: 8px; }
 }
+/* V15 Admin Header Polish */
+.adm-header { min-height: 60px; height: auto; flex-wrap: wrap; padding-top: 8px; padding-bottom: 8px; }
+#currentUserBadge { white-space: nowrap; }
