@@ -1,0 +1,15 @@
+{
+  "name": "hoangquan-pin-hybrid",
+  "version": "2.0.0",
+  "description": "Ứng dụng Node.js tư vấn dung lượng Pin lưu trữ Hybrid Hoàng Quân kèm trang Admin tùy chỉnh giao diện chi tiết",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "Hoàng Quân – Electronics & Energy",
+  "license": "MIT"
+}

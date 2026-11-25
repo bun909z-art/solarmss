@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title id="docTitle">Sản phẩm tham khảo – Hoàng Quân Electronics &amp; Energy</title>
+<meta name="theme-color" content="#F26A1B" id="metaTheme">
+<link rel="icon" type="image/png" href="/assets/favicon.png" id="docFavicon">
+<link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="brand" href="/" aria-label="Trang chủ">
+      <img id="brandLogo" src="/assets/logo-default.jpg" alt="Hoàng Quân – Electronics & Energy">
+    </a>
+
+    <nav class="main-nav" aria-label="Điều hướng chính">
+      <a href="/" class="nav-link">Tư vấn Pin Hybrid</a>
+      <a href="/products" class="nav-link active">Sản phẩm tham khảo</a>
+    </nav>
+
+    <div class="topbar-right">
+      <div class="hotline" id="hotlineWrap">
+        <span class="hotline-label" id="hotlineLabel">Hotline tư vấn kỹ thuật</span>
+        <div class="hotline-list" id="hotlineList"></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section class="hero-banner" id="heroSection">
+  <div class="hero-glow" aria-hidden="true"></div>
+  <div class="wrap hero-inner" id="heroInner">
+    <div class="hero-badge"><span class="dot"></span><span>Danh mục thiết bị chính hãng</span></div>
+    <h1>Sản phẩm Điện Mặt Trời Hybrid &amp; Pin Lưu Trữ</h1>
+    <p>Tham khảo các dòng Inverter Hybrid, Tấm pin năng lượng mặt trời và Pin lưu trữ Lithium đang phân phối. Liên hệ trực tiếp để nhận báo giá tốt nhất theo cấu hình lắp đặt.</p>
+  </div>
+</section>
+
+<main class="wrap main-wrap">
+  <section class="card catalog-toolbar">
+    <div class="cat-pills" id="catPills">
+      <button type="button" class="cat-pill active" data-cat="all">Tất cả (<span id="cntAll">0</span>)</button>
+      <button type="button" class="cat-pill" data-cat="inverter">Inverter Hybrid (<span id="cntInv">0</span>)</button>
+      <button type="button" class="cat-pill" data-cat="panel">Pin mặt trời (<span id="cntPan">0</span>)</button>
+      <button type="button" class="cat-pill" data-cat="battery">Pin lưu trữ (<span id="cntBat">0</span>)</button>
+    </div>
+    <div class="field catalog-search">
+      <span class="field-icon" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </span>
+      <input id="prodSearch" type="text" placeholder="Tìm theo tên sản phẩm hoặc hãng..." autocomplete="off">
+    </div>
+  </section>
+
+  <section class="catalog-grid" id="catalogGrid" aria-live="polite"></section>
+
+  <section class="card contact-cta" id="contactCtaCard" style="margin-top:26px">
+    <div class="cta-head">
+      <h2 id="ctaTitle">Liên hệ ngay để được tư vấn &amp; khảo sát miễn phí</h2>
+      <p id="ctaSubtitle">Gọi trực tiếp hoặc kết nối qua Zalo để nhận báo giá chi tiết và phương án lắp đặt phù hợp nhất.</p>
+      <p class="cta-addr" id="ctaAddress" hidden></p>
+    </div>
+    <div class="cta-list" id="ctaList"></div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="co" id="footerCompany">CTY HOÀNG QUÂN – Electronics &amp; Energy</div>
+  </div>
+</footer>
+
+<script src="/js/products-page.js"></script>
+</body>
+</html>

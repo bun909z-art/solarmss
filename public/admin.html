@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quản trị giao diện – Hoàng Quân Pin Hybrid</title>
+<link rel="icon" type="image/png" href="/assets/favicon.png">
+<link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+
+<!-- Login Screen -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <img src="/assets/logo-default.jpg" alt="Hoàng Quân" class="login-logo">
+    <h1>Quản trị giao diện</h1>
+    <p>Đăng nhập để tùy chỉnh màu sắc, bố cục, thương hiệu và biểu giá EVN.</p>
+    <form id="loginForm">
+      <label class="f-lbl" for="loginPass">Mật khẩu quản trị</label>
+      <input type="password" id="loginPass" class="f-input" placeholder="Nhập mật khẩu..." required autocomplete="current-password">
+      <div class="login-err" id="loginErr"></div>
+      <button type="submit" class="btn-primary full" style="margin-top:14px">Đăng nhập</button>
+    </form>
+    <div class="login-foot">
+      <a href="/">← Quay lại trang tư vấn</a>
+      <span>Mặc định: <code>admin123</code></span>
+    </div>
+  </div>
+</div>
+
+<!-- Admin Workspace -->
+<div class="admin-app" id="adminApp" hidden>
+  <header class="adm-header">
+    <div class="adm-header-left">
+      <span class="adm-badge">ADMIN STUDIO</span>
+      <strong>Quản lý giao diện &amp; cấu hình</strong>
+      <span class="dirty-pill" id="dirtyPill" hidden>Chưa lưu thay đổi</span>
+    </div>
+    <div class="adm-header-right">
+      <a class="btn-ghost" href="/" target="_blank" rel="noopener">Mở trang thực tế ↗</a>
+      <button type="button" class="btn-ghost danger" id="btnReset">Khôi phục mặc định</button>
+      <button type="button" class="btn-primary" id="btnSave">Lưu cấu hình</button>
+      <button type="button" class="btn-ghost" id="btnLogout">Đăng xuất</button>
+    </div>
+  </header>
+
+  <div class="adm-body">
+    <!-- Left Navigation + Editor -->
+    <aside class="adm-sidebar">
+      <nav class="adm-tabs" role="tablist">
+        <button type="button" class="tab-btn active" data-tab="branding">Thương hiệu</button>
+        <button type="button" class="tab-btn" data-tab="theme">Màu sắc &amp; Hero</button>
+        <button type="button" class="tab-btn" data-tab="layout">Bố cục &amp; Tiêu đề</button>
+        <button type="button" class="tab-btn" data-tab="tariffs">Thông số &amp; EVN</button>
+        <button type="button" class="tab-btn" data-tab="products">Kho sản phẩm</button>
+        <button type="button" class="tab-btn" data-tab="footer">Chân trang</button>
+        <button type="button" class="tab-btn" data-tab="security">Bảo mật &amp; Backup</button>
+      </nav>
+
+      <div class="adm-panel-scroll">
+        <!-- TAB 1: BRANDING -->
+        <section class="tab-pane active" id="tab-branding">
+          <h3>Nhận diện thương hiệu</h3>
+          <div class="logo-box">
+            <img id="logoPreview" src="/assets/logo-default.jpg" alt="Logo preview">
+            <div class="logo-actions">
+              <label class="btn-ghost small">
+                Tải logo mới
+                <input type="file" id="logoUpload" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden>
+              </label>
+              <button type="button" class="btn-ghost small" id="btnRestoreLogo">Dùng logo gốc</button>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <label class="f-lbl">Chiều cao Logo (<span id="logoHeightVal">54</span>px)</label>
+            <input type="range" id="b_logoHeight" min="32" max="90" step="2">
+          </div>
+
+          <div class="field-row">
+            <label class="f-lbl">Tiêu đề trình duyệt (Page Title)</label>
+            <input type="text" id="b_siteTitle" class="f-input">
+          </div>
+
+          <div class="field-row">
+            <label class="f-lbl">Tên công ty / Đơn vị</label>
+            <input type="text" id="b_companyName" class="f-input">
+          </div>
+
+          <div class="toggle-row">
+            <span>Hiển thị nút "Quản trị" trên đầu trang</span>
+            <input type="checkbox" id="b_showAdminLink">
+          </div>
+
+          <hr class="sep">
+          <h3>Hotline tư vấn</h3>
+          <div class="toggle-row">
+            <span>Hiển thị Hotline trên đầu trang</span>
+            <input type="checkbox" id="b_showHotline">
+          </div>
+          <div class="field-row">
+            <label class="f-lbl">Nhãn Hotline</label>
+            <input type="text" id="b_hotlineLabel" class="f-input">
+          </div>
+          <div id="hotlineEditor" class="list-editor"></div>
+          <button type="button" class="btn-ghost small full" id="btnAddHotline">+ Thêm số Hotline</button>
+        </section>
+
+        <!-- TAB 2: THEME & HERO -->
+        <section class="tab-pane" id="tab-theme">
+          <h3>Bộ giao diện mẫu (Presets)</h3>
+          <div class="preset-grid" id="presetGrid"></div>
+
+          <div class="toggle-row" style="margin-top:14px">
+            <span>Chế độ nền tối (Dark Mode)</span>
+            <input type="checkbox" id="t_darkMode">
+          </div>
+
+          <hr class="sep">
+          <h3>Màu sắc chi tiết</h3>
+          <div class="color-grid">
+            <label class="color-item"><span>Màu chính</span><input type="color" id="t_primary"></label>
+            <label class="color-item"><span>Màu chính đậm</span><input type="color" id="t_primaryDeep"></label>
+            <label class="color-item"><span>Màu cuối Gradient</span><input type="color" id="t_gradientEnd"></label>
+            <label class="color-item"><span>Nền trang</span><input type="color" id="t_bg"></label>
+            <label class="color-item"><span>Nền thẻ (Card)</span><input type="color" id="t_cardBg"></label>
+            <label class="color-item"><span>Màu chữ chính</span><input type="color" id="t_ink"></label>
+            <label class="color-item"><span>Màu chữ phụ</span><input type="color" id="t_inkMuted"></label>
+            <label class="color-item"><span>Thanh ban ngày</span><input type="color" id="t_dayColor"></label>
+            <label class="color-item"><span>Thanh buổi tối</span><input type="color" id="t_nightColor"></label>
+          </div>
+
+          <hr class="sep">
+          <h3>Kiểu dáng &amp; Khung trang</h3>
+          <div class="field-row">
+            <label class="f-lbl">Bo góc thẻ (<span id="radiusVal">18</span>px)</label>
+            <input type="range" id="t_radius" min="6" max="28" step="1">
+          </div>
+          <div class="field-row">
+            <label class="f-lbl">Độ rộng khung nội dung (<span id="maxWidthVal">1160</span>px)</label>
+            <input type="range" id="t_maxWidth" min="960" max="1320" step="20">
+          </div>
+          <div class="two-col">
+            <div class="field-row">
+              <label class="f-lbl">Đổ bóng thẻ</label>
+              <select id="t_shadowLevel" class="f-input">
+                <option value="none">Không đổ bóng (Phẳng)</option>
+                <option value="soft">Nhẹ</option>
+                <option value="medium">Vừa (Mặc định)</option>
+                <option value="strong">Nổi khối mạnh</option>
+              </select>
+            </div>
+            <div class="field-row">
+              <label class="f-lbl">Phông chữ</label>
+              <select id="t_fontFamily" class="f-input">
+                <option value="system">Mặc định hệ thống</option>
+                <option value="inter">Inter / Hiện đại</option>
+                <option value="roboto">Roboto</option>
+                <option value="segoe">Segoe UI</option>
+              </select>
+            </div>
+          </div>
+          <div class="toggle-row">
+            <span>Cố định thẻ kết quả khi cuộn (Sticky)</span>
+            <input type="checkbox" id="t_stickyResult">
+          </div>
+
+          <hr class="sep">
+          <h3>Banner đầu trang (Hero)</h3>
+          <div class="toggle-row">
+            <span>Hiển thị Banner Hero</span>
+            <input type="checkbox" id="h_show">
+          </div>
+          <div class="two-col">
+            <div class="field-row">
+              <label class="f-lbl">Kiểu nền Banner</label>
+              <select id="h_style" class="f-input">
+                <option value="gradient">Chuyển sắc Gradient</option>
+                <option value="mesh">Ánh sáng Mesh hiện đại</option>
+                <option value="solid">Màu đơn sắc</option>
+              </select>
+            </div>
+            <div class="field-row">
+              <label class="f-lbl">Căn lề nội dung</label>
+              <select id="h_align" class="f-input">
+                <option value="left">Căn trái</option>
+                <option value="center">Căn giữa</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-row">
+            <label class="f-lbl">Nhãn nhỏ phía trên (Badge)</label>
+            <input type="text" id="h_badge" class="f-input" placeholder="Để trống nếu muốn ẩn">
+          </div>
+          <div class="field-row">
+            <label class="f-lbl">Tiêu đề chính (H1)</label>
+            <input type="text" id="h_title" class="f-input">
+          </div>
+          <div class="field-row">
+            <label class="f-lbl">Mô tả phụ</label>
+            <textarea id="h_subtitle" class="f-input" rows="2"></textarea>
+          </div>
+        </section>
+
+        <!-- TAB 3: LAYOUT & TITLES -->
+        <section class="tab-pane" id="tab-layout">
+          <h3>Bật / Tắt các khối chức năng</h3>
+          <div class="toggle-row"><span>Ô nhập tên khách hàng</span><input type="checkbox" id="s_showCustomerName"></div>
+          <div class="toggle-row"><span>Ô nhập số điện thoại khách</span><input type="checkbox" id="s_showCustomerPhone"></div>
+          <div class="toggle-row"><span>Ô nhập địa chỉ liên hệ khách</span><input type="checkbox" id="s_showCustomerAddress"></div>
+          <div class="toggle-row"><span>Nút chọn nhanh (Chips)</span><input type="checkbox" id="s_showQuickChips"></div>
+          <div class="toggle-row"><span>Thanh trượt thông số pin</span><input type="checkbox" id="s_showSliders"></div>
+          <div class="toggle-row"><span>Mục Cài đặt nâng cao (VAT, EVN)</span><input type="checkbox" id="s_showAdvancedSettings"></div>
+          <div class="toggle-row"><span>Thanh tỷ lệ Ban ngày / Buổi tối</span><input type="checkbox" id="s_showDayNightBar"></div>
+          <div class="toggle-row"><span>Các bước tính chi tiết</span><input type="checkbox" id="s_showCalcSteps"></div>
+          <div class="toggle-row"><span>Bảng chi tiết hóa đơn 5 bậc EVN</span><input type="checkbox" id="s_showTierTable"></div>
+          <div class="toggle-row"><span>Bảng so sánh tỷ lệ buổi tối</span><input type="checkbox" id="s_showScenarioTable"></div>
+          <div class="toggle-row"><span>Mục Gợi ý Combo lắp đặt</span><input type="checkbox" id="s_showComboSection"></div>
+          <div class="toggle-row"><span>Hiển thị giá sản phẩm trong Combo</span><input type="checkbox" id="s_showComboPrices"></div>
+          <div class="toggle-row"><span>Nút In PDF &amp; Copy kết quả</span><input type="checkbox" id="s_showPrintButton"></div>
+          <div class="toggle-row"><span>Mục "Liên hệ ngay" (Gọi + Zalo)</span><input type="checkbox" id="s_showContactCta"></div>
+          <div class="toggle-row"><span>Lưu ý sử dụng ở chân trang</span><input type="checkbox" id="s_showFooterNotes"></div>
+
+          <hr class="sep">
+          <h3>Tùy chỉnh tiêu đề các mục</h3>
+          <div class="field-row"><label class="f-lbl">Tiêu đề Bước 1</label><input type="text" id="s_card1Title" class="f-input"></div>
+          <div class="field-row"><label class="f-lbl">Tiêu đề Bước 2</label><input type="text" id="s_card2Title" class="f-input"></div>
+          <div class="field-row"><label class="f-lbl">Tiêu đề Thẻ kết quả</label><input type="text" id="s_resultTitle" class="f-input"></div>
+          <div class="field-row"><label class="f-lbl">Tiêu đề Bảng bậc thang EVN</label><input type="text" id="s_tierTableTitle" class="f-input"></div>
+          <div class="field-row"><label class="f-lbl">Tiêu đề Bảng so sánh buổi tối</label><input type="text" id="s_scenarioTableTitle" class="f-input"></div>
+          <div class="field-row"><label class="f-lbl">Tiêu đề Phiếu in PDF</label><input type="text" id="s_printTitle" class="f-input"></div>
+          <div class="field-row"><label class="f-lbl">Nhãn nút In PDF</label><input type="text" id="s_printButtonText" class="f-input"></div>
+        </section>
+
+        <!-- TAB 4: DEFAULTS & EVN TARIFFS -->
+        <section class="tab-pane" id="tab-tariffs">
+          <h3>Thông số tính toán mặc định</h3>
+          <div class="two-col">
+            <div class="field-row">
+              <label class="f-lbl">Chế độ nhập mặc định</label>
+              <select id="d_mode" class="f-input">
+                <option value="bill">Tiền hóa đơn</option>
+                <option value="kwh">Số kWh</option>
+              </select>
+            </div>
+            <div class="field-row">
+              <label class="f-lbl">Hóa đơn mặc định (đ)</label>
+              <input type="number" id="d_bill" class="f-input" min="0" step="100000">
+            </div>
+            <div class="field-row">
+              <label class="f-lbl">Sản lượng mặc định (kWh)</label>
+              <input type="number" id="d_kwh" class="f-input" min="0" step="10">
+            </div>
+            <div class="field-row">
+              <label class="f-lbl">Module pin mặc định (kWh)</label>
+              <input type="number" id="d_mod" class="f-input" min="0.1" step="0.01">
+            </div>
+            <div class="field-row">
+              <label class="f-lbl">Tỷ lệ buổi tối (%)</label>
+              <input type="number" id="d_eve" class="f-input" min="0" max="100">
+            </div>
+            <div class="field-row">
+              <label class="f-lbl">Độ xả sâu DoD (%)</label>
+              <input type="number" id="d_dod" class="f-input" min="50" max="100">
+            </div>
+            <div class="field-row">
+              <label class="f-lbl">Hiệu suất xả (%)</label>
+              <input type="number" id="d_eff" class="f-input" min="70" max="100">
+            </div>
+            <div class="field-row">
+              <label class="f-lbl">Thuế VAT (%)</label>
+              <input type="number" id="d_vat" class="f-input" min="0" max="30" step="0.5">
+            </div>
+            <div class="field-row">
+              <label class="f-lbl">Số ngày / tháng</label>
+              <input type="number" id="d_days" class="f-input" min="1" max="31">
+            </div>
+          </div>
+
+          <div class="field-row">
+            <label class="f-lbl">Các mốc chọn nhanh Tiền hóa đơn (cách nhau dấu phẩy)</label>
+            <input type="text" id="d_billChips" class="f-input" placeholder="1000000, 2000000, 3000000">
+          </div>
+          <div class="field-row">
+            <label class="f-lbl">Các mốc chọn nhanh kWh (cách nhau dấu phẩy)</label>
+            <input type="text" id="d_kwhChips" class="f-input" placeholder="300, 500, 625, 1000, 1500">
+          </div>
+          <div class="field-row">
+            <label class="f-lbl">Các mức % so sánh buổi tối (cách nhau dấu phẩy)</label>
+            <input type="text" id="d_scenarios" class="f-input" placeholder="50, 60, 70, 80, 90">
+          </div>
+
+          <hr class="sep">
+          <h3>Biểu giá điện bậc thang EVN</h3>
+          <div id="tierEditor" class="list-editor"></div>
+          <button type="button" class="btn-ghost small full" id="btnAddTier">+ Thêm bậc điện</button>
+          <div class="field-row" style="margin-top:12px">
+            <label class="f-lbl">Ghi chú nguồn biểu giá EVN</label>
+            <textarea id="tar_note" class="f-input" rows="2"></textarea>
+          </div>
+        </section>
+
+
+        <!-- TAB PRODUCTS & CATALOG UPLOAD -->
+        <section class="tab-pane" id="tab-products">
+          <h3>Tải lên danh mục sản phẩm bán</h3>
+          <p class="hint" style="margin-bottom:10px">Tải lên trực tiếp tệp <b>Excel (.xlsx)</b>, <b>CSV</b> hoặc <b>JSON</b> chứa danh sách Inverter, Tấm pin mặt trời và Pin lưu trữ. <b>Tự động lấy luôn hình ảnh bạn chèn trong từng dòng file Excel!</b></p>
+          <div class="two-col" style="margin-bottom:8px">
+            <select id="importProdMode" class="f-input">
+              <option value="replace">Thay thế toàn bộ kho</option>
+              <option value="append">Thêm vào kho hiện tại</option>
+            </select>
+            <a class="btn-ghost full" href="/api/admin/products/template.xlsx" download>Tải file mẫu Excel (.xlsx)</a>
+          </div>
+          <label class="btn-primary full" style="cursor:pointer;margin-bottom:12px">
+            ↑ Tải lên file Excel (.xlsx) / CSV / JSON
+            <input type="file" id="prodUploadFile" accept=".xlsx,.csv,.json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,application/json" hidden>
+          </label>
+
+          <div class="two-col">
+            <div class="field-row">
+              <label class="f-lbl">Giờ nắng đỉnh / ngày</label>
+              <input type="number" id="d_sunHours" class="f-input" min="2" max="7" step="0.1" value="4.0">
+            </div>
+            <div class="field-row">
+              <label class="f-lbl">Tiêu đề mục Combo</label>
+              <input type="text" id="s_comboTitle" class="f-input">
+            </div>
+          </div>
+
+          <hr class="sep">
+          <h3>Thêm nhanh sản phẩm</h3>
+          <div class="two-col">
+            <div class="field-row">
+              <label class="f-lbl">Loại sản phẩm</label>
+              <select id="np_cat" class="f-input">
+                <option value="inverter">Inverter Hybrid (kW)</option>
+                <option value="panel">Tấm pin mặt trời (Wp)</option>
+                <option value="battery">Pin lưu trữ (kWh)</option>
+              </select>
+            </div>
+            <div class="field-row">
+              <label class="f-lbl">Hãng sản xuất</label>
+              <input type="text" id="np_brand" class="f-input" placeholder="VD: Deye, Jinko...">
+            </div>
+          </div>
+          <div class="field-row">
+            <label class="f-lbl">Tên sản phẩm</label>
+            <input type="text" id="np_name" class="f-input" placeholder="VD: Deye Hybrid 8kW 1 Pha">
+          </div>
+          <div class="two-col">
+            <div class="field-row">
+              <label class="f-lbl">Công suất / Dung lượng</label>
+              <input type="number" id="np_spec" class="f-input" step="0.01" placeholder="kW / Wp / kWh">
+            </div>
+            <div class="field-row">
+              <label class="f-lbl">Đơn giá (VNĐ)</label>
+              <input type="number" id="np_price" class="f-input" step="100000" placeholder="20000000">
+            </div>
+          </div>
+          <div class="two-col">
+            <div class="field-row">
+              <label class="f-lbl">Pha (Inverter) / Bảo hành</label>
+              <input type="text" id="np_phase" class="f-input" placeholder="1 pha / 10 năm">
+            </div>
+            <div class="field-row" style="display:flex;align-items:flex-end">
+              <button type="button" class="btn-primary full" id="btnAddProd">+ Thêm vào kho</button>
+            </div>
+          </div>
+
+          <hr class="sep">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <h3 style="margin:0">Kho sản phẩm (<span id="prodCount">0</span>)</h3>
+            <button type="button" class="btn-ghost small" id="btnResetProds">Khôi phục kho mẫu</button>
+          </div>
+          <div class="adm-tabs" style="padding:6px;margin-bottom:8px;border-radius:8px" id="prodFilterTabs">
+            <button type="button" class="tab-btn active" data-pcat="all">Tất cả</button>
+            <button type="button" class="tab-btn" data-pcat="inverter">Inverter</button>
+            <button type="button" class="tab-btn" data-pcat="panel">Pin MT</button>
+            <button type="button" class="tab-btn" data-pcat="battery">Lưu trữ</button>
+          </div>
+          <div id="prodListEditor" class="list-editor"></div>
+          <button type="button" class="btn-primary full" id="btnSaveProds">Lưu danh mục sản phẩm</button>
+        </section>
+
+        <!-- TAB 5: FOOTER -->
+        <section class="tab-pane" id="tab-footer">
+          <h3>Thông tin chân trang</h3>
+          <div class="field-row">
+            <label class="f-lbl">Dòng bản quyền / Liên hệ cuối trang</label>
+            <input type="text" id="f_companyLine" class="f-input">
+          </div>
+          <div class="field-row">
+            <label class="f-lbl">Tiêu đề mục Lưu ý</label>
+            <input type="text" id="f_notesTitle" class="f-input">
+          </div>
+          <label class="f-lbl">Danh sách ghi chú (mỗi dòng 1 ý)</label>
+          <div id="notesEditor" class="list-editor"></div>
+          <button type="button" class="btn-ghost small full" id="btnAddNote">+ Thêm ghi chú</button>
+          <hr class="sep">
+          <h3>Mục "Liên hệ ngay" cuối trang (Gọi trực tiếp &amp; Zalo)</h3>
+          <div class="field-row"><label class="f-lbl">Tiêu đề mục Liên hệ ngay</label><input type="text" id="f_ctaTitle" class="f-input"></div>
+          <div class="field-row"><label class="f-lbl">Mô tả kêu gọi liên hệ</label><textarea id="f_ctaSubtitle" class="f-input" rows="2"></textarea></div>
+          <div class="field-row"><label class="f-lbl">Địa chỉ văn phòng / showroom (tùy chọn)</label><input type="text" id="f_ctaAddress" class="f-input" placeholder="VD: 123 Đồng Khởi, Biên Hòa"></div>
+          <div class="two-col">
+            <div class="field-row"><label class="f-lbl">Nhãn nút gọi</label><input type="text" id="f_callBtnText" class="f-input"></div>
+            <div class="field-row"><label class="f-lbl">Nhãn nút Zalo</label><input type="text" id="f_zaloBtnText" class="f-input"></div>
+          </div>
+          <p class="hint">Danh sách số điện thoại &amp; số Zalo được chỉnh trong tab <b>Thương hiệu → Hotline tư vấn</b>.</p>
+
+        </section>
+
+        <!-- TAB 6: SECURITY & BACKUP -->
+        <section class="tab-pane" id="tab-security">
+          <h3>Đổi mật khẩu quản trị</h3>
+          <form id="passForm">
+            <div class="field-row">
+              <label class="f-lbl">Mật khẩu hiện tại</label>
+              <input type="password" id="curPass" class="f-input" required>
+            </div>
+            <div class="field-row">
+              <label class="f-lbl">Mật khẩu mới (tối thiểu 6 ký tự)</label>
+              <input type="password" id="newPass" class="f-input" minlength="6" required>
+            </div>
+            <button type="submit" class="btn-primary full">Cập nhật mật khẩu</button>
+          </form>
+
+          <hr class="sep">
+          <h3>Sao lưu &amp; Khôi phục cấu hình JSON</h3>
+          <p class="hint">Xuất toàn bộ cấu hình giao diện và biểu giá hiện tại thành tệp JSON để sao lưu hoặc chuyển sang máy chủ khác.</p>
+          <div class="two-col" style="margin-top:10px">
+            <button type="button" class="btn-ghost full" id="btnExport">Tải xuống JSON</button>
+            <label class="btn-ghost full" style="text-align:center;cursor:pointer">
+              Nhập từ JSON
+              <input type="file" id="importFile" accept="application/json" hidden>
+            </label>
+          </div>
+        </section>
+      </div>
+    </aside>
+
+    <!-- Right Live Preview -->
+    <section class="adm-preview">
+      <div class="preview-bar">
+        <span class="preview-title">Xem trước trực tiếp (Live Preview)</span>
+        <div class="viewport-btns">
+          <button type="button" class="vp-btn active" data-vp="100%">Desktop</button>
+          <button type="button" class="vp-btn" data-vp="820px">Tablet</button>
+          <button type="button" class="vp-btn" data-vp="390px">Mobile</button>
+        </div>
+      </div>
+      <div class="preview-stage">
+        <iframe id="previewFrame" src="/?preview=1" title="Xem trước giao diện"></iframe>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="/js/admin.js"></script>
+</body>
+</html>
