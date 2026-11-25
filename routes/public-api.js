@@ -5,12 +5,17 @@ const calculator = require('../lib/calculator');
 const productStore = require('../lib/products');
 const newsStore = require('../lib/news');
 const leadStore = require('../lib/leads');
+const telegram = require('../lib/telegram');
+const { triggerRealtimeSheetPush } = require('./admin-gsheet');
 const { sendJson, readJsonBody } = require('../lib/http-helpers');
 
 async function handlePublicApi(req, res, pathname, method) {
   if (pathname === '/api/config' && method === 'GET') {
+    const pubCfg = { ...store.loadConfig() };
+    delete pubCfg.telegram;
+    delete pubCfg.gsheet;
     return sendJson(res, 200, {
-      config: store.loadConfig(),
+      config: pubCfg,
       presets: store.THEME_PRESETS
     }), true;
   }
@@ -45,6 +50,11 @@ async function handlePublicApi(req, res, pathname, method) {
   if (pathname === '/api/leads' && method === 'POST') {
     const body = await readJsonBody(req, 64 * 1024);
     const saved = leadStore.upsertLead(body);
+    if (saved) {
+      const tgCfg = (store.loadAuth().telegram) || (store.loadConfig().telegram);
+      telegram.notifyLeadIfEnabled(tgCfg, saved).catch(() => {});
+      triggerRealtimeSheetPush('lead', saved);
+    }
     return sendJson(res, 200, { ok: true, lead: saved }), true;
   }
 

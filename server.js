@@ -7,12 +7,15 @@ const store = require('./lib/store');
 const productStore = require('./lib/products');
 const newsStore = require('./lib/news');
 const leadStore = require('./lib/leads');
+const updater = require('./lib/updater');
+const gsheet = require('./lib/gsheet');
 const { sendJson } = require('./lib/http-helpers');
 
 const { handlePublicApi } = require('./routes/public-api');
 const { handleAdminAuth } = require('./routes/admin-auth');
 const { handleAdminConfig } = require('./routes/admin-config');
 const { handleAdminCatalog } = require('./routes/admin-catalog');
+const { handleAdminGsheet, refreshGsheetAutoPull } = require('./routes/admin-gsheet');
 const { handlePagesAndStatic } = require('./routes/pages');
 
 const PORT = Number(process.env.PORT) || 3000;
@@ -29,6 +32,7 @@ const server = http.createServer(async (req, res) => {
     if (await handleAdminAuth(req, res, pathname, method, authState)) return;
     if (await handleAdminConfig(req, res, pathname, method, authState)) return;
     if (await handleAdminCatalog(req, res, pathname, method, authState)) return;
+    if (await handleAdminGsheet(req, res, pathname, method, authState)) return;
     if (handlePagesAndStatic(req, res, pathname, parsedUrl)) return;
 
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
@@ -47,6 +51,7 @@ if (require.main === module) {
   productStore.loadProducts();
   newsStore.loadNews();
   leadStore.loadLeads();
+  refreshGsheetAutoPull();
   server.listen(PORT, HOST, () => {
     console.log(`Hoàng Quân Pin Hybrid Server đang chạy tại:`);
     console.log(`  • Trang chủ:      http://localhost:${PORT}/`);

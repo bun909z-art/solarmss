@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quản trị giao diện – Hoàng Quân Pin Hybrid</title>
 <link rel="icon" type="image/png" href="/assets/favicon.png">
-<link rel="stylesheet" href="/css/admin.css?v=31">
+<link rel="stylesheet" href="/css/admin.css?v=32">
 </head>
 <body>
 
@@ -41,6 +41,7 @@
       <a class="btn-ghost" href="/" target="_blank" rel="noopener">Mở trang thực tế ↗</a>
       <button type="button" class="btn-ghost danger" id="btnReset">Khôi phục mặc định</button>
       <button type="button" class="btn-primary" id="btnSave">Lưu cấu hình</button>
+      <button type="button" id="gsheetHeaderBadge" title="Trạng thái đồng bộ Google Sheets (bấm để mở cài đặt)" style="cursor:pointer;font-size:11.5px;font-weight:800;padding:5px 10px;border-radius:999px;background:#F1F5F9;color:#475569;border:1px solid #CBD5E1;white-space:nowrap">⚪ Sheets: Chưa kết nối</button>
       <span id="currentUserBadge" style="font-size:12px;font-weight:800;padding:6px 10px;border-radius:999px;background:#FFF7ED;color:#C2410C;border:1px solid #FED7AA"></span>
       <button type="button" class="btn-ghost" id="btnLogout">Đăng xuất</button>
     </div>
@@ -59,8 +60,9 @@
         <button type="button" class="tab-btn" data-tab="news">Tin tức</button>
         <button type="button" class="tab-btn" data-tab="leads">Khách hàng (<span id="leadsTabCount">0</span>)</button>
         <button type="button" class="tab-btn" data-tab="footer">Chân trang</button>
-        <button type="button" class="tab-btn" data-tab="security">Sao lưu &amp; Bảo trì</button>
-        <button type="button" class="tab-btn" data-tab="users" id="tabBtnUsers" hidden>Tài khoản</button>
+        <button type="button" class="tab-btn" data-tab="gsheet">Google Sheets</button>
+        <button type="button" class="tab-btn" data-tab="security">Bảo trì &amp; Cập nhật</button>
+        <button type="button" class="tab-btn" data-tab="users" id="tabBtnUsers" hidden>Tài khoản &amp; Cơ sở dữ liệu</button>
       </nav>
 
       <div class="adm-panel-scroll">
@@ -536,6 +538,28 @@
               <button type="button" class="btn-ghost small" id="btnExportLeads">⬇ Xuất CSV</button>
             </div>
           </div>
+          
+          <div style="background:#F0F9FF;border:1px solid #BAE6FD;border-radius:12px;padding:12px;margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:8px">
+              <strong style="font-size:13px;color:#0369A1">🤖 Gửi thông báo khách hàng về Bot Telegram</strong>
+              <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#0369A1;cursor:pointer">
+                <input type="checkbox" id="tg_enabled"> Bật tự động gửi
+              </label>
+            </div>
+            <div class="field-row" style="margin-bottom:6px">
+              <label class="f-lbl">Bot Token (lấy từ @BotFather)</label>
+              <input type="password" id="tg_token" class="f-input" placeholder="VD: 1234567890:AAHxxx..." autocomplete="off">
+            </div>
+            <div class="field-row" style="margin-bottom:8px">
+              <label class="f-lbl">Chat ID / Group ID (nhiều ID cách nhau dấu phẩy)</label>
+              <input type="text" id="tg_chatId" class="f-input" placeholder="VD: -1001234567890">
+            </div>
+            <div class="two-col">
+              <button type="button" class="btn-primary full" id="btnSaveTg" style="padding:7px 10px;font-size:12.5px">💾 Lưu Bot Telegram</button>
+              <button type="button" class="btn-ghost full" id="btnTestTg" style="padding:7px 10px;font-size:12.5px">📨 Gửi tin thử</button>
+            </div>
+          </div>
+
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px">
             <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:8px;text-align:center">
               <div style="font-size:11px;color:#64748B;font-weight:700">Tổng khách</div>
@@ -592,6 +616,71 @@
         </section>
 
         <!-- TAB 6: SECURITY & BACKUP -->
+        
+        <!-- TAB GOOGLE SHEETS REAL-TIME SYNC -->
+        <section class="tab-pane" id="tab-gsheet">
+          <h3>Trạng thái đồng bộ Google Sheets (Real-time)</h3>
+          <div id="gsStatusCard" style="padding:12px;border-radius:12px;background:#F8FAFC;border:1px solid #E2E8F0;margin-bottom:12px;font-size:12.5px">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:6px">
+              <strong id="gsStateText" style="font-size:13px;color:#475569">⚪ Chưa kết nối Google Sheets</strong>
+              <span id="gsLatencyText" style="font-size:11px;color:#64748B"></span>
+            </div>
+            <div id="gsLastSyncText" style="font-size:12px;color:#64748B">Lần đồng bộ cuối: Chưa có</div>
+            <div id="gsStatsRow" style="display:flex;gap:12px;margin-top:6px;font-size:11.5px;font-weight:700">
+              <span style="color:#047857">✓ Thành công: <b id="gsOkCnt">0</b></span>
+              <span style="color:#B91C1C">✕ Lỗi: <b id="gsErrCnt">0</b></span>
+            </div>
+            <div id="gsErrMsg" style="margin-top:6px;font-size:11.5px;color:#B91C1C;font-weight:700" hidden></div>
+          </div>
+
+          <div class="toggle-row">
+            <span>Bật đồng bộ thời gian thực (Real-time)</span>
+            <input type="checkbox" id="gs_enabled">
+          </div>
+          <div class="field-row">
+            <label class="f-lbl">Google Apps Script Web App URL</label>
+            <input type="url" id="gs_webhookUrl" class="f-input" placeholder="https://script.google.com/macros/s/.../exec">
+          </div>
+          <div class="field-row">
+            <label class="f-lbl">Mã bảo mật (Secret Token — tùy chọn)</label>
+            <input type="text" id="gs_secretKey" class="f-input" placeholder="Để trống hoặc nhập mã khớp với Apps Script">
+          </div>
+          <div class="field-row">
+            <label class="f-lbl">Dữ liệu tự động đẩy real-time lên Google Sheets:</label>
+            <div style="display:flex;flex-direction:column;gap:5px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:9px">
+              <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700"><input type="checkbox" id="gs_syncLeads"> Dữ liệu khách hàng (tab KhachHang)</label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700"><input type="checkbox" id="gs_syncProducts"> Kho sản phẩm &amp; Phụ kiện (tab SanPham)</label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700"><input type="checkbox" id="gs_syncNews"> Bài viết Tin tức (tab TinTuc)</label>
+            </div>
+          </div>
+          <div class="toggle-row">
+            <span>Tự động kéo Kho sản phẩm từ Sheet</span>
+            <input type="checkbox" id="gs_autoPullProducts">
+          </div>
+          <div class="field-row">
+            <label class="f-lbl">Chu kỳ tự kéo sản phẩm (giây)</label>
+            <input type="number" id="gs_pullIntervalSec" class="f-input" min="15" max="3600" value="60">
+          </div>
+
+          <div class="two-col" style="margin-bottom:8px">
+            <button type="button" class="btn-primary full" id="btnSaveGsheet">💾 Lưu cài đặt</button>
+            <button type="button" class="btn-ghost full" id="btnTestGsheet">🔌 Kiểm tra kết nối</button>
+          </div>
+          <div class="two-col" style="margin-bottom:10px">
+            <button type="button" class="btn-ghost full" id="btnPushAllGsheet">⬆ Đẩy toàn bộ lên Sheet</button>
+            <button type="button" class="btn-ghost full" id="btnPullProdGsheet">⬇ Kéo Sản phẩm từ Sheet</button>
+          </div>
+
+          <hr class="sep">
+          <h3>Mã kết nối Google Apps Script (1 phút cài đặt)</h3>
+          <p class="hint">Mở Google Sheets → <b>Tiện ích mở rộng → Apps Script</b> → dán mã dưới đây → <b>Triển khai → Ứng dụng web</b> (Quyền truy cập: <i>Bất kỳ ai</i>) → dán URL nhận được vào ô phía trên.</p>
+          <button type="button" class="btn-ghost full" id="btnCopyAppsScript" style="margin-top:6px">📋 Sao chép mã Google Apps Script</button>
+
+          <hr class="sep">
+          <h3>Nhật ký đồng bộ gần nhất</h3>
+          <div id="gsLogsList" style="display:flex;flex-direction:column;gap:5px;font-size:11.5px"></div>
+        </section>
+
         <section class="tab-pane" id="tab-security">
           <h3>Chế độ Bảo trì trang web</h3>
           <div id="maintStatusBox" style="padding:10px 12px;border-radius:10px;font-size:12.5px;font-weight:800;margin-bottom:10px;background:#ECFDF5;color:#047857;border:1px solid #A7F3D0">
@@ -619,6 +708,22 @@
           </div>
 
           <hr class="sep">
+          
+          <div id="siteUpdateSection">
+            <h3>🚀 Cập nhật trang web (Gói .zip)</h3>
+            <p class="hint" style="margin-bottom:8px">Tải lên gói mã nguồn <b>.zip</b> mới: hệ thống tự động giải nén, ghi đè mã nguồn mới, xóa tệp cũ thừa, đồng thời <b>tự động sao lưu và giữ nguyên 100% sản phẩm, cấu hình, tin tức, khách hàng, tài khoản và ảnh đã tải lên</b>.</p>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;margin-bottom:8px;cursor:pointer">
+              <input type="checkbox" id="updAutoRestart" checked>
+              <span>Tự động khởi động lại server sau khi cập nhật (PM2 / Docker / Cloud)</span>
+            </label>
+            <label class="btn-primary full" style="text-align:center;cursor:pointer;display:block">
+              ⬆ Tải gói .zip &amp; Cập nhật trang web
+              <input type="file" id="siteUpdateZipFile" accept=".zip,application/zip" hidden>
+            </label>
+            <div id="updateStatusBox" hidden style="margin-top:8px;padding:10px 12px;border-radius:10px;font-size:12px;line-height:1.5;font-weight:700;background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE"></div>
+            <hr class="sep">
+          </div>
+
           <h3>Sao lưu &amp; Khôi phục toàn bộ dữ liệu</h3>
           <p class="hint">Xuất 1 tệp JSON duy nhất chứa toàn bộ: Giao diện, Trang chủ, Biểu giá EVN, Kho sản phẩm, Tin tức và Dữ liệu khách hàng.</p>
           <div class="two-col" style="margin-top:10px">
@@ -657,6 +762,16 @@
 
         <!-- TAB USERS (SUPER ADMIN ONLY) -->
         <section class="tab-pane" id="tab-users">
+          <h3>Cơ sở dữ liệu sản phẩm (Đồng bộ Google Sheet)</h3>
+          <div class="field-row">
+            <label class="f-lbl">Link Google Sheet (đặt quyền "Bất kỳ ai có liên kết đều xem được")</label>
+            <input type="url" id="gs_url" class="f-input" placeholder="https://docs.google.com/spreadsheets/d/...">
+          </div>
+          <button type="button" class="btn-primary full" id="btnSyncSheet" style="margin-bottom:8px">🔄 Đồng bộ sản phẩm từ Google Sheet</button>
+          <div id="gs_status" class="hint" style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:8px 10px;margin-bottom:10px">
+            Các cột hỗ trợ: <b>Tên sản phẩm</b>, <b>Phân loại</b>, <b>Ảnh</b>, <b>Mô tả</b>, <b>Giá</b>. Sản phẩm bị xóa khỏi Sheet lần 1 tự chuyển <b>Liên hệ</b>, vắng tiếp lần 2 tự chuyển <b>Hết hàng</b> (ưu tiên cao nhất vẫn là chỉnh tay trong <b>Kho sản phẩm</b>).
+          </div>
+          <hr class="sep">
           <h3>Tạo tài khoản người dùng mới</h3>
           <div class="two-col">
             <div class="field-row">

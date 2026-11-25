@@ -1,4 +1,7 @@
 'use strict';
+const http = require('http');
+const https = require('https');
+
 
 const fs = require('fs');
 const path = require('path');
@@ -6,7 +9,36 @@ const store = require('../lib/store');
 const productStore = require('../lib/products');
 const newsStore = require('../lib/news');
 const leadStore = require('../lib/leads');
+const telegram = require('../lib/telegram');
+const { triggerRealtimeSheetPush } = require('./admin-gsheet');
 const { UPLOAD_DIR, sendJson, readJsonBody, requireAdmin } = require('../lib/http-helpers');
+
+
+function fetchRemoteText(targetUrl, redirectsLeft = 5) {
+  return new Promise((resolve, reject) => {
+    const lib = targetUrl.startsWith('https://') ? https : http;
+    const req = lib.get(targetUrl, { headers: { 'User-Agent': 'HoangQuan-SheetSync/1.0' } }, res => {
+      if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location && redirectsLeft > 0) {
+        const nextUrl = new URL(res.headers.location, targetUrl).toString();
+        res.resume();
+        return resolve(fetchRemoteText(nextUrl, redirectsLeft - 1));
+      }
+      if (res.statusCode !== 200) {
+        res.resume();
+        return reject(new Error(`Không thể tải Google Sheet (HTTP ${res.statusCode}). Hãy bật quyền chia sẻ "Bất kỳ ai có đường liên kết đều có thể xem".`));
+      }
+      let data = '';
+      res.setEncoding('utf8');
+      res.on('data', chunk => {
+        data += chunk;
+        if (data.length > 8 * 1024 * 1024) { req.destroy(); reject(new Error('File Google Sheet quá lớn (>8MB).')); }
+      });
+      res.on('end', () => resolve(data));
+    });
+    req.on('error', err => reject(new Error('Lỗi kết nối tới Google Sheet: ' + err.message)));
+    req.setTimeout(15000, () => { req.destroy(); reject(new Error('Quá thời gian chờ tải Google Sheet.')); });
+  });
+}
 
 async function handleAdminCatalog(req, res, pathname, method, authState) {
   // ---------- CUSTOMER LEADS ----------
@@ -19,6 +51,7 @@ async function handleAdminCatalog(req, res, pathname, method, authState) {
     const body = await readJsonBody(req, 64 * 1024);
     const updated = leadStore.updateLead(String(body.id || ''), body);
     if (!updated) return sendJson(res, 404, { error: 'Không tìm thấy khách hàng.' }), true;
+    triggerRealtimeSheetPush('lead', updated);
     return sendJson(res, 200, { ok: true, lead: updated }), true;
   }
   if (pathname === '/api/admin/leads' && method === 'DELETE') {
@@ -37,6 +70,40 @@ async function handleAdminCatalog(req, res, pathname, method, authState) {
     return true;
   }
 
+  
+  // ---------- TELEGRAM BOT NOTIFICATIONS ----------
+  if (pathname === '/api/admin/telegram' && method === 'GET') {
+    if (!requireAdmin(req, res, authState, ['leads'])) return true;
+    const cfg = store.loadConfig();
+    return sendJson(res, 200, { telegram: cfg.telegram || { enabled: false, botToken: '', chatId: '' } }), true;
+  }
+  if (pathname === '/api/admin/telegram' && (method === 'PUT' || method === 'POST')) {
+    if (!requireAdmin(req, res, authState, ['leads'])) return true;
+    const body = await readJsonBody(req, 16 * 1024);
+    const updated = store.saveConfig({
+      telegram: {
+        enabled: Boolean(body.enabled),
+        botToken: String(body.botToken || '').trim(),
+        chatId: String(body.chatId || '').trim()
+      }
+    });
+    return sendJson(res, 200, { ok: true, telegram: updated.telegram }), true;
+  }
+  if (pathname === '/api/admin/telegram/test' && method === 'POST') {
+    if (!requireAdmin(req, res, authState, ['leads'])) return true;
+    const body = await readJsonBody(req, 16 * 1024);
+    const cfg = store.loadConfig();
+    const token = String(body.botToken || (cfg.telegram && cfg.telegram.botToken) || '').trim();
+    const chatId = String(body.chatId || (cfg.telegram && cfg.telegram.chatId) || '').trim();
+    try {
+      const company = (cfg.branding && cfg.branding.companyName) || 'Hoàng Quân – Electronics & Energy';
+      await telegram.broadcastTelegram(token, chatId, `✅ <b>Kết nối Bot Telegram thành công!</b>\n<i>${company}</i>\nTừ giờ khi có khách hàng nhập thông tin hoặc chọn Combo, hệ thống sẽ tự động gửi thông báo về đây.`);
+      return sendJson(res, 200, { ok: true, message: 'Đã gửi tin nhắn thử tới Telegram thành công!' }), true;
+    } catch (err) {
+      return sendJson(res, 400, { error: 'Gửi Telegram thất bại: ' + err.message }), true;
+    }
+  }
+
   // ---------- NEWS / ARTICLES ----------
   if (pathname === '/api/admin/news' && method === 'GET') {
     if (!requireAdmin(req, res, authState, ['news'])) return true;
@@ -45,7 +112,9 @@ async function handleAdminCatalog(req, res, pathname, method, authState) {
   if (pathname === '/api/admin/news' && (method === 'PUT' || method === 'POST')) {
     if (!requireAdmin(req, res, authState, ['news'])) return true;
     const body = await readJsonBody(req, 3 * 1024 * 1024);
-    return sendJson(res, 200, { ok: true, articles: newsStore.saveNews(body.articles || []) }), true;
+    const savedNews = newsStore.saveNews(body.articles || []);
+    triggerRealtimeSheetPush('news', savedNews);
+    return sendJson(res, 200, { ok: true, articles: savedNews }), true;
   }
   if (pathname === '/api/admin/news/reset' && method === 'POST') {
     if (!requireAdmin(req, res, authState, ['news'])) return true;
@@ -56,7 +125,9 @@ async function handleAdminCatalog(req, res, pathname, method, authState) {
   if (pathname === '/api/admin/products' && (method === 'PUT' || method === 'POST')) {
     if (!requireAdmin(req, res, authState, ['products'])) return true;
     const body = await readJsonBody(req, 2 * 1024 * 1024);
-    return sendJson(res, 200, { ok: true, products: productStore.saveProducts(body.products || []) }), true;
+    const savedProds = productStore.saveProducts(body.products || []);
+    triggerRealtimeSheetPush('products', savedProds);
+    return sendJson(res, 200, { ok: true, products: savedProds }), true;
   }
   if (pathname === '/api/admin/products/import' && method === 'POST') {
     if (!requireAdmin(req, res, authState, ['products'])) return true;
@@ -70,6 +141,25 @@ async function handleAdminCatalog(req, res, pathname, method, authState) {
     const next = mode === 'append' ? [...productStore.loadProducts(), ...incoming] : incoming;
     return sendJson(res, 200, { ok: true, count: incoming.length, products: productStore.saveProducts(next) }), true;
   }
+  if (pathname === '/api/admin/products/sync-sheet' && method === 'POST') {
+    if (!requireAdmin(req, res, authState, 'SUPER_ADMIN')) return true;
+    const body = await readJsonBody(req, 32 * 1024);
+    const sheetUrl = String(body.url || '').trim();
+    try {
+      const csvUrl = productStore.normalizeSheetCsvUrl(sheetUrl);
+      const csvText = await fetchRemoteText(csvUrl);
+      const { products: merged, stats } = productStore.syncProductsFromSheetCsv(csvText, productStore.loadProducts());
+      const saved = productStore.saveProducts(merged);
+      const summary = `+${stats.added} mới · ${stats.updated} cập nhật · ${stats.markedContact} chuyển Liên hệ · ${stats.markedOut} chuyển Hết hàng`;
+      const now = new Date().toISOString();
+      const cfg = store.saveConfig({ sheetSync: { url: sheetUrl, lastSyncedAt: now, lastSummary: summary } });
+      sendJson(res, 200, { ok: true, products: saved, stats, summary, lastSyncedAt: now, config: cfg });
+    } catch (err) {
+      sendJson(res, 400, { error: err.message || 'Không thể đồng bộ Google Sheet.' });
+    }
+    return true;
+  }
+
   if (pathname === '/api/admin/products/reset' && method === 'POST') {
     if (!requireAdmin(req, res, authState, ['products'])) return true;
     return sendJson(res, 200, { ok: true, products: productStore.resetProducts() }), true;

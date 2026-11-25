@@ -431,7 +431,8 @@
   function saveLeadNow(force = false) {
     if (IS_PREVIEW) return;
     const payload = buildLeadPayload();
-    const hasInfo = Boolean(payload.customerName || payload.customerPhone || payload.customerAddress || payload.selectedCombo);
+    const phoneDigits = String(payload.customerPhone || '').replace(/\D/g, '');
+    const hasInfo = payload.customerName.length >= 2 && phoneDigits.length >= 9 && payload.customerAddress.length >= 2;
     if (!hasInfo) return;
     const sig = JSON.stringify(payload);
     if (!force && sig === lastLeadSig) return;
@@ -658,4 +659,45 @@
       syncInputs();
       update();
     });
+
+  // ---------- MANDATORY CUSTOMER INFO GATE ----------
+  let isLeadUnlocked = IS_PREVIEW;
+  function unlockConsultation(autoSave = true) {
+    isLeadUnlocked = true;
+    if ($('leadGateCard')) $('leadGateCard').hidden = true;
+    if ($('calcUnlockedWrap')) $('calcUnlockedWrap').hidden = false;
+    if (autoSave) scheduleLeadSave(true);
+  }
+  if (IS_PREVIEW) {
+    unlockConsultation(false);
+  } else {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem('hq_cust_info') || 'null');
+      if (saved && saved.name && String(saved.phone || '').replace(/\D/g, '').length >= 9 && saved.address) {
+        S.name = saved.name; S.phone = saved.phone; S.address = saved.address;
+        syncInputs();
+        unlockConsultation(false);
+      }
+    } catch {}
+  }
+  if ($('leadGateForm')) {
+    $('leadGateForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const name = ($('gateName').value || '').trim();
+      const phone = ($('gatePhone').value || '').trim();
+      const addr = ($('gateAddress').value || '').trim();
+      const digits = phone.replace(/\D/g, '');
+      if (name.length < 2) { $('gateErr').textContent = 'Vui lòng nhập họ và tên (tối thiểu 2 ký tự).'; $('gateName').focus(); return; }
+      if (digits.length < 9 || digits.length > 12) { $('gateErr').textContent = 'Vui lòng nhập số điện thoại hợp lệ (9–11 chữ số).'; $('gatePhone').focus(); return; }
+      if (addr.length < 2) { $('gateErr').textContent = 'Vui lòng nhập địa chỉ lắp đặt / liên hệ.'; $('gateAddress').focus(); return; }
+      $('gateErr').textContent = '';
+      S.name = name; S.phone = phone; S.address = addr;
+      try { sessionStorage.setItem('hq_cust_info', JSON.stringify({ name, phone, address: addr })); } catch {}
+      syncInputs();
+      update();
+      unlockConsultation(true);
+      showToast('Đã xác nhận thông tin! Mời bạn tính dung lượng Pin Hybrid.');
+    });
+  }
+
 })();

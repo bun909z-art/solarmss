@@ -6,7 +6,7 @@
 <title id="docTitle">Hoàng Quân – Tư vấn Pin lưu trữ Hybrid</title>
 <meta name="theme-color" content="#F26A1B" id="metaTheme">
 <link rel="icon" type="image/png" href="/assets/favicon.png" id="docFavicon">
-<link rel="stylesheet" href="/css/app.css?v=31">
+<link rel="stylesheet" href="/css/app.css?v=32">
 </head>
 <body>
 
@@ -53,6 +53,46 @@
     </div>
   </div>
 
+
+  <!-- MANDATORY CUSTOMER INFO GATE -->
+  <section class="card lead-gate-card" id="leadGateCard" style="max-width:680px;margin:0 auto 24px">
+    <div class="card-head">
+      <span class="step-num">1</span>
+      <div>
+        <h2 style="margin:0">Nhập thông tin khách hàng để bắt đầu tư vấn</h2>
+        <p style="margin:4px 0 0;font-size:13.5px;color:var(--ink-2)">Vui lòng điền đầy đủ Họ tên, Số điện thoại và Địa chỉ để mở công cụ tính Pin Hybrid và nhận gợi ý Combo phù hợp.</p>
+      </div>
+    </div>
+    <form id="leadGateForm" novalidate style="display:flex;flex-direction:column;gap:12px;margin-top:8px">
+      <div>
+        <label class="lbl" for="gateName">Họ và tên <span style="color:#DC2626">*</span></label>
+        <div class="field">
+          <span class="field-icon" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+          <input id="gateName" type="text" placeholder="VD: Nguyễn Văn Minh" autocomplete="name" required>
+        </div>
+      </div>
+      <div class="two">
+        <div>
+          <label class="lbl" for="gatePhone">Số điện thoại <span style="color:#DC2626">*</span></label>
+          <div class="field">
+            <span class="field-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>
+            <input id="gatePhone" type="tel" inputmode="tel" placeholder="VD: 0912 345 678" autocomplete="tel" required>
+          </div>
+        </div>
+        <div>
+          <label class="lbl" for="gateAddress">Địa chỉ lắp đặt / liên hệ <span style="color:#DC2626">*</span></label>
+          <div class="field">
+            <span class="field-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
+            <input id="gateAddress" type="text" placeholder="VD: TP. Ninh Bình" autocomplete="street-address" required>
+          </div>
+        </div>
+      </div>
+      <div id="gateErr" style="color:#DC2626;font-size:13px;font-weight:700;min-height:18px"></div>
+      <button type="submit" class="btn-primary" style="width:100%;padding:13px 18px;font-size:15px">Tiếp tục tính Pin Hybrid &amp; xem Combo →</button>
+    </form>
+  </section>
+
+  <div id="calcUnlockedWrap" hidden>
   <div class="grid">
     <div class="col">
       <!-- Card 1 -->
@@ -63,7 +103,7 @@
         </div>
 
         <div id="customerNameWrap">
-          <label class="lbl" for="name">Tên khách hàng (không bắt buộc)</label>
+          <label class="lbl" for="name">Họ và tên khách hàng <span style="color:#DC2626">*</span></label>
           <div class="field">
             <span class="field-icon" aria-hidden="true">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -73,7 +113,7 @@
         </div>
         <div class="two" id="customerExtraWrap" style="margin-top:4px">
           <div id="customerPhoneWrap">
-            <label class="lbl" for="custPhone">Số điện thoại (không bắt buộc)</label>
+            <label class="lbl" for="custPhone">Số điện thoại <span style="color:#DC2626">*</span></label>
             <div class="field">
               <span class="field-icon" aria-hidden="true">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
@@ -82,7 +122,7 @@
             </div>
           </div>
           <div id="customerAddressWrap">
-            <label class="lbl" for="custAddress">Địa chỉ liên hệ / lắp đặt</label>
+            <label class="lbl" for="custAddress">Địa chỉ liên hệ / lắp đặt <span style="color:#DC2626">*</span></label>
             <div class="field">
               <span class="field-icon" aria-hidden="true">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -347,6 +387,7 @@
     <div class="cta-list" id="ctaList"></div>
   </section>
 
+  </div>
 </main>
 
 <footer class="site-footer" id="footerSection">
@@ -362,8 +403,8 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="/js/calculator.js"></script>
-<script src="/js/combo.js?v=31"></script>
-<script src="/js/app.js?v=31"></script>
-<script src="/js/img-protect.js?v=31"></script>
+<script src="/js/combo.js?v=32"></script>
+<script src="/js/app.js?v=32"></script>
+<script src="/js/img-protect.js?v=32"></script>
 </body>
 </html>

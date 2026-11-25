@@ -21,7 +21,8 @@
     ['news', 'Tin tức'],
     ['leads', 'Khách hàng'],
     ['footer', 'Chân trang'],
-    ['security', 'Sao lưu & Bảo trì']
+    ['gsheet', 'Google Sheets'],
+    ['security', 'Bảo trì & Cập nhật']
   ];
   let leadSearchQ = '';
   let leadStatusFilter = 'all';
@@ -137,12 +138,13 @@
       const perms = isSuper ? PERM_LABELS.map(x => x[0]) : (CURRENT_USER.permissions || []);
       const can = (p) => isSuper || perms.includes(p);
 
-      const [data, prodData, newsData, leadsData, usersData] = await Promise.all([
+      const [data, prodData, newsData, leadsData, usersData, tgData] = await Promise.all([
         api('/api/config'),
         api('/api/products').catch(() => ({ products: [] })),
         can('news') ? api('/api/admin/news').catch(() => ({ articles: [] })) : Promise.resolve({ articles: [] }),
         can('leads') ? api('/api/admin/leads').catch(() => ({ leads: [] })) : Promise.resolve({ leads: [] }),
-        isSuper ? api('/api/admin/users').catch(() => ({ users: [] })) : Promise.resolve({ users: [] })
+        isSuper ? api('/api/admin/users').catch(() => ({ users: [] })) : Promise.resolve({ users: [] }),
+        isSuper ? api('/api/admin/telegram').catch(() => ({ telegram: {} })) : Promise.resolve({ telegram: {} })
       ]);
       CONFIG = data.config;
       PRESETS = data.presets || {};
@@ -150,6 +152,11 @@
       NEWS = Array.isArray(newsData.articles) ? newsData.articles : [];
       LEADS = Array.isArray(leadsData.leads) ? leadsData.leads : [];
       USERS = Array.isArray(usersData.users) ? usersData.users : [];
+      const tg = (tgData && tgData.telegram) || {};
+      setChk('tg_enabled', Boolean(tg.enabled));
+      setVal('tg_botToken', tg.botToken || '');
+      setVal('tg_chatId', tg.chatId || '');
+      setChk('tg_onlyContact', tg.onlyWithContactOrCombo !== false);
       applyPermissionsUI();
       if ($('nn_date') && !$('nn_date').value) $('nn_date').value = new Date().toISOString().slice(0, 10);
       renderPresets();
@@ -313,6 +320,25 @@
     setVal('m_mode', mt.mode || 'error404');
     setVal('m_allowedRoute', mt.allowedRoute || '/tuvan');
     updateMaintUI();
+    const gsc = CONFIG.gsheet || (CONFIG.gsheet = {
+      enabled: false, webhookUrl: '', secretKey: '', syncLeads: true, syncProducts: true, syncNews: true, autoPullProducts: false, pullIntervalSec: 60
+    });
+    setChk('gs_enabled', gsc.enabled);
+    setVal('gs_webhookUrl', gsc.webhookUrl || '');
+    setVal('gs_secretKey', gsc.secretKey || '');
+    setChk('gs_syncLeads', gsc.syncLeads !== false);
+    setChk('gs_syncProducts', gsc.syncProducts !== false);
+    setChk('gs_syncNews', gsc.syncNews !== false);
+    setChk('gs_autoPullProducts', Boolean(gsc.autoPullProducts));
+    setVal('gs_pullIntervalSec', gsc.pullIntervalSec || 60);
+    fetchGsheetStatus();
+
+    const gs = CONFIG.sheetSync || {};
+    setVal('gs_url', gs.url || '');
+    if ($('gs_status') && gs.lastSummary) {
+      $('gs_status').innerHTML = `✅ Lần đồng bộ gần nhất (${escapeAttr(fmtLeadTime(gs.lastSyncedAt))}): <b>${escapeAttr(gs.lastSummary)}</b>`;
+    }
+
 
     renderNotesEditor();
     renderProdList();
@@ -522,6 +548,7 @@
       const st = sel.value;
       PRODUCTS[+sel.dataset.pStock].stockStatus = st;
       PRODUCTS[+sel.dataset.pStock].inStock = st !== 'out_of_stock';
+      PRODUCTS[+sel.dataset.pStock].manualStockOverride = true;
       sel.style.color = st === 'out_of_stock' ? '#B91C1C' : (st === 'contact' ? '#B45309' : '#047857');
       pushPreview();
     });
@@ -827,6 +854,8 @@
 
     const q = leadSearchQ.trim().toLowerCase();
     const list = LEADS.filter(l => {
+      const pDig = String(l.customerPhone || '').replace(/\D/g, '');
+      if (!l.customerName || String(l.customerName).trim().length < 2 || pDig.length < 9 || !l.customerAddress || String(l.customerAddress).trim().length < 2) return false;
       if (leadStatusFilter !== 'all' && (l.status || 'new') !== leadStatusFilter) return false;
       if (q) {
         const hay = `${l.customerName || ''} ${l.customerPhone || ''} ${l.customerAddress || ''} ${(l.selectedCombo && l.selectedCombo.title) || ''} ${l.adminNote || ''}`.toLowerCase();
@@ -844,7 +873,7 @@
       return `<div class="list-item" style="flex-direction:column;align-items:stretch;gap:7px;padding:10px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">
           <div style="min-width:0">
-            <div style="font-weight:800;font-size:13.5px;color:#0F172A">${escapeAttr(l.customerName || 'Khách vãng lai')}</div>
+            <div style="font-weight:800;font-size:13.5px;color:#0F172A">${escapeAttr(l.customerName)}</div>
             <div style="font-size:11.5px;color:#64748B">🕒 ${escapeAttr(fmtLeadTime(l.updatedAt || l.createdAt))}</div>
           </div>
           <button type="button" class="del-btn" data-l-del="${escapeAttr(l.id)}" title="Xóa khách hàng">×</button>
@@ -949,6 +978,7 @@
       $('currentUserBadge').textContent = '👤 ' + label;
     }
     if ($('tabBtnUsers')) $('tabBtnUsers').hidden = !isSuper;
+    if ($('siteUpdateSection')) $('siteUpdateSection').hidden = !isSuper;
     const canSaveConfig = isSuper || ['branding', 'home', 'theme', 'layout', 'tariffs', 'footer'].some(p => perms.includes(p));
     if ($('btnSave')) $('btnSave').hidden = !canSaveConfig;
     if ($('btnReset')) $('btnReset').hidden = !canSaveConfig;
@@ -1054,6 +1084,28 @@
     });
   }
 
+  
+  if ($('btnSyncSheet')) {
+    $('btnSyncSheet').onclick = async () => {
+      const url = $('gs_url') ? $('gs_url').value.trim() : '';
+      if (!url) return toast('Vui lòng dán link Google Sheet trước.');
+      const btn = $('btnSyncSheet');
+      btn.disabled = true; btn.textContent = '⏳ Đang đồng bộ từ Google Sheet...';
+      try {
+        const res = await api('/api/admin/products/sync-sheet', { method: 'POST', body: JSON.stringify({ url }) });
+        PRODUCTS = res.products || PRODUCTS;
+        if (res.config) CONFIG = res.config;
+        renderProdList(); pushPreview();
+        if ($('gs_status')) $('gs_status').innerHTML = `✅ Đồng bộ xong (${escapeAttr(fmtLeadTime(res.lastSyncedAt))}): <b>${escapeAttr(res.summary)}</b>`;
+        toast('Đồng bộ Google Sheet thành công: ' + res.summary);
+      } catch (err) {
+        toast(err.message || 'Lỗi đồng bộ Google Sheet.');
+      } finally {
+        btn.disabled = false; btn.textContent = '🔄 Đồng bộ sản phẩm từ Google Sheet';
+      }
+    };
+  }
+
   if ($('btnCreateUser')) {
     $('btnCreateUser').onclick = async () => {
       const username = $('nu_username').value.trim();
@@ -1073,6 +1125,160 @@
   }
 
   
+  
+  // ---------- GOOGLE SHEETS REAL-TIME SYNC UI ----------
+  let GS_SCRIPT_TEMPLATE = '';
+  let gsPollTimer = null;
+
+  function renderGsheetStatus(st) {
+    if (!st) return;
+    const badge = $('gsheetHeaderBadge');
+    const card = $('gsStatusCard');
+    const stateEl = $('gsStateText');
+    const lastEl = $('gsLastSyncText');
+    const okEl = $('gsOkCnt');
+    const errEl = $('gsErrCnt');
+    const errMsg = $('gsErrMsg');
+    const logsEl = $('gsLogsList');
+
+    const fmtT = iso => {
+      if (!iso) return 'Chưa có';
+      try { const d = new Date(iso); return d.toLocaleTimeString('vi-VN') + ' · ' + d.toLocaleDateString('vi-VN'); } catch { return iso; }
+    };
+
+    if (st.state === 'connected') {
+      if (badge) { badge.textContent = '🟢 Sheets: Đang đồng bộ Real-time'; badge.style.background = '#ECFDF5'; badge.style.color = '#047857'; badge.style.borderColor = '#A7F3D0'; }
+      if (card) { card.style.background = '#ECFDF5'; card.style.borderColor = '#A7F3D0'; }
+      if (stateEl) { stateEl.textContent = '🟢 Đã kết nối Google Sheets' + (st.sheetName ? ` (${st.sheetName})` : ''); stateEl.style.color = '#047857'; }
+    } else if (st.state === 'syncing') {
+      if (badge) { badge.textContent = '🟡 Sheets: Đang đồng bộ...'; badge.style.background = '#FFFBEB'; badge.style.color = '#B45309'; badge.style.borderColor = '#FDE68A'; }
+      if (stateEl) { stateEl.textContent = '🟡 Đang gửi dữ liệu lên Google Sheets...'; stateEl.style.color = '#B45309'; }
+    } else if (st.state === 'error') {
+      if (badge) { badge.textContent = '🔴 Sheets: Lỗi đồng bộ'; badge.style.background = '#FEF2F2'; badge.style.color = '#B91C1C'; badge.style.borderColor = '#FECACA'; }
+      if (card) { card.style.background = '#FEF2F2'; card.style.borderColor = '#FECACA'; }
+      if (stateEl) { stateEl.textContent = '🔴 Lỗi đồng bộ Google Sheets'; stateEl.style.color = '#B91C1C'; }
+    } else {
+      if (badge) { badge.textContent = '⚪ Sheets: Chưa kết nối'; badge.style.background = '#F1F5F9'; badge.style.color = '#475569'; badge.style.borderColor = '#CBD5E1'; }
+      if (card) { card.style.background = '#F8FAFC'; card.style.borderColor = '#E2E8F0'; }
+      if (stateEl) { stateEl.textContent = '⚪ Chưa kết nối Google Sheets'; stateEl.style.color = '#475569'; }
+    }
+
+    if (lastEl) lastEl.textContent = `Lần đồng bộ cuối: ${fmtT(st.lastSyncAt)}${st.lastAction ? ' (' + st.lastAction + ')' : ''}`;
+    if (okEl) okEl.textContent = st.successCount || 0;
+    if (errEl) errEl.textContent = st.errorCount || 0;
+    if (errMsg) { errMsg.hidden = !st.lastError; errMsg.textContent = st.lastError ? 'Chi tiết lỗi: ' + st.lastError : ''; }
+
+    if (logsEl) {
+      const logs = Array.isArray(st.logs) ? st.logs : [];
+      logsEl.innerHTML = logs.map(l => `
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:6px 8px;border-radius:8px;background:${l.ok ? '#F8FAFC' : '#FEF2F2'};border:1px solid ${l.ok ? '#E2E8F0' : '#FECACA'}">
+          <span style="font-weight:700;color:${l.ok ? '#0F172A' : '#B91C1C'}">${l.ok ? '✅' : '❌'} ${escapeAttr(l.action || '')} — <span style="font-weight:500;color:#64748B">${escapeAttr(l.detail || '')}</span></span>
+          <span style="white-space:nowrap;color:#64748B;font-size:11px">${fmtT(l.time)}${l.ms ? ' · ' + l.ms + 'ms' : ''}</span>
+        </div>
+      `).join('') || '<p class="hint">Chưa có lịch sử đồng bộ nào.</p>';
+    }
+  }
+
+  async function fetchGsheetStatus() {
+    try {
+      const res = await api('/api/admin/gsheet/status');
+      if (res.scriptTemplate) GS_SCRIPT_TEMPLATE = res.scriptTemplate;
+      if (res.status) renderGsheetStatus(res.status);
+    } catch {}
+    if (!gsPollTimer) {
+      gsPollTimer = setInterval(() => {
+        if ($('adminApp') && !$('adminApp').hidden) {
+          api('/api/admin/gsheet/status').then(r => { if (r && r.status) renderGsheetStatus(r.status); }).catch(() => {});
+        }
+      }, 10000);
+    }
+  }
+
+  if ($('gsheetHeaderBadge')) {
+    $('gsheetHeaderBadge').onclick = () => {
+      const btn = document.querySelector('.adm-tabs .tab-btn[data-tab="gsheet"]');
+      if (btn && !btn.hidden) btn.click();
+    };
+  }
+
+  if ($('btnSaveGsheet')) {
+    $('btnSaveGsheet').onclick = async () => {
+      try {
+        const res = await api('/api/admin/gsheet/config', {
+          method: 'PUT',
+          body: JSON.stringify({
+            enabled: $('gs_enabled').checked,
+            webhookUrl: $('gs_webhookUrl').value.trim(),
+            secretKey: $('gs_secretKey').value.trim(),
+            syncLeads: $('gs_syncLeads').checked,
+            syncProducts: $('gs_syncProducts').checked,
+            syncNews: $('gs_syncNews').checked,
+            autoPullProducts: $('gs_autoPullProducts').checked,
+            pullIntervalSec: Number($('gs_pullIntervalSec').value) || 60
+          })
+        });
+        CONFIG = res.config;
+        renderGsheetStatus(res.status);
+        toast('Đã lưu cấu hình đồng bộ Google Sheets!');
+      } catch (err) { toast(err.message); }
+    };
+  }
+
+  if ($('btnTestGsheet')) {
+    $('btnTestGsheet').onclick = async () => {
+      try {
+        toast('Đang kiểm tra kết nối Google Sheets...');
+        const res = await api('/api/admin/gsheet/test', {
+          method: 'POST',
+          body: JSON.stringify({ webhookUrl: $('gs_webhookUrl').value.trim(), secretKey: $('gs_secretKey').value.trim() })
+        });
+        renderGsheetStatus(res.status);
+        toast(`Kết nối thành công${res.data && res.data.sheetName ? ' tới "' + res.data.sheetName + '"' : ''} (${res.ms}ms)!`);
+      } catch (err) {
+        fetchGsheetStatus();
+        toast(err.message || 'Kết nối Google Sheets thất bại.');
+      }
+    };
+  }
+
+  if ($('btnPushAllGsheet')) {
+    $('btnPushAllGsheet').onclick = async () => {
+      try {
+        toast('Đang đẩy toàn bộ dữ liệu lên Google Sheets...');
+        const res = await api('/api/admin/gsheet/sync-all', { method: 'POST' });
+        renderGsheetStatus(res.status);
+        toast('Đã đồng bộ toàn bộ dữ liệu lên Google Sheets!');
+      } catch (err) {
+        fetchGsheetStatus();
+        toast(err.message || 'Lỗi đồng bộ Google Sheets.');
+      }
+    };
+  }
+
+  if ($('btnPullProdGsheet')) {
+    $('btnPullProdGsheet').onclick = async () => {
+      try {
+        toast('Đang kéo Kho sản phẩm từ Google Sheets...');
+        const res = await api('/api/admin/gsheet/pull-products', { method: 'POST' });
+        if (Array.isArray(res.products)) { PRODUCTS = res.products; renderProdList(); pushPreview(); }
+        renderGsheetStatus(res.status);
+        toast(`Đã kéo ${res.count} sản phẩm từ Google Sheets!`);
+      } catch (err) {
+        fetchGsheetStatus();
+        toast(err.message || 'Không thể kéo dữ liệu từ Google Sheets.');
+      }
+    };
+  }
+
+  if ($('btnCopyAppsScript')) {
+    $('btnCopyAppsScript').onclick = () => {
+      if (!GS_SCRIPT_TEMPLATE) return toast('Đang tải mã script, vui lòng thử lại sau giây lát.');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(GS_SCRIPT_TEMPLATE).then(() => toast('Đã sao chép mã Google Apps Script!')).catch(() => toast('Không thể sao chép tự động.'));
+      }
+    };
+  }
+
   // ---------- MAINTENANCE & FULL BACKUP ----------
   function updateMaintUI() {
     if (!CONFIG) return;
@@ -1146,6 +1352,64 @@
       } catch (err) { toast(err.message); }
     };
   }
+  
+  if ($('siteUpdateZipFile')) {
+    $('siteUpdateZipFile').addEventListener('change', e => {
+      const file = e.target.files[0]; if (!file) return;
+      if (!file.name.toLowerCase().endsWith('.zip')) {
+        e.target.value = '';
+        return toast('Vui lòng chọn tệp gói cập nhật định dạng .zip.');
+      }
+      if (file.size > 18 * 1024 * 1024) {
+        e.target.value = '';
+        return toast('Gói cập nhật ZIP tối đa 18MB.');
+      }
+      if (!confirm(`Cập nhật trang web bằng gói "${file.name}"?\n\nHệ thống sẽ tự động sao lưu, giải nén mã nguồn mới, xóa tệp cũ và bảo toàn toàn bộ sản phẩm + cài đặt hiện có.`)) {
+        e.target.value = '';
+        return;
+      }
+      const box = $('updateStatusBox');
+      if (box) {
+        box.hidden = false;
+        box.style.background = '#EFF6FF'; box.style.color = '#1D4ED8'; box.style.borderColor = '#BFDBFE';
+        box.textContent = `⏳ Đang tải lên & giải nén "${file.name}"... Vui lòng không đóng trình duyệt.`;
+      }
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const bytes = new Uint8Array(reader.result);
+          let bin = '';
+          const chunk = 0x8000;
+          for (let i = 0; i < bytes.length; i += chunk) {
+            bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+          }
+          const autoRestart = $('updAutoRestart') ? $('updAutoRestart').checked : true;
+          const res = await api('/api/admin/update-package', {
+            method: 'POST',
+            body: JSON.stringify({ filename: file.name, base64: btoa(bin), autoRestart })
+          });
+          if (box) {
+            box.style.background = '#ECFDF5'; box.style.color = '#047857'; box.style.borderColor = '#A7F3D0';
+            const pr = res.preserved || {};
+            box.innerHTML = `✅ <b>Cập nhật hoàn tất!</b><br>• Đã cập nhật <b>${res.updatedCount}</b> tệp mới &amp; xóa <b>${res.removedCount}</b> tệp cũ.<br>• Đã đồng bộ &amp; giữ nguyên: <b>${pr.products || 0}</b> sản phẩm, <b>${pr.news || 0}</b> tin tức, <b>${pr.leads || 0}</b> khách hàng, <b>${pr.uploads || 0}</b> tệp tải lên.<br>• Bản sao lưu an toàn: <code>${escapeAttr(res.backupFile || '')}</code>${autoRestart ? '<br>🔄 Đang tự khởi động lại server và tải lại trang...' : '<br>👉 Khởi động lại <code>node server.js</code> để áp dụng bản mới.'}`;
+          }
+          toast('Cập nhật trang web thành công!');
+          if (autoRestart) {
+            setTimeout(() => { window.location.reload(); }, 3200);
+          }
+        } catch (err) {
+          if (box) {
+            box.style.background = '#FEF2F2'; box.style.color = '#B91C1C'; box.style.borderColor = '#FECACA';
+            box.textContent = '❌ Lỗi cập nhật: ' + (err.message || 'Gói ZIP không hợp lệ.');
+          }
+          toast(err.message || 'Cập nhật thất bại.');
+        }
+        e.target.value = '';
+      };
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
   if ($('fullRestoreFile')) {
     $('fullRestoreFile').addEventListener('change', e => {
       const f = e.target.files[0]; if (!f) return;
@@ -1161,6 +1425,36 @@
       };
       rd.readAsText(f, 'utf-8');
     });
+  }
+
+  
+  // ---------- TELEGRAM BOT SETTINGS (IN TAB TÀI KHOẢN) ----------
+  if ($('btnSaveTelegram')) {
+    $('btnSaveTelegram').onclick = async () => {
+      try {
+        await api('/api/admin/telegram', {
+          method: 'PUT',
+          body: JSON.stringify({
+            enabled: $('tg_enabled').checked,
+            botToken: $('tg_botToken').value.trim(),
+            chatId: $('tg_chatId').value.trim(),
+            onlyWithContactOrCombo: $('tg_onlyContact').checked
+          })
+        });
+        toast('Đã lưu cấu hình thông báo Telegram!');
+      } catch (err) { toast(err.message); }
+    };
+  }
+  if ($('btnTestTelegram')) {
+    $('btnTestTelegram').onclick = async () => {
+      const botToken = $('tg_botToken').value.trim();
+      const chatId = $('tg_chatId').value.trim();
+      if (!botToken || !chatId) return toast('Nhập đủ Bot Token và Chat ID trước khi gửi thử.');
+      try {
+        const res = await api('/api/admin/telegram/test', { method: 'POST', body: JSON.stringify({ botToken, chatId }) });
+        toast(res.message || 'Đã gửi tin nhắn thử tới Telegram!');
+      } catch (err) { toast(err.message); }
+    };
   }
 
   // ---------- BIND INPUTS ----------

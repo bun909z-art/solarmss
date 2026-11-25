@@ -2,6 +2,7 @@
 
 const auth = require('../lib/auth');
 const store = require('../lib/store');
+const telegram = require('../lib/telegram');
 const { sendJson, readJsonBody, requireAdmin } = require('../lib/http-helpers');
 
 async function handleAdminAuth(req, res, pathname, method, authState) {
@@ -141,6 +142,39 @@ async function handleAdminAuth(req, res, pathname, method, authState) {
     authState.users = (authState.users || []).filter(u => String(u.username).toLowerCase() !== target);
     store.saveAuth(authState);
     return sendJson(res, 200, { ok: true }), true;
+  }
+
+
+  // SUPER ADMIN ONLY: Telegram Bot notification settings & test
+  if (pathname === '/api/admin/telegram' && method === 'GET') {
+    if (!requireAdmin(req, res, authState, 'SUPER_ADMIN')) return true;
+    return sendJson(res, 200, { telegram: authState.telegram || { enabled: false, botToken: '', chatId: '', onlyWithContactOrCombo: true } }), true;
+  }
+
+  if (pathname === '/api/admin/telegram' && (method === 'PUT' || method === 'POST')) {
+    if (!requireAdmin(req, res, authState, 'SUPER_ADMIN')) return true;
+    const body = await readJsonBody(req, 16 * 1024);
+    authState.telegram = {
+      enabled: Boolean(body.enabled),
+      botToken: String(body.botToken || '').trim(),
+      chatId: String(body.chatId || '').trim(),
+      onlyWithContactOrCombo: body.onlyWithContactOrCombo !== false
+    };
+    store.saveAuth(authState);
+    return sendJson(res, 200, { ok: true, telegram: authState.telegram }), true;
+  }
+
+  if (pathname === '/api/admin/telegram/test' && method === 'POST') {
+    if (!requireAdmin(req, res, authState, 'SUPER_ADMIN')) return true;
+    const body = await readJsonBody(req, 16 * 1024);
+    const token = String(body.botToken || (authState.telegram && authState.telegram.botToken) || '').trim();
+    const chatId = String(body.chatId || (authState.telegram && authState.telegram.chatId) || '').trim();
+    try {
+      await telegram.sendTelegramMessage(token, chatId, '✅ <b>Kết nối Telegram thành công!</b>\nHệ thống Hoàng Quân Pin Hybrid sẽ tự động gửi thông tin khách hàng &amp; Combo về nhóm/chat này.');
+      return sendJson(res, 200, { ok: true, message: 'Đã gửi tin nhắn thử tới Telegram thành công!' }), true;
+    } catch (err) {
+      return sendJson(res, 400, { error: 'Gửi Telegram thất bại: ' + (err.message || 'Kiểm tra lại Bot Token và Chat ID.') }), true;
+    }
   }
 
   return false;
