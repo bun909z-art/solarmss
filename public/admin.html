@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quản trị giao diện – Hoàng Quân Pin Hybrid</title>
 <link rel="icon" type="image/png" href="/assets/favicon.png">
-<link rel="stylesheet" href="/css/admin.css?v=33">
+<link rel="stylesheet" href="/css/admin.css?v=32">
 </head>
 <body>
 
@@ -14,7 +14,7 @@
   <div class="login-card">
     <h1>Quản trị giao diện</h1>
     <p>Đăng nhập để tùy chỉnh màu sắc, bố cục, thương hiệu và biểu giá EVN.</p>
-    <form id="loginForm">
+    <form id="loginForm" autocomplete="off">
       <label class="f-lbl" for="loginUser">Tên đăng nhập</label>
       <input type="text" id="loginUser" class="f-input" placeholder="Nhập tên đăng nhập..." autocomplete="username" required style="margin-bottom:12px">
       <label class="f-lbl" for="loginPass">Mật khẩu</label>
@@ -761,6 +761,7 @@
           </form>
 
           <div id="jsonBackupPrivilegedWrap">
+          <div id="adminOnlyJsonBackup">
           <hr class="sep">
           <h3>Sao lưu &amp; Khôi phục cấu hình JSON</h3>
           <p class="hint">Xuất toàn bộ cấu hình giao diện và biểu giá hiện tại thành tệp JSON để sao lưu hoặc chuyển sang máy chủ khác.</p>
@@ -842,12 +843,12 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="/js/admin/core.js?v=33"></script>
-<script src="/js/admin/config-ui.js?v=33"></script>
-<script src="/js/admin/products-ui.js?v=33"></script>
-<script src="/js/admin/news-ui.js?v=33"></script>
-<script src="/js/admin/leads-ui.js?v=33"></script>
-<script src="/js/admin/system-ui.js?v=33"></script>
-<script src="/js/admin/init.js?v=33"></script>
+<script src="/js/admin/core.js?v=32"></script>
+<script src="/js/admin/config-ui.js?v=32"></script>
+<script src="/js/admin/products-ui.js?v=32"></script>
+<script src="/js/admin/news-ui.js?v=32"></script>
+<script src="/js/admin/leads-ui.js?v=32"></script>
+<script src="/js/admin/system-ui.js?v=32"></script>
+<script src="/js/admin/init.js?v=32"></script>
 </body>
 </html>

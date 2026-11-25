@@ -108,10 +108,14 @@
   $('loginForm').addEventListener('submit', async e => {
     e.preventDefault();
     $('loginErr').textContent = '';
+    setStoredToken('');
+    CURRENT_USER = null;
+    const unameVal = $('loginUser') ? $('loginUser').value.trim() : '';
+    if (!unameVal) { $('loginErr').textContent = 'Vui lòng nhập tên đăng nhập.'; return; }
     try {
       const res = await api('/api/admin/login', {
         method: 'POST',
-        body: JSON.stringify({ username: ($('loginUser') ? $('loginUser').value.trim() : 'admin'), password: $('loginPass').value })
+        body: JSON.stringify({ username: ($('loginUser') ? $('loginUser').value.trim() : ''), password: $('loginPass').value })
       });
       if (res.token) setStoredToken(res.token);
       CURRENT_USER = res.user || null;
@@ -124,15 +128,19 @@
   });
 
   $('btnLogout').onclick = async () => {
-    try { await api('/api/admin/logout', { method: 'POST' }); } catch {}
     CURRENT_USER = null;
     USERS = [];
     setStoredToken('');
+    try { sessionStorage.removeItem(TOKEN_KEY); } catch {}
     try { localStorage.removeItem(TOKEN_KEY); } catch {}
+    try {
+      await fetch('/api/admin/logout', { method: 'POST', credentials: 'same-origin', cache: 'no-store' });
+    } catch {}
     if ($('loginErr')) $('loginErr').textContent = '';
     if ($('loginUser')) $('loginUser').value = '';
     if ($('loginPass')) $('loginPass').value = '';
     setAuthView(false);
+    try { window.location.replace('/admin'); } catch {}
   };
 
   // ---------- LOAD & POPULATE ----------
@@ -986,6 +994,9 @@
       $('currentUserBadge').textContent = '👤 ' + label;
     }
     if ($('tabBtnUsers')) $('tabBtnUsers').hidden = !isSuper;
+    if ($('adminOnlyMaintBackup')) $('adminOnlyMaintBackup').hidden = !isSuper;
+    if ($('adminOnlyJsonBackup')) $('adminOnlyJsonBackup').hidden = !isSuper;
+    if ($('tabBtnSecurity')) $('tabBtnSecurity').textContent = isSuper ? 'Sao lưu & Bảo trì' : 'Đổi mật khẩu';
     if ($('siteUpdateSection')) $('siteUpdateSection').hidden = !isSuper;
     const canSaveConfig = isSuper || ['branding', 'home', 'theme', 'layout', 'tariffs', 'footer'].some(p => perms.includes(p));
     if ($('btnSave')) $('btnSave').hidden = !canSaveConfig;
@@ -1336,11 +1347,17 @@
       const res = await api('/api/admin/maintenance', { method: 'PUT', body: JSON.stringify(payload) });
       CONFIG = res.config;
       updateMaintUI();
+      pushPreview();
+      if ($('previewFrame')) {
+        const targetUrl = (payload.enabled && payload.mode === 'allow_page') ? payload.allowedRoute : '/';
+        $('previewFrame').src = targetUrl + (targetUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
+      }
       toast(payload.enabled ? 'Đã BẬT chế độ bảo trì ngay lập tức!' : 'Đã TẮT chế độ bảo trì — website hoạt động lại bình thường!');
     } catch (err) { toast(err.message); }
   }
 
-  if ($('m_mode')) $('m_mode').onchange = updateMaintUI;
+  if ($('m_mode')) $('m_mode').onchange = () => { updateMaintUI(); if (CONFIG && CONFIG.maintenance && CONFIG.maintenance.enabled) saveMaintState(true); };
+  if ($('m_allowedRoute')) $('m_allowedRoute').onchange = () => { updateMaintUI(); if (CONFIG && CONFIG.maintenance && CONFIG.maintenance.enabled) saveMaintState(true); };
   if ($('btnToggleMaint')) {
     $('btnToggleMaint').onclick = () => {
       const cur = Boolean(CONFIG && CONFIG.maintenance && CONFIG.maintenance.enabled);

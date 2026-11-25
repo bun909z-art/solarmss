@@ -76,7 +76,6 @@
   }
 
   function applyTheme(cfg) {
-    applyMaintenanceNav(cfg);
     CFG = cfg;
     const t = cfg.theme || {}, b = cfg.branding || {}, f = cfg.footer || {};
     const r = document.documentElement.style;
@@ -148,6 +147,7 @@
     if ($('homeProdsKicker')) $('homeProdsKicker').textContent = hm.productsKicker || 'Thiết bị chính hãng';
     if ($('homeProdsTitle')) $('homeProdsTitle').textContent = hm.productsTitle || 'Sản phẩm tiêu biểu';
     if ($('contactCtaCard')) $('contactCtaCard').hidden = hm.showContactCta === false;
+    applyMaintenanceNav(cfg);
   }
 
   function scrollToSlide(idx) {
