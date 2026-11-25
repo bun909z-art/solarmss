@@ -540,27 +540,6 @@
               <button type="button" class="btn-ghost small" id="btnExportLeads">⬇ Xuất CSV</button>
             </div>
           </div>
-          
-          <div style="background:#F0F9FF;border:1px solid #BAE6FD;border-radius:12px;padding:12px;margin-bottom:12px">
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:8px">
-              <strong style="font-size:13px;color:#0369A1">🤖 Gửi thông báo khách hàng về Bot Telegram</strong>
-              <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#0369A1;cursor:pointer">
-                <input type="checkbox" id="tg_enabled"> Bật tự động gửi
-              </label>
-            </div>
-            <div class="field-row" style="margin-bottom:6px">
-              <label class="f-lbl">Bot Token (lấy từ @BotFather)</label>
-              <input type="password" id="tg_token" class="f-input" placeholder="VD: 1234567890:AAHxxx..." autocomplete="off">
-            </div>
-            <div class="field-row" style="margin-bottom:8px">
-              <label class="f-lbl">Chat ID / Group ID (nhiều ID cách nhau dấu phẩy)</label>
-              <input type="text" id="tg_chatId" class="f-input" placeholder="VD: -1001234567890">
-            </div>
-            <div class="two-col">
-              <button type="button" class="btn-primary full" id="btnSaveTg" style="padding:7px 10px;font-size:12.5px">💾 Lưu Bot Telegram</button>
-              <button type="button" class="btn-ghost full" id="btnTestTg" style="padding:7px 10px;font-size:12.5px">📨 Gửi tin thử</button>
-            </div>
-          </div>
 
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px">
             <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:8px;text-align:center">
@@ -589,7 +568,7 @@
           </div>
           
           <details style="margin-bottom:12px;background:#F8FAFC;border:1px solid #CBD5E1;border-radius:10px;padding:10px">
-            <summary style="cursor:pointer;font-size:13px;font-weight:800;color:#0F172A">🤖 Đẩy dữ liệu sang Bot (Telegram / Webhook CSDL) &amp; Tài khoản</summary>
+            <summary style="cursor:pointer;font-size:13px;font-weight:800;color:#0F172A">🔗 Đẩy dữ liệu sang Webhook CSDL &amp; Tài khoản phụ trách</summary>
             <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
               <div class="field-row" style="margin:0">
                 <label class="f-lbl">Tài khoản phụ trách khách hàng mới</label>
@@ -598,14 +577,6 @@
               <div class="toggle-row" style="margin:0">
                 <span>Tự động đẩy sang Bot/CSDL khi khách chọn Combo</span>
                 <input type="checkbox" id="int_autoPushOnSubmit" checked>
-              </div>
-              <div class="toggle-row" style="margin:0">
-                <span>Bật đẩy thông báo qua Telegram Bot</span>
-                <input type="checkbox" id="int_telegramEnabled">
-              </div>
-              <div class="two-col">
-                <input type="text" id="int_telegramBotToken" class="f-input" placeholder="Telegram Bot Token">
-                <input type="text" id="int_telegramChatId" class="f-input" placeholder="Telegram Chat ID / Group ID">
               </div>
               <div class="toggle-row" style="margin:0">
                 <span>Bật đẩy dữ liệu sang CSDL ngoài / Google Sheet / Zalo Bot (Webhook)</span>
@@ -868,6 +839,29 @@
           <hr class="sep">
           <h3>Danh sách tài khoản (<span id="usersCount">0</span>)</h3>
           <div id="usersListEditor" class="list-editor"></div>
+
+          <hr class="sep">
+          <h3>🤖 Thông báo khách hàng qua Telegram Bot</h3>
+          <div class="toggle-row">
+            <span>Tự động gửi thông tin khách &amp; Combo về Telegram</span>
+            <input type="checkbox" id="tg_enabled">
+          </div>
+          <div class="field-row">
+            <label class="f-lbl">Telegram Bot Token (@BotFather)</label>
+            <input type="password" id="tg_botToken" class="f-input" placeholder="7123456789:AAHxxx..." autocomplete="off">
+          </div>
+          <div class="field-row">
+            <label class="f-lbl">Chat ID / Group ID (nhiều ID cách nhau dấu phẩy)</label>
+            <input type="text" id="tg_chatId" class="f-input" placeholder="-1001234567890 hoặc 987654321">
+          </div>
+          <div class="toggle-row">
+            <span>Chỉ gửi khi khách có SĐT hoặc đã chọn Combo</span>
+            <input type="checkbox" id="tg_onlyContact" checked>
+          </div>
+          <div class="two-col" style="margin-top:6px">
+            <button type="button" class="btn-primary full" id="btnSaveTelegram">💾 Lưu Telegram</button>
+            <button type="button" class="btn-ghost full" id="btnTestTelegram">📨 Gửi tin thử</button>
+          </div>
         </section>
       </div>
     </aside>
@@ -891,6 +885,6 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="/js/admin.js?v=32"></script>
+<script src="/js/admin.js?v=33"></script>
 </body>
 </html>

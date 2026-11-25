@@ -1627,7 +1627,8 @@
           body: JSON.stringify({
             enabled: $('tg_enabled').checked,
             botToken: $('tg_botToken').value.trim(),
-            chatId: $('tg_chatId').value.trim()
+            chatId: $('tg_chatId').value.trim(),
+            onlyWithContactOrCombo: $('tg_onlyContact') ? $('tg_onlyContact').checked : true
           })
         });
         toast('Đã lưu cấu hình Telegram Bot!');

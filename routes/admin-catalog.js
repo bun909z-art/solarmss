@@ -70,39 +70,6 @@ async function handleAdminCatalog(req, res, pathname, method, authState) {
     return true;
   }
 
-  
-  // ---------- TELEGRAM BOT NOTIFICATIONS ----------
-  if (pathname === '/api/admin/telegram' && method === 'GET') {
-    if (!requireAdmin(req, res, authState, ['leads'])) return true;
-    const cfg = store.loadConfig();
-    return sendJson(res, 200, { telegram: cfg.telegram || { enabled: false, botToken: '', chatId: '' } }), true;
-  }
-  if (pathname === '/api/admin/telegram' && (method === 'PUT' || method === 'POST')) {
-    if (!requireAdmin(req, res, authState, ['leads'])) return true;
-    const body = await readJsonBody(req, 16 * 1024);
-    const updated = store.saveConfig({
-      telegram: {
-        enabled: Boolean(body.enabled),
-        botToken: String(body.botToken || '').trim(),
-        chatId: String(body.chatId || '').trim()
-      }
-    });
-    return sendJson(res, 200, { ok: true, telegram: updated.telegram }), true;
-  }
-  if (pathname === '/api/admin/telegram/test' && method === 'POST') {
-    if (!requireAdmin(req, res, authState, ['leads'])) return true;
-    const body = await readJsonBody(req, 16 * 1024);
-    const cfg = store.loadConfig();
-    const token = String(body.botToken || (cfg.telegram && cfg.telegram.botToken) || '').trim();
-    const chatId = String(body.chatId || (cfg.telegram && cfg.telegram.chatId) || '').trim();
-    try {
-      const company = (cfg.branding && cfg.branding.companyName) || 'Hoàng Quân – Electronics & Energy';
-      await telegram.broadcastTelegram(token, chatId, `✅ <b>Kết nối Bot Telegram thành công!</b>\n<i>${company}</i>\nTừ giờ khi có khách hàng nhập thông tin hoặc chọn Combo, hệ thống sẽ tự động gửi thông báo về đây.`);
-      return sendJson(res, 200, { ok: true, message: 'Đã gửi tin nhắn thử tới Telegram thành công!' }), true;
-    } catch (err) {
-      return sendJson(res, 400, { error: 'Gửi Telegram thất bại: ' + err.message }), true;
-    }
-  }
 
   // ---------- NEWS / ARTICLES ----------
   if (pathname === '/api/admin/news' && method === 'GET') {
