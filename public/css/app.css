@@ -1153,5 +1153,3 @@ td.dim { opacity: 0.45; }
 }
 .combo-mix-one:hover { border-color: var(--primary); color: var(--primary-deep); background: var(--primary-soft); }
 .combo-mix-one:active { transform: scale(0.96); }
-
-.prod-desc { margin: 2px 0 4px; font-size: 12.5px; line-height: 1.5; color: var(--ink-2); }
