@@ -2144,3 +2144,15 @@ body.dark-mode .slider-dot { background: rgba(255, 255, 255, 0.25); }
 }
 .hero-slider-arrow svg { display: block; pointer-events: none; }
 .hero-slider-arrow:hover { transform: translateY(-50%) scale(1.08) !important; }
+
+/* Fix Trang chủ top spacing (override negative margin-top of .main-wrap when no hero-banner above) */
+.main-wrap.home-main {
+  margin-top: 0 !important;
+  padding-top: 20px !important;
+}
+@media (max-width: 640px) {
+  .main-wrap.home-main {
+    margin-top: 0 !important;
+    padding-top: 14px !important;
+  }
+}
