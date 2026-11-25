@@ -15,9 +15,15 @@
   function recommendCombos({ kwhMonth, batNeededKwh, days = 30, sunHours = 4.0, products = [], mixSeeds = [0, 0, 0] }) {
     if (!kwhMonth || kwhMonth <= 0) return [];
     const active = products.filter(p => p && p.active !== false);
-    const inverters = active.filter(p => p.category === 'inverter').sort((a, b) => a.powerKw - b.powerKw || a.price - b.price);
-    const panels = active.filter(p => p.category === 'panel').sort((a, b) => a.price / a.wattWp - b.price / b.wattWp);
-    const batteries = active.filter(p => p.category === 'battery').sort((a, b) => a.capacityKwh - b.capacityKwh || a.price - b.price);
+    const pickPool = (cat) => {
+      const all = active.filter(p => p.category === cat);
+      const inStk = all.filter(p => p.stockStatus !== 'out_of_stock' && p.inStock !== false);
+      return inStk.length ? inStk : all;
+    };
+    const inverters = pickPool('inverter').sort((a, b) => a.powerKw - b.powerKw || a.price - b.price);
+    const panels = pickPool('panel').sort((a, b) => a.price / a.wattWp - b.price / b.wattWp);
+    const batteries = pickPool('battery').sort((a, b) => a.capacityKwh - b.capacityKwh || a.price - b.price);
+    const accessories = pickPool('accessory');
 
     if (!inverters.length || !panels.length || !batteries.length) return [];
 
@@ -34,7 +40,7 @@
       return inverters[idx];
     }
 
-    function buildCombo(tierKey, badge, title, desc, panel, inv, bat, extraBatMod = 0, extraPanels = 0) {
+    function buildCombo(tierKey, badge, title, desc, panel, inv, bat, extraBatMod = 0, extraPanels = 0, accList = accessories) {
       const panelCount = Math.max(4, Math.ceil((targetKwp * 1000) / panel.wattWp) + extraPanels);
       const solarKwp = (panelCount * panel.wattWp) / 1000;
       const batCount = Math.max(1, Math.ceil(batNeededKwh / bat.capacityKwh - 1e-9) + extraBatMod);
@@ -43,12 +49,16 @@
       const invTotal = inv.price || 0;
       const panelTotal = panelCount * (panel.price || 0);
       const batTotal = batCount * (bat.price || 0);
+      const accs = Array.isArray(accList) ? accList : [];
+      const accTotal = accs.reduce((s, a) => s + (a.price || 0), 0);
       return {
         key: tierKey, badge, title, desc,
         inverter: inv, panel, panelCount, solarKwp,
         battery: bat, batCount, batTotalKwh,
-        invTotal, panelTotal, batTotal,
-        totalPrice: invTotal + panelTotal + batTotal
+        accessories: accs,
+        accessory: accs[0] || null,
+        invTotal, panelTotal, batTotal, accTotal,
+        totalPrice: invTotal + panelTotal + batTotal + accTotal
       };
     }
 
@@ -80,7 +90,8 @@
         const ip = shuffleWithSeed(invBasePool, sd * 3 + idx + 1);
         const pp = shuffleWithSeed(panels, sd * 7 + idx + 5);
         const bp = shuffleWithSeed(batteries, sd * 11 + idx + 9);
-        return buildCombo(d.key, `${d.badge} · Mix`, d.title, d.desc, pp[0], ip[0], bp[0], d.exBat, d.exPan);
+        const ap = accessories.length ? shuffleWithSeed(accessories, sd * 13 + idx + 3) : [];
+        return buildCombo(d.key, `${d.badge} · Mix`, d.title, d.desc, pp[0], ip[0], bp[0], d.exBat, d.exPan, ap);
       }
       return buildCombo(d.key, d.badge, d.title, d.desc, d.panel, d.inv, d.bat, d.exBat, d.exPan);
     });

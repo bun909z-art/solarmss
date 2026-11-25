@@ -6,7 +6,7 @@
 <title id="docTitle">Sản phẩm tham khảo – Hoàng Quân Electronics &amp; Energy</title>
 <meta name="theme-color" content="#F26A1B" id="metaTheme">
 <link rel="icon" type="image/png" href="/assets/favicon.png" id="docFavicon">
-<link rel="stylesheet" href="/css/app.css?v=9">
+<link rel="stylesheet" href="/css/app.css?v=14">
 </head>
 <body>
 
@@ -19,6 +19,7 @@
     <nav class="main-nav" aria-label="Điều hướng chính">
       <a href="/" class="nav-link">Tư vấn Pin Hybrid</a>
       <a href="/products" class="nav-link active">Sản phẩm tham khảo</a>
+      <a href="/news" class="nav-link">Tin tức</a>
     </nav>
 
     <div class="topbar-right">
@@ -35,7 +36,7 @@
   <div class="wrap hero-inner" id="heroInner">
     <div class="hero-badge"><span class="dot"></span><span>Danh mục thiết bị chính hãng</span></div>
     <h1>Sản phẩm Điện Mặt Trời Hybrid &amp; Pin Lưu Trữ</h1>
-    <p>Tham khảo các dòng Inverter Hybrid, Tấm pin năng lượng mặt trời và Pin lưu trữ Lithium đang phân phối. Liên hệ trực tiếp để nhận báo giá tốt nhất theo cấu hình lắp đặt.</p>
+    <p>Tham khảo các dòng Inverter Hybrid, Tấm pin năng lượng mặt trời, Pin lưu trữ Lithium và Phụ kiện lắp đặt đang phân phối. Liên hệ trực tiếp để nhận báo giá tốt nhất theo cấu hình lắp đặt.</p>
   </div>
 </section>
 
@@ -46,6 +47,7 @@
       <button type="button" class="cat-pill" data-cat="inverter">Inverter Hybrid (<span id="cntInv">0</span>)</button>
       <button type="button" class="cat-pill" data-cat="panel">Pin mặt trời (<span id="cntPan">0</span>)</button>
       <button type="button" class="cat-pill" data-cat="battery">Pin lưu trữ (<span id="cntBat">0</span>)</button>
+      <button type="button" class="cat-pill" data-cat="accessory">Phụ kiện lắp đặt (<span id="cntAcc">0</span>)</button>
     </div>
     <div class="field catalog-search">
       <span class="field-icon" aria-hidden="true">
@@ -85,7 +87,7 @@
       <div class="pm-info">
         <div class="prod-meta-top">
           <span class="prod-brand" id="pmBrand"></span>
-          <span class="prod-spec-pill" id="pmSpecPill"></span>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span class="pm-stock-pill" id="pmStockPill"></span><span class="prod-spec-pill" id="pmSpecPill"></span></div>
         </div>
         <h2 id="pmTitle"></h2>
         <p class="pm-desc" id="pmDesc"></p>
@@ -106,6 +108,6 @@
   </div>
 </div>
 
-<script src="/js/products-page.js?v=9"></script>
+<script src="/js/products-page.js?v=14"></script>
 </body>
 </html>

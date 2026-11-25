@@ -421,12 +421,13 @@
         </div>
         <div class="combo-price">
           ${showPrices ? nf0.format(c.totalPrice) + ' đ' : 'Liên hệ để báo giá'}
-          <small>Tổng thiết bị chính (Inverter + Tấm pin + Pin lưu trữ)</small>
+          <small>Trọn bộ thiết bị (Inverter + Tấm pin + Pin lưu trữ + Phụ kiện lắp đặt)</small>
         </div>
-        <div class="combo-gallery">
+        <div class="combo-gallery${c.accessory ? ' cols-4' : ''}">
           <div class="combo-thumb"><img src="${escapeHtml(c.inverter.imageUrl || '/assets/prod-inverter.jpg')}" alt="Inverter"><span>Inverter ${c.inverter.powerKw}kW</span></div>
           <div class="combo-thumb"><img src="${escapeHtml(c.panel.imageUrl || '/assets/prod-panel.jpg')}" alt="Pin mặt trời"><span>${c.panelCount} tấm pin</span></div>
           <div class="combo-thumb"><img src="${escapeHtml(c.battery.imageUrl || '/assets/prod-battery.jpg')}" alt="Pin lưu trữ"><span>${c.batCount} pin lưu trữ</span></div>
+          ${c.accessory ? `<div class="combo-thumb"><img src="${escapeHtml(c.accessory.imageUrl || '/assets/prod-accessory.jpg')}" alt="Phụ kiện lắp đặt"><span>Phụ kiện (${c.accessories.length})</span></div>` : ''}
         </div>
         <ul class="combo-specs">
           <li class="combo-spec-row">
@@ -441,6 +442,10 @@
             <img src="${escapeHtml(c.battery.imageUrl || '/assets/prod-battery.jpg')}" alt="Pin lưu trữ">
             <div><span class="sp-cat">Pin lưu trữ</span><span class="sp-name">${c.batCount} module × ${escapeHtml(c.battery.name)}</span><span class="sp-meta">Tổng ${nf2.format(c.batTotalKwh)} kWh${showPrices ? ' · ' + nf0.format(c.batTotal) + ' đ' : ''}</span></div>
           </li>
+          ${(c.accessories && c.accessories.length) ? `<li class="combo-spec-row">
+            <img src="${escapeHtml(c.accessory.imageUrl || '/assets/prod-accessory.jpg')}" alt="Phụ kiện lắp đặt">
+            <div><span class="sp-cat">Phụ kiện thi công &amp; lắp đặt</span><span class="sp-name">Trọn bộ phụ kiện (${c.accessories.length} hạng mục)</span><span class="sp-meta">${escapeHtml(c.accessories.map(a => a.name).join(' · '))}</span></div>
+          </li>` : ''}
         </ul>
         <div class="combo-card-actions noprint">
           <button type="button" class="combo-btn" data-select-combo="${c.key}">${isSel ? '✓ Đã chọn' : 'Chọn gói này'}</button>

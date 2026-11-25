@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title id="docTitle">Tin tức &amp; Kiến thức – Hoàng Quân Electronics &amp; Energy</title>
+<meta name="theme-color" content="#F26A1B" id="metaTheme">
+<link rel="icon" type="image/png" href="/assets/favicon.png" id="docFavicon">
+<link rel="stylesheet" href="/css/app.css?v=14">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="brand" href="/" aria-label="Trang chủ">
+      <img id="brandLogo" src="/assets/logo-default.jpg" alt="Hoàng Quân – Electronics & Energy">
+    </a>
+
+    <nav class="main-nav" aria-label="Điều hướng chính">
+      <a href="/" class="nav-link">Tư vấn Pin Hybrid</a>
+      <a href="/products" class="nav-link">Sản phẩm tham khảo</a>
+      <a href="/news" class="nav-link active">Tin tức</a>
+    </nav>
+
+    <div class="topbar-right">
+      <div class="hotline" id="hotlineWrap">
+        <span class="hotline-label" id="hotlineLabel">Hotline tư vấn kỹ thuật</span>
+        <div class="hotline-list" id="hotlineList"></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section class="hero-banner" id="heroSection">
+  <div class="hero-glow" aria-hidden="true"></div>
+  <div class="wrap hero-inner" id="heroInner">
+    <div class="hero-badge"><span class="dot"></span><span>Cập nhật kiến thức &amp; dự án thực tế</span></div>
+    <h1>Tin tức Điện Mặt Trời Hybrid &amp; Pin Lưu Trữ</h1>
+    <p>Chia sẻ kinh nghiệm lựa chọn cấu hình, hướng dẫn kỹ thuật, bảng giá điện EVN mới nhất và các công trình thực tế do Hoàng Quân thi công.</p>
+  </div>
+</section>
+
+<main class="wrap main-wrap">
+  <section class="card catalog-toolbar">
+    <div class="cat-pills" id="newsCatPills">
+      <button type="button" class="cat-pill active" data-ncat="all">Tất cả (<span id="ncntAll">0</span>)</button>
+      <button type="button" class="cat-pill" data-ncat="Kiến thức Hybrid">Kiến thức Hybrid</button>
+      <button type="button" class="cat-pill" data-ncat="Dự án thực tế">Dự án thực tế</button>
+      <button type="button" class="cat-pill" data-ncat="Tin ngành điện">Tin ngành điện</button>
+      <button type="button" class="cat-pill" data-ncat="Khuyến mãi">Khuyến mãi</button>
+    </div>
+    <div class="field catalog-search">
+      <span class="field-icon" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </span>
+      <input id="newsSearch" type="text" placeholder="Tìm bài viết..." autocomplete="off">
+    </div>
+  </section>
+
+  <section class="news-grid" id="newsGrid" aria-live="polite"></section>
+
+  <section class="card contact-cta" id="contactCtaCard" style="margin-top:26px">
+    <div class="cta-head">
+      <h2 id="ctaTitle">Liên hệ ngay để được tư vấn &amp; khảo sát miễn phí</h2>
+      <p id="ctaSubtitle">Gọi trực tiếp hoặc kết nối qua Zalo để nhận báo giá chi tiết và phương án lắp đặt phù hợp nhất.</p>
+      <p class="cta-addr" id="ctaAddress" hidden></p>
+    </div>
+    <div class="cta-list" id="ctaList"></div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="co" id="footerCompany">CTY HOÀNG QUÂN – Electronics &amp; Energy</div>
+  </div>
+</footer>
+
+<!-- Article Reader Modal -->
+<div class="modal-backdrop" id="newsModal" hidden role="dialog" aria-modal="true" aria-labelledby="nmTitle">
+  <div class="modal-card news-modal-card">
+    <button type="button" class="modal-close" id="nmClose" aria-label="Đóng">×</button>
+    <div class="nm-cover-wrap"><img id="nmCover" src="" alt=""></div>
+    <div class="nm-body">
+      <div class="nm-meta">
+        <span class="prod-spec-pill" id="nmCat"></span>
+        <span class="nm-date" id="nmDate"></span>
+        <span class="nm-author" id="nmAuthor"></span>
+      </div>
+      <h2 id="nmTitle"></h2>
+      <p class="nm-summary" id="nmSummary"></p>
+      <div class="nm-content" id="nmContent"></div>
+      <div class="pm-footer" style="margin-top:20px">
+        <div class="pm-price"><span>Cần tư vấn thêm?</span><strong>Liên hệ kỹ thuật Hoàng Quân</strong></div>
+        <div class="prod-actions" id="nmActions"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/news-page.js?v=14"></script>
+</body>
+</html>

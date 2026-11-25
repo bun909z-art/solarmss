@@ -8,6 +8,7 @@ const store = require('./lib/store');
 const auth = require('./lib/auth');
 const calc = require('./lib/calculator');
 const productStore = require('./lib/products');
+const newsStore = require('./lib/news');
 
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -119,6 +120,7 @@ const server = http.createServer(async (req, res) => {
       const body = await readJsonBody(req, 64 * 1024);
       const cfg = store.loadConfig();
   productStore.loadProducts();
+  newsStore.loadNews();
       const tiers = Array.isArray(body.tiers) ? body.tiers : cfg.tariffs.tiers;
       const mode = body.mode === 'kwh' ? 'kwh' : 'bill';
       const vat = (Number(body.vat ?? cfg.defaults.vat) || 0) / 100;
@@ -159,6 +161,30 @@ const server = http.createServer(async (req, res) => {
     }
 
     
+    
+    // ---------- NEWS / ARTICLES API ----------
+    if (pathname === '/api/news' && method === 'GET') {
+      const all = newsStore.loadNews();
+      return sendJson(res, 200, { articles: all.filter(a => a.published !== false) });
+    }
+
+    if (pathname === '/api/admin/news' && method === 'GET') {
+      if (!requireAdmin(req, res, authState)) return;
+      return sendJson(res, 200, { articles: newsStore.loadNews() });
+    }
+
+    if (pathname === '/api/admin/news' && (method === 'PUT' || method === 'POST')) {
+      if (!requireAdmin(req, res, authState)) return;
+      const body = await readJsonBody(req, 3 * 1024 * 1024);
+      const saved = newsStore.saveNews(body.articles || []);
+      return sendJson(res, 200, { ok: true, articles: saved });
+    }
+
+    if (pathname === '/api/admin/news/reset' && method === 'POST') {
+      if (!requireAdmin(req, res, authState)) return;
+      return sendJson(res, 200, { ok: true, articles: newsStore.resetNews() });
+    }
+
     // ---------- PRODUCT CATALOG API ----------
     if (pathname === '/api/products' && method === 'GET') {
       return sendJson(res, 200, { products: productStore.loadProducts() });
@@ -338,6 +364,9 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/products' || pathname === '/products/' || pathname === '/products.html') {
       return serveFile(res, path.join(PUBLIC_DIR, 'products.html'));
     }
+    if (pathname === '/news' || pathname === '/news/' || pathname === '/news.html') {
+      return serveFile(res, path.join(PUBLIC_DIR, 'news.html'));
+    }
     if (pathname === '/admin' || pathname === '/admin/' || pathname === '/admin.html') {
       return serveFile(res, path.join(PUBLIC_DIR, 'admin.html'));
     }
@@ -366,6 +395,7 @@ if (require.main === module) {
   store.loadAuth();
   store.loadConfig();
   productStore.loadProducts();
+  newsStore.loadNews();
   server.listen(PORT, HOST, () => {
     console.log(`Hoàng Quân Pin Hybrid Server đang chạy tại:`);
     console.log(`  • Trang tư vấn:  http://localhost:${PORT}`);

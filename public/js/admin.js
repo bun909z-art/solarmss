@@ -7,6 +7,8 @@
   let CONFIG = null;
   let PRESETS = {};
   let PRODUCTS = [];
+  let NEWS = [];
+  let newNewsImgUrl = '';
   let prodFilter = 'all';
   let dirty = false;
 
@@ -110,13 +112,16 @@
   // ---------- LOAD & POPULATE ----------
   async function loadAdminData() {
     try {
-      const [data, prodData] = await Promise.all([
+      const [data, prodData, newsData] = await Promise.all([
         api('/api/config'),
-        api('/api/products').catch(() => ({ products: [] }))
+        api('/api/products').catch(() => ({ products: [] })),
+        api('/api/admin/news').catch(() => ({ articles: [] }))
       ]);
       CONFIG = data.config;
       PRESETS = data.presets || {};
       PRODUCTS = Array.isArray(prodData.products) ? prodData.products : [];
+      NEWS = Array.isArray(newsData.articles) ? newsData.articles : [];
+      if ($('nn_date') && !$('nn_date').value) $('nn_date').value = new Date().toISOString().slice(0, 10);
       renderPresets();
       populateForm();
       setDirty(false);
@@ -247,6 +252,7 @@
     setVal('f_zaloBtnText', f.zaloBtnText || 'Chat Zalo');
     renderNotesEditor();
     renderProdList();
+    renderNewsList();
   }
 
   // ---------- DYNAMIC LIST EDITORS ----------
@@ -367,7 +373,7 @@
     if (!el) return;
     if ($('prodCount')) $('prodCount').textContent = PRODUCTS.length;
     const filtered = PRODUCTS.map((p, idx) => ({ p, idx })).filter(x => prodFilter === 'all' || x.p.category === prodFilter);
-    const catLabel = { inverter: 'Inverter', panel: 'Pin MT', battery: 'Lưu trữ' };
+    const catLabel = { inverter: 'Inverter', panel: 'Pin MT', battery: 'Lưu trữ', accessory: 'Phụ kiện' };
 
     el.innerHTML = filtered.map(({ p, idx }) => `
       <div class="list-item" style="flex-direction:column;align-items:stretch;gap:6px">
@@ -386,10 +392,17 @@
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
           <input type="text" class="f-input" data-p-name="${idx}" value="${escapeAttr(p.name)}" placeholder="Tên sản phẩm">
           <input type="text" class="f-input" data-p-brand="${idx}" value="${escapeAttr(p.brand || '')}" placeholder="Hãng">
-          <input type="number" class="f-input" data-p-spec="${idx}" value="${p.category === 'inverter' ? p.powerKw : p.category === 'panel' ? p.wattWp : p.capacityKwh}" step="0.01" title="Công suất / Dung lượng">
+          ${p.category === 'accessory'
+            ? `<input type="text" class="f-input" data-p-spec="${idx}" value="${escapeAttr(p.specText || '')}" placeholder="Quy cách (VD: IP65, 4mm²...)" title="Quy cách / Thông số chính">`
+            : `<input type="number" class="f-input" data-p-spec="${idx}" value="${p.category === 'inverter' ? p.powerKw : p.category === 'panel' ? p.wattWp : p.capacityKwh}" step="0.01" title="Công suất / Dung lượng">`}
           <input type="number" class="f-input" data-p-price="${idx}" value="${p.price || 0}" step="100000" title="Giá nội bộ (tính Combo)">
           <input type="text" class="f-input" data-p-war="${idx}" value="${escapeAttr(p.warranty || '')}" placeholder="Bảo hành">
-          <input type="text" class="f-input" data-p-note="${idx}" value="${escapeAttr(p.note || '')}" placeholder="Ghi chú ngắn">
+          <select class="f-input" data-p-stock="${idx}" style="font-weight:700;color:${(p.stockStatus || (p.inStock === false ? 'out_of_stock' : 'in_stock')) === 'out_of_stock' ? '#B91C1C' : (p.stockStatus === 'contact' ? '#B45309' : '#047857')}">
+            <option value="in_stock" ${(p.stockStatus || (p.inStock === false ? 'out_of_stock' : 'in_stock')) === 'in_stock' ? 'selected' : ''}>✅ Còn hàng</option>
+            <option value="contact" ${p.stockStatus === 'contact' ? 'selected' : ''}>📞 Liên hệ</option>
+            <option value="out_of_stock" ${(p.stockStatus || (p.inStock === false ? 'out_of_stock' : 'in_stock')) === 'out_of_stock' ? 'selected' : ''}>⛔ Hết hàng</option>
+          </select>
+          <input type="text" class="f-input" style="grid-column:1/-1" data-p-note="${idx}" value="${escapeAttr(p.note || '')}" placeholder="Ghi chú ngắn">
           <textarea class="f-input" style="grid-column:1/-1" rows="2" data-p-desc="${idx}" placeholder="Mô tả chi tiết sản phẩm...">${escapeAttr(p.description || '')}</textarea>
           <textarea class="f-input" style="grid-column:1/-1" rows="3" data-p-specs="${idx}" placeholder="Thông số kỹ thuật (mỗi dòng dạng Tên: Giá trị)">${escapeAttr(p.specs || '')}</textarea>
         </div>
@@ -410,11 +423,22 @@
     el.querySelectorAll('[data-p-name]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pName].name = inp.value; pushPreview(); });
     el.querySelectorAll('[data-p-brand]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pBrand].brand = inp.value; pushPreview(); });
     el.querySelectorAll('[data-p-spec]').forEach(inp => inp.oninput = () => {
-      const p = PRODUCTS[+inp.dataset.pSpec], v = Math.max(0.1, Number(inp.value) || 0);
-      if (p.category === 'inverter') p.powerKw = v; else if (p.category === 'panel') p.wattWp = v; else p.capacityKwh = v;
+      const p = PRODUCTS[+inp.dataset.pSpec];
+      if (p.category === 'accessory') { p.specText = inp.value; }
+      else {
+        const v = Math.max(0.1, Number(inp.value) || 0);
+        if (p.category === 'inverter') p.powerKw = v; else if (p.category === 'panel') p.wattWp = v; else p.capacityKwh = v;
+      }
       pushPreview();
     });
     el.querySelectorAll('[data-p-war]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pWar].warranty = inp.value; });
+    el.querySelectorAll('[data-p-stock]').forEach(sel => sel.onchange = () => {
+      const st = sel.value;
+      PRODUCTS[+sel.dataset.pStock].stockStatus = st;
+      PRODUCTS[+sel.dataset.pStock].inStock = st !== 'out_of_stock';
+      sel.style.color = st === 'out_of_stock' ? '#B91C1C' : (st === 'contact' ? '#B45309' : '#047857');
+      pushPreview();
+    });
     el.querySelectorAll('[data-p-note]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pNote].note = inp.value; });
     el.querySelectorAll('[data-p-desc]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pDesc].description = inp.value; });
     el.querySelectorAll('[data-p-specs]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pSpecs].specs = inp.value; });
@@ -489,23 +513,31 @@
     $('btnAddProd').onclick = () => {
       const cat = $('np_cat').value;
       const name = $('np_name').value.trim();
-      const spec = Number($('np_spec').value) || 0;
-      if (!name || spec <= 0) return toast('Nhập tên sản phẩm và công suất/dung lượng hợp lệ.');
+      const specRaw = $('np_spec').value.trim();
+      const spec = Number(specRaw) || 0;
+      if (!name || (cat !== 'accessory' && spec <= 0)) return toast('Nhập tên sản phẩm và công suất/dung lượng hợp lệ.');
       const item = {
         id: `${cat}-${Date.now()}`,
         category: cat,
         brand: $('np_brand').value.trim(),
         name,
         price: Math.max(0, Number($('np_price').value) || 0),
-        warranty: cat === 'inverter' ? '5 năm' : ($('np_phase').value.trim() || '10 năm'),
+        warranty: cat === 'inverter' ? '5 năm' : ($('np_phase').value.trim() || (cat === 'accessory' ? '2 năm' : '10 năm')),
         note: '',
         description: $('np_desc') ? $('np_desc').value.trim() : '',
+        specs: '',
+        datasheetUrl: '',
+        datasheetName: '',
+        attachments: [],
         imageUrl: `/assets/prod-${cat}.jpg`,
+        stockStatus: $('np_stock') ? $('np_stock').value : 'in_stock',
+        inStock: $('np_stock') ? $('np_stock').value !== 'out_of_stock' : true,
         active: true
       };
       if (cat === 'inverter') { item.powerKw = spec; item.phase = $('np_phase').value.trim() || '1 pha'; }
       else if (cat === 'panel') item.wattWp = spec;
-      else item.capacityKwh = spec;
+      else if (cat === 'battery') item.capacityKwh = spec;
+      else item.specText = specRaw;
       PRODUCTS.unshift(item);
       $('np_name').value = ''; $('np_spec').value = ''; $('np_price').value = ''; if ($('np_desc')) $('np_desc').value = '';
       renderProdList(); pushPreview();
@@ -564,6 +596,124 @@
       if (lower.endsWith('.xlsx')) reader.readAsArrayBuffer(file);
       else reader.readAsText(file, 'utf-8');
     });
+  }
+
+  
+  // ---------- NEWS MANAGER ----------
+  function renderNewsList() {
+    const el = $('newsListEditor');
+    if (!el) return;
+    if ($('newsCount')) $('newsCount').textContent = NEWS.length;
+    el.innerHTML = NEWS.map((a, idx) => `
+      <div class="list-item" style="flex-direction:column;align-items:stretch;gap:6px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+          <img src="${escapeAttr(a.imageUrl || '/assets/prod-panel.jpg')}" alt="" style="width:42px;height:32px;border-radius:6px;object-fit:cover;border:1px solid #E2E8F0;flex:none">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;flex:1;min-width:0">
+            <input type="checkbox" data-n-pub="${idx}" ${a.published !== false ? 'checked' : ''} title="Hiển thị trên trang khách">
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeAttr(a.title)}</span>
+          </label>
+          <label class="btn-ghost small" style="padding:4px 7px;font-size:11px;cursor:pointer;white-space:nowrap">
+            Đổi ảnh<input type="file" accept="image/*" data-n-img="${idx}" hidden>
+          </label>
+          <button type="button" class="del-btn" data-n-del="${idx}" title="Xóa bài">×</button>
+        </div>
+        <input type="text" class="f-input" data-n-title="${idx}" value="${escapeAttr(a.title)}" placeholder="Tiêu đề bài viết">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+          <select class="f-input" data-n-cat="${idx}">
+            ${['Kiến thức Hybrid', 'Dự án thực tế', 'Tin ngành điện', 'Khuyến mãi'].map(c => `<option value="${c}" ${a.category === c ? 'selected' : ''}>${c}</option>`).join('')}
+          </select>
+          <input type="date" class="f-input" data-n-date="${idx}" value="${escapeAttr(a.publishedAt || '')}">
+        </div>
+        <input type="text" class="f-input" data-n-author="${idx}" value="${escapeAttr(a.author || '')}" placeholder="Tác giả">
+        <textarea class="f-input" rows="2" data-n-sum="${idx}" placeholder="Mô tả ngắn...">${escapeAttr(a.summary || '')}</textarea>
+        <textarea class="f-input" rows="4" data-n-content="${idx}" placeholder="Nội dung bài viết đầy đủ...">${escapeAttr(a.content || '')}</textarea>
+      </div>
+    `).join('') || '<p class="hint">Chưa có bài viết tin tức nào.</p>';
+
+    el.querySelectorAll('[data-n-pub]').forEach(cb => cb.onchange = () => { NEWS[+cb.dataset.nPub].published = cb.checked; });
+    el.querySelectorAll('[data-n-title]').forEach(inp => inp.oninput = () => { NEWS[+inp.dataset.nTitle].title = inp.value; });
+    el.querySelectorAll('[data-n-cat]').forEach(sel => sel.onchange = () => { NEWS[+sel.dataset.nCat].category = sel.value; });
+    el.querySelectorAll('[data-n-date]').forEach(inp => inp.oninput = () => { NEWS[+inp.dataset.nDate].publishedAt = inp.value; });
+    el.querySelectorAll('[data-n-author]').forEach(inp => inp.oninput = () => { NEWS[+inp.dataset.nAuthor].author = inp.value; });
+    el.querySelectorAll('[data-n-sum]').forEach(inp => inp.oninput = () => { NEWS[+inp.dataset.nSum].summary = inp.value; });
+    el.querySelectorAll('[data-n-content]').forEach(inp => inp.oninput = () => { NEWS[+inp.dataset.nContent].content = inp.value; });
+    el.querySelectorAll('[data-n-img]').forEach(inp => inp.onchange = () => {
+      const f = inp.files[0]; if (!f) return;
+      const idx = +inp.dataset.nImg;
+      const rd = new FileReader();
+      rd.onload = async () => {
+        try {
+          const res = await api('/api/admin/upload-product-image', { method: 'POST', body: JSON.stringify({ dataUrl: rd.result }) });
+          NEWS[idx].imageUrl = res.imageUrl;
+          renderNewsList();
+          toast('Đã cập nhật ảnh bìa! Bấm "Lưu danh sách tin tức" để lưu lại.');
+        } catch (err) { toast(err.message); }
+      };
+      rd.readAsDataURL(f);
+    });
+    el.querySelectorAll('[data-n-del]').forEach(btn => btn.onclick = () => {
+      NEWS.splice(+btn.dataset.nDel, 1);
+      renderNewsList();
+    });
+  }
+
+  if ($('nn_img_file')) {
+    $('nn_img_file').addEventListener('change', e => {
+      const f = e.target.files[0]; if (!f) return;
+      const rd = new FileReader();
+      rd.onload = async () => {
+        try {
+          const res = await api('/api/admin/upload-product-image', { method: 'POST', body: JSON.stringify({ dataUrl: rd.result }) });
+          newNewsImgUrl = res.imageUrl;
+          toast('Đã tải ảnh bìa sẵn sàng cho bài viết mới!');
+        } catch (err) { toast(err.message); }
+      };
+      rd.readAsDataURL(f);
+    });
+  }
+
+  if ($('btnAddNews')) {
+    $('btnAddNews').onclick = () => {
+      const title = $('nn_title').value.trim();
+      if (!title) return toast('Vui lòng nhập tiêu đề bài viết.');
+      NEWS.unshift({
+        id: 'news-' + Date.now(),
+        title,
+        category: $('nn_cat').value,
+        publishedAt: $('nn_date').value || new Date().toISOString().slice(0, 10),
+        author: $('nn_author').value.trim() || 'Hoàng Quân',
+        imageUrl: newNewsImgUrl || '/assets/prod-panel.jpg',
+        summary: $('nn_summary').value.trim(),
+        content: $('nn_content').value.trim(),
+        published: true
+      });
+      $('nn_title').value = ''; $('nn_summary').value = ''; $('nn_content').value = '';
+      newNewsImgUrl = '';
+      renderNewsList();
+      toast('Đã thêm bài viết. Bấm "Lưu danh sách tin tức" để xuất bản lên máy chủ.');
+    };
+  }
+
+  if ($('btnSaveNews')) {
+    $('btnSaveNews').onclick = async () => {
+      try {
+        const res = await api('/api/admin/news', { method: 'PUT', body: JSON.stringify({ articles: NEWS }) });
+        NEWS = res.articles;
+        renderNewsList();
+        toast(`Đã lưu ${NEWS.length} bài viết tin tức lên máy chủ!`);
+      } catch (err) { toast(err.message); }
+    };
+  }
+
+  if ($('btnResetNews')) {
+    $('btnResetNews').onclick = async () => {
+      try {
+        const res = await api('/api/admin/news/reset', { method: 'POST' });
+        NEWS = res.articles;
+        renderNewsList();
+        toast('Đã khôi phục các bài viết mẫu.');
+      } catch (err) { toast(err.message); }
+    };
   }
 
   // ---------- BIND INPUTS ----------

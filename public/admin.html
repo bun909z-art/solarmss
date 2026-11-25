@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quản trị giao diện – Hoàng Quân Pin Hybrid</title>
 <link rel="icon" type="image/png" href="/assets/favicon.png">
-<link rel="stylesheet" href="/css/admin.css?v=9">
+<link rel="stylesheet" href="/css/admin.css?v=14">
 </head>
 <body>
 
@@ -53,6 +53,7 @@
         <button type="button" class="tab-btn" data-tab="layout">Bố cục &amp; Tiêu đề</button>
         <button type="button" class="tab-btn" data-tab="tariffs">Thông số &amp; EVN</button>
         <button type="button" class="tab-btn" data-tab="products">Kho sản phẩm</button>
+        <button type="button" class="tab-btn" data-tab="news">Tin tức</button>
         <button type="button" class="tab-btn" data-tab="footer">Chân trang</button>
         <button type="button" class="tab-btn" data-tab="security">Bảo mật &amp; Backup</button>
       </nav>
@@ -337,6 +338,7 @@
                 <option value="inverter">Inverter Hybrid (kW)</option>
                 <option value="panel">Tấm pin mặt trời (Wp)</option>
                 <option value="battery">Pin lưu trữ (kWh)</option>
+                <option value="accessory">Phụ kiện lắp đặt</option>
               </select>
             </div>
             <div class="field-row">
@@ -350,8 +352,8 @@
           </div>
           <div class="two-col">
             <div class="field-row">
-              <label class="f-lbl">Công suất / Dung lượng</label>
-              <input type="number" id="np_spec" class="f-input" step="0.01" placeholder="kW / Wp / kWh">
+              <label class="f-lbl">Công suất / Quy cách</label>
+              <input type="text" id="np_spec" class="f-input" placeholder="kW / Wp / kWh hoặc Quy cách">
             </div>
             <div class="field-row">
               <label class="f-lbl">Đơn giá (VNĐ)</label>
@@ -364,9 +366,17 @@
               <label class="f-lbl">Pha (Inverter) / Bảo hành</label>
               <input type="text" id="np_phase" class="f-input" placeholder="1 pha / 10 năm">
             </div>
-            <div class="field-row" style="display:flex;align-items:flex-end">
-              <button type="button" class="btn-primary full" id="btnAddProd">+ Thêm vào kho</button>
+            <div class="field-row">
+              <label class="f-lbl">Trạng thái sản phẩm</label>
+              <select id="np_stock" class="f-input">
+                <option value="in_stock">Còn hàng</option>
+                <option value="contact">Liên hệ</option>
+                <option value="out_of_stock">Hết hàng</option>
+              </select>
             </div>
+          </div>
+          <div class="field-row">
+            <button type="button" class="btn-primary full" id="btnAddProd">+ Thêm vào kho</button>
           </div>
 
           <hr class="sep">
@@ -379,9 +389,67 @@
             <button type="button" class="tab-btn" data-pcat="inverter">Inverter</button>
             <button type="button" class="tab-btn" data-pcat="panel">Pin MT</button>
             <button type="button" class="tab-btn" data-pcat="battery">Lưu trữ</button>
+            <button type="button" class="tab-btn" data-pcat="accessory">Phụ kiện</button>
           </div>
           <div id="prodListEditor" class="list-editor"></div>
           <button type="button" class="btn-primary full" id="btnSaveProds">Lưu danh mục sản phẩm</button>
+        </section>
+
+        
+        <!-- TAB NEWS -->
+        <section class="tab-pane" id="tab-news">
+          <h3>Đăng bài viết tin tức mới</h3>
+          <div class="field-row">
+            <label class="f-lbl">Tiêu đề bài viết</label>
+            <input type="text" id="nn_title" class="f-input" placeholder="VD: Kinh nghiệm chọn pin lưu trữ Lithium...">
+          </div>
+          <div class="two-col">
+            <div class="field-row">
+              <label class="f-lbl">Chuyên mục</label>
+              <select id="nn_cat" class="f-input">
+                <option value="Kiến thức Hybrid">Kiến thức Hybrid</option>
+                <option value="Dự án thực tế">Dự án thực tế</option>
+                <option value="Tin ngành điện">Tin ngành điện</option>
+                <option value="Khuyến mãi">Khuyến mãi</option>
+              </select>
+            </div>
+            <div class="field-row">
+              <label class="f-lbl">Ngày đăng</label>
+              <input type="date" id="nn_date" class="f-input">
+            </div>
+          </div>
+          <div class="two-col">
+            <div class="field-row">
+              <label class="f-lbl">Tác giả</label>
+              <input type="text" id="nn_author" class="f-input" value="Kỹ thuật Hoàng Quân">
+            </div>
+            <div class="field-row">
+              <label class="f-lbl">Ảnh bìa bài viết</label>
+              <label class="btn-ghost full" style="text-align:center;cursor:pointer">
+                ↑ Chọn ảnh bìa
+                <input type="file" id="nn_img_file" accept="image/*" hidden>
+              </label>
+            </div>
+          </div>
+          <div class="field-row">
+            <label class="f-lbl">Mô tả ngắn (tóm tắt)</label>
+            <textarea id="nn_summary" class="f-input" rows="2" placeholder="Tóm tắt nội dung chính hiển thị trên thẻ tin tức..."></textarea>
+          </div>
+          <div class="field-row">
+            <label class="f-lbl">Nội dung bài viết đầy đủ</label>
+            <textarea id="nn_content" class="f-input" rows="5" placeholder="Nhập nội dung chi tiết bài viết (ngắt đoạn bằng phím Enter)..."></textarea>
+          </div>
+          <div class="field-row">
+            <button type="button" class="btn-primary full" id="btnAddNews">+ Thêm bài viết</button>
+          </div>
+
+          <hr class="sep">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <h3 style="margin:0">Danh sách bài viết (<span id="newsCount">0</span>)</h3>
+            <button type="button" class="btn-ghost small" id="btnResetNews">Bài mẫu</button>
+          </div>
+          <div id="newsListEditor" class="list-editor"></div>
+          <button type="button" class="btn-primary full" id="btnSaveNews">Lưu danh sách tin tức</button>
         </section>
 
         <!-- TAB 5: FOOTER -->
@@ -459,6 +527,6 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="/js/admin.js?v=9"></script>
+<script src="/js/admin.js?v=14"></script>
 </body>
 </html>

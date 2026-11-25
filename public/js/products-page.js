@@ -8,7 +8,7 @@
     medium: '0 2px 6px rgba(15,23,42,.04), 0 12px 28px rgba(15,23,42,.07)',
     strong: '0 4px 12px rgba(15,23,42,.08), 0 20px 44px rgba(15,23,42,.14)'
   };
-  const CAT_LABEL = { inverter: 'Inverter Hybrid', panel: 'Pin mặt trời', battery: 'Pin lưu trữ' };
+  const CAT_LABEL = { inverter: 'Inverter Hybrid', panel: 'Pin mặt trời', battery: 'Pin lưu trữ', accessory: 'Phụ kiện lắp đặt' };
 
   let CFG = null;
   let PRODUCTS = [];
@@ -85,15 +85,29 @@
     $('footerCompany').textContent = f.companyLine || b.companyName || '';
   }
 
+  function getStockMeta(p) {
+    const st = p.stockStatus || (p.inStock === false ? 'out_of_stock' : 'in_stock');
+    if (st === 'out_of_stock') return { cls: 'out-stock', label: 'Hết hàng', badge: '● Hết hàng', out: true };
+    if (st === 'contact') return { cls: 'contact-stock', label: 'Liên hệ', badge: '● Liên hệ', out: false };
+    return { cls: 'in-stock', label: 'Còn hàng', badge: '● Còn hàng', out: false };
+  }
+
   function openProductModal(p) {
     if (!p) return;
     const specPill = p.category === 'inverter'
       ? `${p.powerKw} kW · ${p.phase || '1 pha'}`
-      : p.category === 'panel' ? `${p.wattWp} Wp` : `${p.capacityKwh} kWh`;
+      : p.category === 'panel' ? `${p.wattWp} Wp`
+      : p.category === 'battery' ? `${p.capacityKwh} kWh`
+      : (p.specText || 'Phụ kiện lắp đặt');
     $('pmImg').src = p.imageUrl || `/assets/prod-${p.category}.jpg`;
     $('pmImg').alt = p.name || '';
     $('pmBrand').textContent = `${CAT_LABEL[p.category] || p.category}${p.brand ? ' · ' + p.brand : ''}`;
     $('pmSpecPill').textContent = specPill;
+    const sm = getStockMeta(p);
+    if ($('pmStockPill')) {
+      $('pmStockPill').textContent = sm.badge;
+      $('pmStockPill').className = 'pm-stock-pill ' + sm.cls;
+    }
     $('pmTitle').textContent = p.name || '';
     $('pmDesc').textContent = p.description || p.note || '';
     $('pmDesc').hidden = !(p.description || p.note);
@@ -107,9 +121,12 @@
       if (p.phase) rows.push(['Số pha', p.phase]);
     } else if (p.category === 'panel') {
       rows.push(['Công suất đỉnh', `${p.wattWp} Wp`]);
-    } else {
+    } else if (p.category === 'battery') {
       rows.push(['Dung lượng lưu trữ', `${p.capacityKwh} kWh`]);
+    } else if (p.specText) {
+      rows.push(['Quy cách / Thông số chính', p.specText]);
     }
+    rows.push(['Trạng thái', sm.label]);
     if (p.warranty) rows.push(['Bảo hành', p.warranty]);
     if (p.specs) {
       String(p.specs).split(/\r?\n/).map(l => l.trim()).filter(Boolean).forEach(line => {
@@ -130,14 +147,12 @@
         if (a && a.url) docs.push({ label: a.name || 'Tài liệu đính kèm', url: a.url, primary: false });
       });
     }
-    $('pmDocsWrap').hidden = false;
-    if (docs.length) {
-      $('pmDocsList').innerHTML = docs.map(d =>
-        `<a class="doc-dl-btn${d.primary ? '' : ' secondary'}" href="${esc(d.url)}" download target="_blank" rel="noopener">${d.primary ? '📄' : '📎'} ${esc(d.label)}</a>`
-      ).join('');
-    } else {
-      $('pmDocsList').innerHTML = '<span style="font-size:12.5px;color:var(--ink-3)">Chưa có file Datasheet đính kèm — liên hệ hotline để nhận bản PDF chi tiết.</span>';
-    }
+    $('pmDocsWrap').hidden = !docs.length;
+    $('pmDocsList').innerHTML = docs.length
+      ? docs.map(d =>
+          `<a class="doc-dl-btn${d.primary ? '' : ' secondary'}" href="${esc(d.url)}" download target="_blank" rel="noopener">${d.primary ? '📄' : '📎'} ${esc(d.label)}</a>`
+        ).join('')
+      : '';
 
     const { tel, zalo } = getPrimaryContact();
     $('pmActions').innerHTML = `
@@ -163,6 +178,7 @@
     $('cntInv').textContent = active.filter(p => p.category === 'inverter').length;
     $('cntPan').textContent = active.filter(p => p.category === 'panel').length;
     $('cntBat').textContent = active.filter(p => p.category === 'battery').length;
+    if ($('cntAcc')) $('cntAcc').textContent = active.filter(p => p.category === 'accessory').length;
 
     const q = searchQ.trim().toLowerCase();
     const list = active.filter(p => {
@@ -181,14 +197,18 @@
     $('catalogGrid').innerHTML = list.map((p, idx) => {
       const spec = p.category === 'inverter'
         ? `${p.powerKw} kW · ${esc(p.phase || '1 pha')}`
-        : p.category === 'panel' ? `${p.wattWp} Wp` : `${p.capacityKwh} kWh`;
+        : p.category === 'panel' ? `${p.wattWp} Wp`
+        : p.category === 'battery' ? `${p.capacityKwh} kWh`
+        : esc(p.specText || 'Phụ kiện');
       const img = esc(p.imageUrl || `/assets/prod-${p.category}.jpg`);
       const hasDocs = Boolean(p.datasheetUrl || (p.attachments && p.attachments.length));
-      return `<article class="card prod-card" data-open-prod="${idx}">
+      const sm = getStockMeta(p);
+      return `<article class="card prod-card${sm.out ? ' out-of-stock' : ''}" data-open-prod="${idx}">
         <div class="prod-img-wrap">
           <img src="${img}" alt="${esc(p.name)}" loading="lazy">
           <span class="prod-cat-tag">${esc(CAT_LABEL[p.category] || p.category)}</span>
           ${hasDocs ? '<span class="prod-doc-badge">📄 Datasheet</span>' : ''}
+          <span class="prod-stock-badge ${sm.cls}">${sm.badge}</span>
         </div>
         <div class="prod-body">
           <div class="prod-meta-top">
