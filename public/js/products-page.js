@@ -27,6 +27,14 @@
     return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
   }
 
+  function getPrimaryContact() {
+    const hotlines = (CFG && CFG.branding && CFG.branding.hotlines) || [];
+    const primaryHl = hotlines[0] || { tel: '0913350597', zalo: '0913350597' };
+    const tel = esc(primaryHl.tel || String(primaryHl.number || '').replace(/[^\d+]/g, ''));
+    const zalo = esc(primaryHl.zalo !== undefined ? primaryHl.zalo : tel.replace(/[^\d]/g, ''));
+    return { tel, zalo };
+  }
+
   function applyTheme(cfg) {
     CFG = cfg;
     const t = cfg.theme || {}, b = cfg.branding || {}, f = cfg.footer || {};
@@ -77,6 +85,78 @@
     $('footerCompany').textContent = f.companyLine || b.companyName || '';
   }
 
+  function openProductModal(p) {
+    if (!p) return;
+    const specPill = p.category === 'inverter'
+      ? `${p.powerKw} kW · ${p.phase || '1 pha'}`
+      : p.category === 'panel' ? `${p.wattWp} Wp` : `${p.capacityKwh} kWh`;
+    $('pmImg').src = p.imageUrl || `/assets/prod-${p.category}.jpg`;
+    $('pmImg').alt = p.name || '';
+    $('pmBrand').textContent = `${CAT_LABEL[p.category] || p.category}${p.brand ? ' · ' + p.brand : ''}`;
+    $('pmSpecPill').textContent = specPill;
+    $('pmTitle').textContent = p.name || '';
+    $('pmDesc').textContent = p.description || p.note || '';
+    $('pmDesc').hidden = !(p.description || p.note);
+
+    // Build Technical Specs rows
+    const rows = [];
+    if (p.brand) rows.push(['Hãng sản xuất', p.brand]);
+    rows.push(['Phân loại', CAT_LABEL[p.category] || p.category]);
+    if (p.category === 'inverter') {
+      rows.push(['Công suất định mức', `${p.powerKw} kW`]);
+      if (p.phase) rows.push(['Số pha', p.phase]);
+    } else if (p.category === 'panel') {
+      rows.push(['Công suất đỉnh', `${p.wattWp} Wp`]);
+    } else {
+      rows.push(['Dung lượng lưu trữ', `${p.capacityKwh} kWh`]);
+    }
+    if (p.warranty) rows.push(['Bảo hành', p.warranty]);
+    if (p.specs) {
+      String(p.specs).split(/\r?\n/).map(l => l.trim()).filter(Boolean).forEach(line => {
+        const idx = line.indexOf(':');
+        if (idx > 0) rows.push([line.slice(0, idx).trim(), line.slice(idx + 1).trim()]);
+        else rows.push(['Thông số', line]);
+      });
+    }
+    $('pmSpecsBody').innerHTML = rows.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('');
+
+    // Build Datasheet & Attachments
+    const docs = [];
+    if (p.datasheetUrl) {
+      docs.push({ label: p.datasheetName || 'Tải Datasheet (Thông số kỹ thuật)', url: p.datasheetUrl, primary: true });
+    }
+    if (Array.isArray(p.attachments)) {
+      p.attachments.forEach(a => {
+        if (a && a.url) docs.push({ label: a.name || 'Tài liệu đính kèm', url: a.url, primary: false });
+      });
+    }
+    $('pmDocsWrap').hidden = false;
+    if (docs.length) {
+      $('pmDocsList').innerHTML = docs.map(d =>
+        `<a class="doc-dl-btn${d.primary ? '' : ' secondary'}" href="${esc(d.url)}" download target="_blank" rel="noopener">${d.primary ? '📄' : '📎'} ${esc(d.label)}</a>`
+      ).join('');
+    } else {
+      $('pmDocsList').innerHTML = '<span style="font-size:12.5px;color:var(--ink-3)">Chưa có file Datasheet đính kèm — liên hệ hotline để nhận bản PDF chi tiết.</span>';
+    }
+
+    const { tel, zalo } = getPrimaryContact();
+    $('pmActions').innerHTML = `
+      <a class="cta-btn call" style="flex:1;justify-content:center" href="tel:${tel}">📞 Gọi ngay</a>
+      ${zalo ? `<a class="cta-btn zalo" style="flex:1;justify-content:center" href="https://zalo.me/${zalo}" target="_blank" rel="noopener">💬 Báo giá Zalo</a>` : ''}
+    `;
+
+    $('prodModal').hidden = false;
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeModal() {
+    $('prodModal').hidden = true;
+    document.body.style.overflow = '';
+  }
+  $('pmClose').onclick = closeModal;
+  $('prodModal').addEventListener('click', e => { if (e.target === $('prodModal')) closeModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('prodModal').hidden) closeModal(); });
+
   function renderCatalog() {
     const active = PRODUCTS.filter(p => p && p.active !== false);
     $('cntAll').textContent = active.length;
@@ -87,31 +167,28 @@
     const q = searchQ.trim().toLowerCase();
     const list = active.filter(p => {
       if (activeCat !== 'all' && p.category !== activeCat) return false;
-      if (q && !(`${p.name} ${p.brand} ${p.note}`.toLowerCase().includes(q))) return false;
+      if (q && !(`${p.name} ${p.brand} ${p.note} ${p.description}`.toLowerCase().includes(q))) return false;
       return true;
     });
 
-    const hotlines = (CFG && CFG.branding && CFG.branding.hotlines) || [];
-    const primaryHl = hotlines[0] || { tel: '0913350597', zalo: '0913350597' };
-    const tel = esc(primaryHl.tel || String(primaryHl.number || '').replace(/[^\d+]/g, ''));
-    const zalo = esc(primaryHl.zalo !== undefined ? primaryHl.zalo : tel.replace(/[^\d]/g, ''));
+    const { tel, zalo } = getPrimaryContact();
 
     if (!list.length) {
       $('catalogGrid').innerHTML = '<div class="card" style="grid-column:1/-1;text-align:center;color:var(--ink-3)">Không tìm thấy sản phẩm phù hợp.</div>';
       return;
     }
 
-    $('catalogGrid').innerHTML = list.map(p => {
+    $('catalogGrid').innerHTML = list.map((p, idx) => {
       const spec = p.category === 'inverter'
         ? `${p.powerKw} kW · ${esc(p.phase || '1 pha')}`
-        : p.category === 'panel'
-          ? `${p.wattWp} Wp`
-          : `${p.capacityKwh} kWh`;
+        : p.category === 'panel' ? `${p.wattWp} Wp` : `${p.capacityKwh} kWh`;
       const img = esc(p.imageUrl || `/assets/prod-${p.category}.jpg`);
-      return `<article class="card prod-card">
+      const hasDocs = Boolean(p.datasheetUrl || (p.attachments && p.attachments.length));
+      return `<article class="card prod-card" data-open-prod="${idx}">
         <div class="prod-img-wrap">
           <img src="${img}" alt="${esc(p.name)}" loading="lazy">
           <span class="prod-cat-tag">${esc(CAT_LABEL[p.category] || p.category)}</span>
+          ${hasDocs ? '<span class="prod-doc-badge">📄 Datasheet</span>' : ''}
         </div>
         <div class="prod-body">
           <div class="prod-meta-top">
@@ -120,18 +197,22 @@
           </div>
           <h3 class="prod-name">${esc(p.name)}</h3>
           ${p.warranty ? `<div class="prod-detail">Bảo hành: <b>${esc(p.warranty)}</b></div>` : ''}
-          ${p.note ? `<div class="prod-detail">${esc(p.note)}</div>` : ''}
+          ${p.description ? `<p class="prod-desc">${esc(p.description)}</p>` : (p.note ? `<div class="prod-detail">${esc(p.note)}</div>` : '')}
           <div class="prod-price-contact">
             <span>Giá bán:</span>
             <strong>Liên hệ để báo giá</strong>
           </div>
           <div class="prod-actions">
-            <a class="cta-btn call" style="flex:1;justify-content:center" href="tel:${tel}">📞 Gọi ngay</a>
-            ${zalo ? `<a class="cta-btn zalo" style="flex:1;justify-content:center" href="https://zalo.me/${zalo}" target="_blank" rel="noopener">💬 Báo giá Zalo</a>` : ''}
+            <a class="cta-btn call" style="flex:1;justify-content:center" href="tel:${tel}" onclick="event.stopPropagation()">📞 Gọi ngay</a>
+            ${zalo ? `<a class="cta-btn zalo" style="flex:1;justify-content:center" href="https://zalo.me/${zalo}" target="_blank" rel="noopener" onclick="event.stopPropagation()">💬 Zalo</a>` : ''}
           </div>
         </div>
       </article>`;
     }).join('');
+
+    $('catalogGrid').querySelectorAll('[data-open-prod]').forEach(card => {
+      card.onclick = () => openProductModal(list[+card.dataset.openProd]);
+    });
   }
 
   $('catPills').querySelectorAll('[data-cat]').forEach(btn => {
@@ -142,10 +223,7 @@
       renderCatalog();
     };
   });
-  $('prodSearch').addEventListener('input', e => {
-    searchQ = e.target.value;
-    renderCatalog();
-  });
+  $('prodSearch').addEventListener('input', e => { searchQ = e.target.value; renderCatalog(); });
 
   Promise.all([
     fetch('/api/config').then(r => r.json()),

@@ -6,7 +6,7 @@
 <title id="docTitle">Sản phẩm tham khảo – Hoàng Quân Electronics &amp; Energy</title>
 <meta name="theme-color" content="#F26A1B" id="metaTheme">
 <link rel="icon" type="image/png" href="/assets/favicon.png" id="docFavicon">
-<link rel="stylesheet" href="/css/app.css?v=5">
+<link rel="stylesheet" href="/css/app.css?v=9">
 </head>
 <body>
 
@@ -73,6 +73,39 @@
   </div>
 </footer>
 
-<script src="/js/products-page.js"></script>
+
+<!-- Product Detail Modal -->
+<div class="modal-backdrop" id="prodModal" hidden role="dialog" aria-modal="true" aria-labelledby="pmTitle">
+  <div class="modal-card">
+    <button type="button" class="modal-close" id="pmClose" aria-label="Đóng">×</button>
+    <div class="pm-grid">
+      <div class="pm-img-stage">
+        <img id="pmImg" src="" alt="">
+      </div>
+      <div class="pm-info">
+        <div class="prod-meta-top">
+          <span class="prod-brand" id="pmBrand"></span>
+          <span class="prod-spec-pill" id="pmSpecPill"></span>
+        </div>
+        <h2 id="pmTitle"></h2>
+        <p class="pm-desc" id="pmDesc"></p>
+        <div class="pm-section" id="pmSpecsWrap">
+          <h3>Thông số kỹ thuật</h3>
+          <table class="pm-spec-table"><tbody id="pmSpecsBody"></tbody></table>
+        </div>
+        <div class="pm-section" id="pmDocsWrap">
+          <h3>Datasheet &amp; Tài liệu kỹ thuật</h3>
+          <div class="pm-docs" id="pmDocsList"></div>
+        </div>
+        <div class="pm-footer">
+          <div class="pm-price"><span>Giá bán:</span><strong>Liên hệ để báo giá</strong></div>
+          <div class="prod-actions" id="pmActions"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/products-page.js?v=9"></script>
 </body>
 </html>

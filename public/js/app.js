@@ -529,7 +529,6 @@
   };
 
   $('print').onclick = () => window.print();
-  if ($('btnMixCombo')) $('btnMixCombo').onclick = () => { comboMixSeeds = comboMixSeeds.map((v, i) => (v || 0) + 1 + Math.floor(Math.random() * 97) + i * 7); const r = window._hqLastResult || {}; renderCombos(r.kwhUsed || 0, r.bat || 0); showToast('Đã Mix 3 gợi ý Combo mới!'); };
 
   $('copySummary').onclick = async () => {
     const r = window._hqLastResult || {};

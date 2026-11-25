@@ -24,7 +24,12 @@ const MIME_TYPES = {
   '.jpeg': 'image/jpeg',
   '.webp': 'image/webp',
   '.svg': 'image/svg+xml',
-  '.ico': 'image/x-icon'
+  '.ico': 'image/x-icon',
+  '.pdf': 'application/pdf',
+  '.doc': 'application/msword',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.zip': 'application/zip'
 };
 
 function sendJson(res, status, data) {
@@ -269,6 +274,26 @@ const server = http.createServer(async (req, res) => {
     }
 
     
+    
+    if (pathname === '/api/admin/upload-document' && method === 'POST') {
+      if (!requireAdmin(req, res, authState)) return;
+      const body = await readJsonBody(req, 16 * 1024 * 1024);
+      const dataUrl = String(body.dataUrl || '');
+      const origName = String(body.filename || 'tai-lieu.pdf').trim();
+      const match = dataUrl.match(/^data:([^;]+);base64,([A-Za-z0-9+/=]+)$/);
+      if (!match) return sendJson(res, 400, { error: 'Định dạng tệp tải lên không hợp lệ.' });
+      const extFromName = (origName.split('.').pop() || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const allowed = ['pdf', 'doc', 'docx', 'xlsx', 'xls', 'png', 'jpg', 'jpeg', 'webp', 'zip', 'txt'];
+      const ext = allowed.includes(extFromName) ? extFromName : 'pdf';
+      const buf = Buffer.from(match[2], 'base64');
+      if (buf.length > 12 * 1024 * 1024) return sendJson(res, 400, { error: 'Tài liệu tối đa 12MB.' });
+      if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+      const safeStem = origName.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0, 40) || 'doc';
+      const fname = `doc-${Date.now()}-${safeStem}.${ext}`;
+      fs.writeFileSync(path.join(UPLOAD_DIR, fname), buf);
+      return sendJson(res, 200, { ok: true, url: `/uploads/${fname}`, name: origName });
+    }
+
     if (pathname === '/api/admin/upload-product-image' && method === 'POST') {
       if (!requireAdmin(req, res, authState)) return;
       const body = await readJsonBody(req, 3 * 1024 * 1024);

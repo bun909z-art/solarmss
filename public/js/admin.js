@@ -390,7 +390,19 @@
           <input type="number" class="f-input" data-p-price="${idx}" value="${p.price || 0}" step="100000" title="Giá nội bộ (tính Combo)">
           <input type="text" class="f-input" data-p-war="${idx}" value="${escapeAttr(p.warranty || '')}" placeholder="Bảo hành">
           <input type="text" class="f-input" data-p-note="${idx}" value="${escapeAttr(p.note || '')}" placeholder="Ghi chú ngắn">
+          <textarea class="f-input" style="grid-column:1/-1" rows="2" data-p-desc="${idx}" placeholder="Mô tả chi tiết sản phẩm...">${escapeAttr(p.description || '')}</textarea>
+          <textarea class="f-input" style="grid-column:1/-1" rows="3" data-p-specs="${idx}" placeholder="Thông số kỹ thuật (mỗi dòng dạng Tên: Giá trị)">${escapeAttr(p.specs || '')}</textarea>
         </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding-top:4px;border-top:1px dashed #E2E8F0">
+          <input type="text" class="f-input" style="flex:1;min-width:140px;font-size:12px" data-p-ds-url="${idx}" value="${escapeAttr(p.datasheetUrl || '')}" placeholder="Link Datasheet (hoặc bấm tải lên)">
+          <label class="btn-ghost small" style="padding:5px 8px;font-size:11.5px;cursor:pointer">
+            📄 Tải Datasheet<input type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.zip" data-p-ds-file="${idx}" hidden>
+          </label>
+          <label class="btn-ghost small" style="padding:5px 8px;font-size:11.5px;cursor:pointer">
+            📎 + Tài liệu<input type="file" accept=".pdf,.doc,.docx,.xlsx,.png,.jpg,.jpeg,.zip" data-p-att-file="${idx}" hidden>
+          </label>
+        </div>
+        ${(Array.isArray(p.attachments) && p.attachments.length) ? `<div style="display:flex;flex-wrap:wrap;gap:5px">${p.attachments.map((a, ai) => `<span style="display:inline-flex;align-items:center;gap:4px;background:#EEF2FF;color:#3730A3;padding:3px 8px;border-radius:99px;font-size:11px;font-weight:700">📎 ${escapeAttr(a.name)} <button type="button" data-p-del-att="${idx}:${ai}" style="border:0;background:none;color:#DC2626;cursor:pointer;font-weight:900;padding:0">×</button></span>`).join('')}</div>` : ''}
       </div>
     `).join('') || '<p class="hint">Chưa có sản phẩm nào trong nhóm này.</p>';
 
@@ -404,6 +416,44 @@
     });
     el.querySelectorAll('[data-p-war]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pWar].warranty = inp.value; });
     el.querySelectorAll('[data-p-note]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pNote].note = inp.value; });
+    el.querySelectorAll('[data-p-desc]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pDesc].description = inp.value; });
+    el.querySelectorAll('[data-p-specs]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pSpecs].specs = inp.value; });
+    el.querySelectorAll('[data-p-ds-url]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pDsUrl].datasheetUrl = inp.value.trim(); });
+    el.querySelectorAll('[data-p-ds-file]').forEach(inp => inp.onchange = () => {
+      const f = inp.files[0]; if (!f) return;
+      const idx = +inp.dataset.pDsFile;
+      const rd = new FileReader();
+      rd.onload = async () => {
+        try {
+          const res = await api('/api/admin/upload-document', { method: 'POST', body: JSON.stringify({ dataUrl: rd.result, filename: f.name }) });
+          PRODUCTS[idx].datasheetUrl = res.url;
+          PRODUCTS[idx].datasheetName = 'Datasheet: ' + f.name;
+          renderProdList();
+          toast('Đã tải lên Datasheet! Bấm "Lưu danh mục sản phẩm" để ghi lại.');
+        } catch (err) { toast(err.message); }
+      };
+      rd.readAsDataURL(f);
+    });
+    el.querySelectorAll('[data-p-att-file]').forEach(inp => inp.onchange = () => {
+      const f = inp.files[0]; if (!f) return;
+      const idx = +inp.dataset.pAttFile;
+      const rd = new FileReader();
+      rd.onload = async () => {
+        try {
+          const res = await api('/api/admin/upload-document', { method: 'POST', body: JSON.stringify({ dataUrl: rd.result, filename: f.name }) });
+          if (!Array.isArray(PRODUCTS[idx].attachments)) PRODUCTS[idx].attachments = [];
+          PRODUCTS[idx].attachments.push({ name: f.name, url: res.url });
+          renderProdList();
+          toast('Đã đính kèm tài liệu! Bấm "Lưu danh mục sản phẩm" để ghi lại.');
+        } catch (err) { toast(err.message); }
+      };
+      rd.readAsDataURL(f);
+    });
+    el.querySelectorAll('[data-p-del-att]').forEach(btn => btn.onclick = () => {
+      const [pi, ai] = btn.dataset.pDelAtt.split(':').map(Number);
+      PRODUCTS[pi].attachments.splice(ai, 1);
+      renderProdList();
+    });
     el.querySelectorAll('[data-p-price]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pPrice].price = Math.max(0, Number(inp.value) || 0); pushPreview(); });
     el.querySelectorAll('[data-p-img]').forEach(inp => {
       inp.onchange = () => {
@@ -449,6 +499,7 @@
         price: Math.max(0, Number($('np_price').value) || 0),
         warranty: cat === 'inverter' ? '5 năm' : ($('np_phase').value.trim() || '10 năm'),
         note: '',
+        description: $('np_desc') ? $('np_desc').value.trim() : '',
         imageUrl: `/assets/prod-${cat}.jpg`,
         active: true
       };
@@ -456,7 +507,7 @@
       else if (cat === 'panel') item.wattWp = spec;
       else item.capacityKwh = spec;
       PRODUCTS.unshift(item);
-      $('np_name').value = ''; $('np_spec').value = ''; $('np_price').value = '';
+      $('np_name').value = ''; $('np_spec').value = ''; $('np_price').value = ''; if ($('np_desc')) $('np_desc').value = '';
       renderProdList(); pushPreview();
       toast('Đã thêm sản phẩm. Bấm "Lưu danh mục sản phẩm" để ghi lên máy chủ.');
     };
