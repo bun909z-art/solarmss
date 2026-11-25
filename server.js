@@ -77,11 +77,11 @@ function serveFile(res, filePath) {
     }
     const ext = path.extname(resolved).toLowerCase();
     const mime = MIME_TYPES[ext] || 'application/octet-stream';
-    const isHtml = ext === '.html';
+    const noCache = ['.html', '.css', '.js'].includes(ext);
     res.writeHead(200, {
       'Content-Type': mime,
       'Content-Length': content.length,
-      'Cache-Control': isHtml ? 'no-cache' : 'public, max-age=3600'
+      'Cache-Control': noCache ? 'no-cache, must-revalidate' : 'public, max-age=3600'
     });
     res.end(content);
   });

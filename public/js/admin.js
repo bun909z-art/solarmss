@@ -60,21 +60,24 @@
   }
 
   // ---------- AUTH ----------
+  function setAuthView(authed) {
+    const ls = $('loginScreen'), app = $('adminApp');
+    if (ls) { ls.hidden = authed; ls.style.display = authed ? 'none' : 'grid'; }
+    if (app) { app.hidden = !authed; app.style.display = authed ? 'flex' : 'none'; }
+  }
+
   async function checkSession() {
     try {
       const me = await api('/api/admin/me');
       if (me.authenticated) {
-        $('loginScreen').hidden = true;
-        $('adminApp').hidden = false;
+        setAuthView(true);
         await loadAdminData();
       } else {
         setStoredToken('');
-        $('loginScreen').hidden = false;
-        $('adminApp').hidden = true;
+        setAuthView(false);
       }
     } catch (err) {
-      $('loginScreen').hidden = false;
-      $('adminApp').hidden = true;
+      setAuthView(false);
       if ($('loginErr') && err && err.message) $('loginErr').textContent = err.message;
     }
   }
@@ -89,8 +92,7 @@
       });
       if (res.token) setStoredToken(res.token);
       $('loginPass').value = '';
-      $('loginScreen').hidden = true;
-      $('adminApp').hidden = false;
+      setAuthView(true);
       await loadAdminData();
     } catch (err) {
       $('loginErr').textContent = err.message || 'Đăng nhập thất bại.';
