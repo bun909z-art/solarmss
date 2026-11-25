@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quản trị giao diện – Hoàng Quân Pin Hybrid</title>
 <link rel="icon" type="image/png" href="/assets/favicon.png">
-<link rel="stylesheet" href="/css/admin.css?v=32">
+<link rel="stylesheet" href="/css/admin.css?v=33">
 </head>
 <body>
 
@@ -721,6 +721,16 @@
               ⬆ Tải gói .zip &amp; Cập nhật trang web
               <input type="file" id="siteUpdateZipFile" accept=".zip,application/zip" hidden>
             </label>
+                        <div id="updateProgressBox" hidden style="margin-top:10px;padding:12px;border-radius:12px;background:#F8FAFC;border:1px solid #E2E8F0">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
+                <span id="updFileName" style="font-size:12px;font-weight:800;color:#0F172A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+                <span id="updPercent" style="font-size:13.5px;font-weight:900;color:#EA580C;flex:none">0%</span>
+              </div>
+              <div style="height:10px;border-radius:999px;background:#E2E8F0;overflow:hidden">
+                <div id="updBarFill" style="height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,#F26A1B,#FFB400);transition:width .22s ease"></div>
+              </div>
+              <div id="updStatusText" style="margin-top:6px;font-size:12px;font-weight:700;color:#475569">Đang chuẩn bị...</div>
+            </div>
             <div id="updateStatusBox" hidden style="margin-top:8px;padding:10px 12px;border-radius:10px;font-size:12px;line-height:1.5;font-weight:700;background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE"></div>
             <hr class="sep">
           </div>
@@ -832,12 +842,12 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="/js/admin/core.js?v=32"></script>
-<script src="/js/admin/config-ui.js?v=32"></script>
-<script src="/js/admin/products-ui.js?v=32"></script>
-<script src="/js/admin/news-ui.js?v=32"></script>
-<script src="/js/admin/leads-ui.js?v=32"></script>
-<script src="/js/admin/system-ui.js?v=32"></script>
-<script src="/js/admin/init.js?v=32"></script>
+<script src="/js/admin/core.js?v=33"></script>
+<script src="/js/admin/config-ui.js?v=33"></script>
+<script src="/js/admin/products-ui.js?v=33"></script>
+<script src="/js/admin/news-ui.js?v=33"></script>
+<script src="/js/admin/leads-ui.js?v=33"></script>
+<script src="/js/admin/system-ui.js?v=33"></script>
+<script src="/js/admin/init.js?v=33"></script>
 </body>
 </html>

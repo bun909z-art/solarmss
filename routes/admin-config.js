@@ -3,7 +3,9 @@
 const store = require('../lib/store');
 const productStore = require('../lib/products');
 const newsStore = require('../lib/news');
+const path = require('path');
 const leadStore = require('../lib/leads');
+const updater = require('../lib/updater');
 const { sendJson, readJsonBody, requireAdmin } = require('../lib/http-helpers');
 
 async function handleAdminConfig(req, res, pathname, method, authState) {
@@ -71,17 +73,59 @@ async function handleAdminConfig(req, res, pathname, method, authState) {
     return true;
   }
 
+  if (pathname === '/api/admin/update-package' && method === 'POST') {
+    if (!requireAdmin(req, res, authState, ['security'])) return true;
+    const body = await readJsonBody(req, 30 * 1024 * 1024);
+    if (!body || !body.base64) {
+      return sendJson(res, 400, { error: 'Thiếu dữ liệu tệp ZIP tải lên.' }), true;
+    }
+    try {
+      const appRoot = path.resolve(__dirname, '..');
+      const result = updater.applyZipUpdate(body.base64, appRoot, { store, productStore, newsStore, leadStore });
+      sendJson(res, 200, { ok: true, ...result });
+      if (body.autoRestart && result.needsRestart && process.env.HQ_DISABLE_AUTO_EXIT !== '1') {
+        setTimeout(() => { process.exit(0); }, 1200);
+      }
+      return true;
+    } catch (err) {
+      return sendJson(res, 400, { error: err.message || 'Gói ZIP không hợp lệ hoặc không thể giải nén.' }), true;
+    }
+  }
+
   if (pathname === '/api/admin/restore-full' && method === 'POST') {
     if (!requireAdmin(req, res, authState, ['security'])) return true;
-    const body = await readJsonBody(req, 12 * 1024 * 1024);
-    if (body.config && typeof body.config === 'object') store.saveConfig(body.config);
-    if (Array.isArray(body.products)) productStore.saveProducts(body.products);
-    if (Array.isArray(body.news)) newsStore.saveNews(body.news);
-    if (Array.isArray(body.leads)) {
-      for (const l of body.leads) leadStore.upsertLead(l);
+    const body = await readJsonBody(req, 25 * 1024 * 1024);
+    const updatedSections = [];
+    if (Array.isArray(body)) {
+      productStore.saveProducts(body);
+      updatedSections.push(`Kho sản phẩm (${body.length})`);
+    } else if (body && typeof body === 'object') {
+      if (body.config && typeof body.config === 'object') {
+        store.saveConfig(body.config);
+        updatedSections.push('Cấu hình giao diện');
+      } else if (body.branding || body.theme || body.hero || body.home || body.tariffs || body.sections || body.footer) {
+        store.saveConfig(body);
+        updatedSections.push('Cấu hình giao diện');
+      }
+      if (Array.isArray(body.products)) {
+        productStore.saveProducts(body.products);
+        updatedSections.push(`Kho sản phẩm (${body.products.length})`);
+      }
+      if (Array.isArray(body.news)) {
+        newsStore.saveNews(body.news);
+        updatedSections.push(`Tin tức (${body.news.length})`);
+      }
+      if (Array.isArray(body.leads)) {
+        for (const l of body.leads) leadStore.upsertLead(l);
+        updatedSections.push(`Khách hàng (${body.leads.length})`);
+      }
+    }
+    if (!updatedSections.length) {
+      return sendJson(res, 400, { error: 'Tệp JSON không chứa dữ liệu cấu hình, sản phẩm, tin tức hay khách hàng hợp lệ.' }), true;
     }
     return sendJson(res, 200, {
       ok: true,
+      updatedSections,
       config: store.loadConfig(),
       productsCount: productStore.loadProducts().length,
       newsCount: newsStore.loadNews().length,

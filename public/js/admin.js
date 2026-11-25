@@ -1370,81 +1370,139 @@
     };
   }
   
-  if ($('siteUpdateZipFile')) {
-    $('siteUpdateZipFile').addEventListener('change', e => {
-      const file = e.target.files[0]; if (!file) return;
-      if (!file.name.toLowerCase().endsWith('.zip')) {
-        e.target.value = '';
-        return toast('Vui lòng chọn tệp gói cập nhật định dạng .zip.');
-      }
-      if (file.size > 18 * 1024 * 1024) {
-        e.target.value = '';
-        return toast('Gói cập nhật ZIP tối đa 18MB.');
-      }
-      if (!confirm(`Cập nhật trang web bằng gói "${file.name}"?\n\nHệ thống sẽ tự động sao lưu, giải nén mã nguồn mới, xóa tệp cũ và bảo toàn toàn bộ sản phẩm + cài đặt hiện có.`)) {
-        e.target.value = '';
-        return;
-      }
-      const box = $('updateStatusBox');
-      if (box) {
-        box.hidden = false;
-        box.style.background = '#EFF6FF'; box.style.color = '#1D4ED8'; box.style.borderColor = '#BFDBFE';
-        box.textContent = `⏳ Đang tải lên & giải nén "${file.name}"... Vui lòng không đóng trình duyệt.`;
-      }
-      const reader = new FileReader();
-      reader.onload = async () => {
-        try {
-          const bytes = new Uint8Array(reader.result);
-          let bin = '';
-          const chunk = 0x8000;
-          for (let i = 0; i < bytes.length; i += chunk) {
-            bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
-          }
-          const autoRestart = $('updAutoRestart') ? $('updAutoRestart').checked : true;
-          const res = await api('/api/admin/update-package', {
-            method: 'POST',
-            body: JSON.stringify({ filename: file.name, base64: btoa(bin), autoRestart })
-          });
-          if (box) {
-            box.style.background = '#ECFDF5'; box.style.color = '#047857'; box.style.borderColor = '#A7F3D0';
-            const pr = res.preserved || {};
-            box.innerHTML = `✅ <b>Cập nhật hoàn tất!</b><br>• Đã cập nhật <b>${res.updatedCount}</b> tệp mới &amp; xóa <b>${res.removedCount}</b> tệp cũ.<br>• Đã đồng bộ &amp; giữ nguyên: <b>${pr.products || 0}</b> sản phẩm, <b>${pr.news || 0}</b> tin tức, <b>${pr.leads || 0}</b> khách hàng, <b>${pr.uploads || 0}</b> tệp tải lên.<br>• Bản sao lưu an toàn: <code>${escapeAttr(res.backupFile || '')}</code>${autoRestart ? '<br>🔄 Đang tự khởi động lại server và tải lại trang...' : '<br>👉 Khởi động lại <code>node server.js</code> để áp dụng bản mới.'}`;
-          }
-          toast('Cập nhật trang web thành công!');
-          if (autoRestart) {
-            setTimeout(() => { window.location.reload(); }, 3200);
-          }
-        } catch (err) {
-          if (box) {
-            box.style.background = '#FEF2F2'; box.style.color = '#B91C1C'; box.style.borderColor = '#FECACA';
-            box.textContent = '❌ Lỗi cập nhật: ' + (err.message || 'Gói ZIP không hợp lệ.');
-          }
-          toast(err.message || 'Cập nhật thất bại.');
-        }
-        e.target.value = '';
+  function setUpdateProgress(pct, text, state = 'working', filename = null) {
+    const box = $('updateProgressBox');
+    if (!box) return;
+    box.hidden = false;
+    if (filename !== null && $('updFileName')) $('updFileName').textContent = filename;
+    const p = Math.max(0, Math.min(100, Math.round(pct)));
+    if ($('updPercent')) {
+      $('updPercent').textContent = p + '%';
+      $('updPercent').style.color = state === 'error' ? '#DC2626' : state === 'done' ? '#059669' : '#EA580C';
+    }
+    if ($('updBarFill')) {
+      $('updBarFill').style.width = p + '%';
+      $('updBarFill').style.background = state === 'error' ? '#EF4444' : state === 'done' ? 'linear-gradient(90deg,#10B981,#059669)' : 'linear-gradient(90deg,#F26A1B,#FFB400)';
+    }
+    if ($('updStatusText')) {
+      $('updStatusText').textContent = text;
+      $('updStatusText').style.color = state === 'error' ? '#B91C1C' : state === 'done' ? '#047857' : '#475569';
+    }
+  }
+
+  function postWithProgress(url, jsonBody, onUploadPct) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', url, true);
+      xhr.withCredentials = true;
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      if (AUTH_TOKEN) xhr.setRequestHeader('Authorization', 'Bearer ' + AUTH_TOKEN);
+      xhr.upload.onprogress = ev => {
+        if (ev.lengthComputable && onUploadPct) onUploadPct(ev.loaded / ev.total);
       };
-      reader.readAsArrayBuffer(file);
+      xhr.onload = () => {
+        let data = {};
+        try { data = JSON.parse(xhr.responseText || '{}'); } catch {}
+        if (xhr.status >= 200 && xhr.status < 300) resolve(data);
+        else reject(new Error(data.error || `Lỗi máy chủ (${xhr.status})`));
+      };
+      xhr.onerror = () => reject(new Error('Mất kết nối máy chủ khi tải tệp lên.'));
+      xhr.send(jsonBody);
+    });
+  }
+
+  if ($('siteUpdateZipFile')) {
+    $('siteUpdateZipFile').addEventListener('change', async e => {
+      const file = e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+      const box = $('updateStatusBox');
+      if (box) box.hidden = true;
+      const kb = Math.max(1, Math.round(file.size / 1024));
+      setUpdateProgress(8, 'Đang đọc gói cập nhật từ máy tính...', 'working', `📦 ${file.name} (${kb} KB)`);
+
+      try {
+        if (!file.name.toLowerCase().endsWith('.zip')) {
+          throw new Error('Vui lòng chọn tệp gói cập nhật định dạng .zip.');
+        }
+        if (file.size > 24 * 1024 * 1024) {
+          throw new Error('Gói cập nhật ZIP tối đa 24MB.');
+        }
+        const buf = await file.arrayBuffer();
+        setUpdateProgress(22, 'Đang kiểm tra chữ ký & cấu trúc gói ZIP...', 'working');
+        const bytes = new Uint8Array(buf);
+        if (bytes.length < 22 || bytes[0] !== 0x50 || bytes[1] !== 0x4b) {
+          throw new Error('Tệp không phải định dạng ZIP hợp lệ hoặc bị hỏng.');
+        }
+        let bin = '';
+        const chunk = 0x8000;
+        for (let i = 0; i < bytes.length; i += chunk) {
+          bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+        }
+        const b64 = btoa(bin);
+        const autoRestart = $('updAutoRestart') ? $('updAutoRestart').checked : true;
+        setUpdateProgress(35, 'Đang tải gói cập nhật lên máy chủ...', 'working');
+        const res = await postWithProgress(
+          '/api/admin/update-package',
+          JSON.stringify({ filename: file.name, base64: b64, autoRestart }),
+          ratio => setUpdateProgress(35 + ratio * 45, `Đang tải gói cập nhật lên máy chủ (${Math.round(ratio * 100)}%)...`, 'working')
+        );
+        setUpdateProgress(92, 'Đang giải nén, kiểm tra & đồng bộ dữ liệu...', 'working');
+        await new Promise(r => setTimeout(r, 250));
+        setUpdateProgress(100, `✅ Hoàn tất cập nhật ${res.updatedCount} tệp mã nguồn!`, 'done');
+        if (box) {
+          box.hidden = false;
+          box.style.background = '#ECFDF5'; box.style.color = '#047857'; box.style.borderColor = '#A7F3D0';
+          const pr = res.preserved || {};
+          box.innerHTML = `✅ <b>Cập nhật hoàn tất!</b><br>• Đã cập nhật <b>${res.updatedCount}</b> tệp mới (bỏ qua ${res.skippedCount || 0} tệp hệ thống).<br>• Đã bảo toàn 100%: <b>${pr.products || 0}</b> sản phẩm, <b>${pr.news || 0}</b> tin tức, <b>${pr.leads || 0}</b> khách hàng, <b>${pr.uploads || 0}</b> tệp tải lên.<br>• Bản sao lưu an toàn: <code>${escapeAttr(res.backupFile || '')}</code>${(autoRestart && res.needsRestart) ? '<br>🔄 Đang tự khởi động lại server và tải lại trang...' : (res.needsRestart ? '<br>👉 Khởi động lại <code>node server.js</code> để áp dụng bản mới.' : '<br>🔄 Đang tải lại giao diện...')}`;
+        }
+        toast('Cập nhật trang web thành công!');
+        if (autoRestart || !res.needsRestart) {
+          setTimeout(() => { window.location.reload(); }, 3000);
+        }
+      } catch (err) {
+        setUpdateProgress(100, '❌ Lỗi: ' + (err.message || 'Cập nhật thất bại.'), 'error');
+        if (box) {
+          box.hidden = false;
+          box.style.background = '#FEF2F2'; box.style.color = '#B91C1C'; box.style.borderColor = '#FECACA';
+          box.textContent = '❌ Lỗi cập nhật: ' + (err.message || 'Gói ZIP không hợp lệ.');
+        }
+        toast(err.message || 'Cập nhật thất bại.');
+      }
     });
   }
 
   if ($('fullRestoreFile')) {
-    $('fullRestoreFile').addEventListener('change', e => {
-      const f = e.target.files[0]; if (!f) return;
-      const rd = new FileReader();
-      rd.onload = async () => {
-        try {
-          const parsed = JSON.parse(rd.result);
-          const res = await api('/api/admin/restore-full', { method: 'POST', body: JSON.stringify(parsed) });
-          await initAdmin();
-          toast(`Đã khôi phục toàn bộ (${res.productsCount} SP, ${res.newsCount} tin tức, ${res.leadsCount} khách hàng)!`);
-        } catch (err) { toast(err.message || 'Tệp sao lưu JSON không hợp lệ.'); }
-        e.target.value = '';
-      };
-      rd.readAsText(f, 'utf-8');
+    $('fullRestoreFile').addEventListener('change', async e => {
+      const f = e.target.files[0];
+      e.target.value = '';
+      if (!f) return;
+      const kb = Math.max(1, Math.round(f.size / 1024));
+      setUpdateProgress(12, 'Đang đọc tệp sao lưu JSON...', 'working', `📄 ${f.name} (${kb} KB)`);
+      try {
+        const text = await f.text();
+        setUpdateProgress(32, 'Đang kiểm tra tính hợp lệ của dữ liệu JSON...', 'working');
+        let parsed;
+        try { parsed = JSON.parse(text); } catch { throw new Error('Tệp JSON bị lỗi cú pháp.'); }
+        setUpdateProgress(48, 'Đang tải dữ liệu khôi phục lên máy chủ...', 'working');
+        const res = await postWithProgress(
+          '/api/admin/restore-full',
+          JSON.stringify(parsed),
+          ratio => setUpdateProgress(48 + ratio * 36, `Đang tải dữ liệu (${Math.round(ratio * 100)}%)...`, 'working')
+        );
+        setUpdateProgress(92, 'Đang đồng bộ lại giao diện quản trị...', 'working');
+        await initAdmin();
+        const sec = Array.isArray(res.updatedSections) ? res.updatedSections.join(', ') : 'toàn bộ dữ liệu';
+        const msg = `✅ Đã khôi phục thành công: ${sec}!`;
+        setUpdateProgress(100, msg, 'done');
+        toast(msg);
+      } catch (err) {
+        setUpdateProgress(100, '❌ ' + (err.message || 'Tệp sao lưu JSON không hợp lệ.'), 'error');
+        toast(err.message || 'Tệp sao lưu JSON không hợp lệ.');
+      }
     });
   }
 
-  
   // ---------- TELEGRAM BOT SETTINGS (IN TAB TÀI KHOẢN) ----------
   if ($('btnSaveTelegram')) {
     $('btnSaveTelegram').onclick = async () => {
@@ -1454,11 +1512,10 @@
           body: JSON.stringify({
             enabled: $('tg_enabled').checked,
             botToken: $('tg_botToken').value.trim(),
-            chatId: $('tg_chatId').value.trim(),
-            onlyWithContactOrCombo: $('tg_onlyContact').checked
+            chatId: $('tg_chatId').value.trim()
           })
         });
-        toast('Đã lưu cấu hình thông báo Telegram!');
+        toast('Đã lưu cấu hình Telegram Bot!');
       } catch (err) { toast(err.message); }
     };
   }
