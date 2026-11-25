@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quản trị giao diện – Hoàng Quân Pin Hybrid</title>
 <link rel="icon" type="image/png" href="/assets/favicon.png">
-<link rel="stylesheet" href="/css/admin.css?v=19">
+<link rel="stylesheet" href="/css/admin.css?v=23">
 </head>
 <body>
 
@@ -49,6 +49,7 @@
     <aside class="adm-sidebar">
       <nav class="adm-tabs" role="tablist">
         <button type="button" class="tab-btn active" data-tab="branding">Thương hiệu</button>
+        <button type="button" class="tab-btn" data-tab="home">Trang chủ</button>
         <button type="button" class="tab-btn" data-tab="theme">Màu sắc &amp; Hero</button>
         <button type="button" class="tab-btn" data-tab="layout">Bố cục &amp; Tiêu đề</button>
         <button type="button" class="tab-btn" data-tab="tariffs">Thông số &amp; EVN</button>
@@ -109,6 +110,74 @@
         </section>
 
         <!-- TAB 2: THEME & HERO -->
+                <!-- TAB HOME -->
+        <section class="tab-pane" id="tab-home">
+          <h3>Thanh trượt Bài viết nổi bật</h3>
+          <div class="toggle-row">
+            <span>Hiển thị slider bài viết nổi bật</span>
+            <input type="checkbox" id="hm_showSlider">
+          </div>
+          <div class="toggle-row">
+            <span>Tự động trượt ngang</span>
+            <input type="checkbox" id="hm_autoSlide">
+          </div>
+          <div class="two-col">
+            <div class="field-row">
+              <label class="f-lbl">Nhãn nhỏ trên tiêu đề</label>
+              <input type="text" id="hm_sliderKicker" class="f-input" placeholder="★ Nổi bật">
+            </div>
+            <div class="field-row">
+              <label class="f-lbl">Thời gian trượt (giây)</label>
+              <input type="number" id="hm_sliderIntervalSec" class="f-input" min="2" max="15" step="0.5">
+            </div>
+          </div>
+          <div class="field-row">
+            <label class="f-lbl">Tiêu đề mục bài viết nổi bật</label>
+            <input type="text" id="hm_sliderTitle" class="f-input">
+          </div>
+          <div class="field-row">
+            <label class="f-lbl">Chiều cao banner ảnh (<span id="hmSliderHVal">430</span>px)</label>
+            <input type="range" id="hm_sliderHeight" min="300" max="560" step="10">
+          </div>
+
+          <hr class="sep">
+          <h3>3 Thẻ giải pháp nhanh</h3>
+          <div class="toggle-row">
+            <span>Hiển thị khối 3 thẻ giải pháp</span>
+            <input type="checkbox" id="hm_showQuickCards">
+          </div>
+          <div id="homeQuickEditor" class="list-editor"></div>
+
+          <hr class="sep">
+          <h3>Sản phẩm tiêu biểu &amp; Liên hệ</h3>
+          <div class="toggle-row">
+            <span>Hiển thị mục Sản phẩm tiêu biểu</span>
+            <input type="checkbox" id="hm_showFeaturedProducts">
+          </div>
+          <div class="two-col">
+            <div class="field-row">
+              <label class="f-lbl">Nhãn nhỏ</label>
+              <input type="text" id="hm_productsKicker" class="f-input">
+            </div>
+            <div class="field-row">
+              <label class="f-lbl">Số sản phẩm hiển thị</label>
+              <select id="hm_productsCount" class="f-input">
+                <option value="4">4 sản phẩm (1 hàng)</option>
+                <option value="8">8 sản phẩm (2 hàng)</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-row">
+            <label class="f-lbl">Tiêu đề mục Sản phẩm tiêu biểu</label>
+            <input type="text" id="hm_productsTitle" class="f-input">
+          </div>
+          <div class="toggle-row">
+            <span>Hiển thị khung "Liên hệ ngay" cuối Trang chủ</span>
+            <input type="checkbox" id="hm_showContactCta">
+          </div>
+          <p class="hint">Để chọn bài viết nào hiện trên thanh trượt, vào tab <b>Tin tức</b> và tick <b>⭐ Nổi bật Trang chủ</b>.</p>
+        </section>
+
         <section class="tab-pane" id="tab-theme">
           <h3>Bộ giao diện mẫu (Presets)</h3>
           <div class="preset-grid" id="presetGrid"></div>
@@ -441,6 +510,7 @@
             <textarea id="nn_content" class="f-input" rows="5" placeholder="Nhập nội dung chi tiết bài viết (ngắt đoạn bằng phím Enter)..."></textarea>
           </div>
           <div class="field-row">
+            <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;margin-bottom:8px"><input type="checkbox" id="nn_featured" checked> ⭐ Hiển thị ở thanh trượt Nổi bật Trang chủ</label>
             <button type="button" class="btn-primary full" id="btnAddNews">+ Thêm bài viết</button>
           </div>
 
@@ -550,7 +620,7 @@
     <!-- Right Live Preview -->
     <section class="adm-preview">
       <div class="preview-bar">
-        <span class="preview-title">Xem trước trực tiếp (Live Preview)</span>
+        <div style="display:flex;align-items:center;gap:8px"><span class="preview-title">Xem trước:</span><button type="button" class="vp-btn active" data-preview-page="/">Trang chủ</button><button type="button" class="vp-btn" data-preview-page="/?preview=1">Tư vấn</button></div>
         <div class="viewport-btns">
           <button type="button" class="vp-btn active" data-vp="100%">Desktop</button>
           <button type="button" class="vp-btn" data-vp="820px">Tablet</button>
@@ -558,7 +628,7 @@
         </div>
       </div>
       <div class="preview-stage">
-        <iframe id="previewFrame" src="/?preview=1" title="Xem trước giao diện"></iframe>
+        <iframe id="previewFrame" src="/" title="Xem trước giao diện"></iframe>
       </div>
     </section>
   </div>
@@ -566,6 +636,6 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="/js/admin.js?v=19"></script>
+<script src="/js/admin.js?v=23"></script>
 </body>
 </html>

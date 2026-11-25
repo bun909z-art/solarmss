@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title id="docTitle">Trang chủ – Hoàng Quân Electronics &amp; Energy</title>
+<meta name="theme-color" content="#F26A1B" id="metaTheme">
+<link rel="icon" type="image/png" href="/assets/favicon.png" id="docFavicon">
+<link rel="stylesheet" href="/css/app.css?v=24">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="brand" href="/" aria-label="Trang chủ">
+      <img id="brandLogo" src="/assets/logo-default.jpg" alt="Hoàng Quân – Electronics & Energy">
+    </a>
+
+    <nav class="main-nav" aria-label="Điều hướng chính">
+      <a href="/" class="nav-link active">Trang chủ</a>
+      <a href="/tuvan" class="nav-link">Tư vấn</a>
+      <a href="/products" class="nav-link">Sản phẩm tham khảo</a>
+      <a href="/news" class="nav-link">Tin tức</a>
+    </nav>
+
+    <div class="topbar-right">
+      <div class="hotline" id="hotlineWrap">
+        <span class="hotline-label" id="hotlineLabel">Hotline tư vấn kỹ thuật</span>
+        <div class="hotline-list" id="hotlineList"></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap main-wrap home-main">
+  <!-- FEATURED NEWS HORIZONTAL SLIDER -->
+  <section class="home-slider-section" id="homeSliderSection" aria-label="Bài viết nổi bật">
+    <div class="home-sec-head">
+      <div>
+        <span class="home-kicker" id="homeSliderKicker">★ Nổi bật</span>
+        <h1 class="home-sec-title" id="homeSliderTitle">Tin tức &amp; Dự án nổi bật</h1>
+      </div>
+      <div class="slider-controls">
+        <a href="/news" class="home-more-link">Xem tất cả tin tức →</a>
+      </div>
+    </div>
+
+    <div class="featured-slider-wrap">
+      <button type="button" class="hero-slider-arrow prev" id="slidePrev" aria-label="Bài trước"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <div class="featured-slider-track" id="featuredSliderTrack"></div>
+      <button type="button" class="hero-slider-arrow next" id="slideNext" aria-label="Bài tiếp theo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg></button>
+      <div class="slider-dots" id="sliderDots" role="tablist" aria-label="Chọn bài viết nổi bật"></div>
+    </div>
+  </section>
+
+  <!-- QUICK SOLUTIONS STRIP -->
+  <section class="home-quick-grid" id="homeQuickGrid">
+    <a href="/tuvan" class="card home-quick-card primary-card">
+      <div class="hq-icon">⚡</div>
+      <h3>Tư vấn &amp; Tính Pin Hybrid</h3>
+      <p>Nhập hóa đơn EVN hoặc số kWh để tính dung lượng pin lưu trữ cần thiết và nhận 3 gợi ý Combo lắp đặt chi tiết.</p>
+      <span class="news-readmore">Tính ngay →</span>
+    </a>
+    <a href="/products" class="card home-quick-card">
+      <div class="hq-icon">🔋</div>
+      <h3>Sản phẩm &amp; Phụ kiện chính hãng</h3>
+      <p>Khám phá Inverter Hybrid, Tấm pin mặt trời, Pin Lithium LFP và trọn bộ Phụ kiện lắp đặt kèm thông số, Datasheet.</p>
+      <span class="news-readmore">Xem sản phẩm →</span>
+    </a>
+    <a href="/news" class="card home-quick-card">
+      <div class="hq-icon">📰</div>
+      <h3>Kiến thức &amp; Dự án thực tế</h3>
+      <p>Cập nhật kinh nghiệm chọn cấu hình, quy định giá điện mới nhất và các công trình Hybrid đã bàn giao.</p>
+      <span class="news-readmore">Đọc tin tức →</span>
+    </a>
+  </section>
+
+  <!-- FEATURED PRODUCTS PREVIEW -->
+  <section class="home-prods-section" id="homeProdsSection">
+    <div class="home-sec-head">
+      <div>
+        <span class="home-kicker" id="homeProdsKicker">Thiết bị chính hãng</span>
+        <h2 class="home-sec-title" id="homeProdsTitle">Sản phẩm tiêu biểu</h2>
+      </div>
+      <a href="/products" class="home-more-link">Tất cả sản phẩm →</a>
+    </div>
+    <div class="catalog-grid home-prods-grid" id="homeProdsGrid"></div>
+  </section>
+
+  <!-- BOTTOM CONTACT CTA -->
+  <section class="card contact-cta" id="contactCtaCard" style="margin-top:28px">
+    <div class="cta-head">
+      <h2 id="ctaTitle">Liên hệ ngay để được tư vấn &amp; khảo sát miễn phí</h2>
+      <p id="ctaSubtitle">Gọi trực tiếp hoặc kết nối qua Zalo để nhận báo giá chi tiết và phương án lắp đặt phù hợp nhất.</p>
+      <p class="cta-addr" id="ctaAddress" hidden></p>
+    </div>
+    <div class="cta-list" id="ctaList"></div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="co" id="footerCompany">CTY HOÀNG QUÂN – Electronics &amp; Energy</div>
+  </div>
+</footer>
+
+<script src="/js/home-page.js?v=24"></script>
+</body>
+</html>

@@ -8,7 +8,12 @@
     medium: '0 2px 6px rgba(15,23,42,.04), 0 12px 28px rgba(15,23,42,.07)',
     strong: '0 4px 12px rgba(15,23,42,.08), 0 20px 44px rgba(15,23,42,.14)'
   };
-  const CAT_LABEL = { inverter: 'Inverter Hybrid', panel: 'Pin mặt trời', battery: 'Pin lưu trữ', accessory: 'Phụ kiện lắp đặt' };
+  const CAT_LABEL = {
+    inverter: 'Inverter Hybrid',
+    panel: 'Pin mặt trời',
+    battery: 'Pin lưu trữ',
+    accessory: 'Phụ kiện lắp đặt'
+  };
 
   let CFG = null;
   let PRODUCTS = [];
@@ -35,6 +40,20 @@
     return { tel, zalo };
   }
 
+  function getStockMeta(p) {
+    const st = p.stockStatus || (p.inStock === false ? 'out_of_stock' : 'in_stock');
+    if (st === 'out_of_stock') return { cls: 'out-stock', label: 'Hết hàng', badge: '● Hết hàng', out: true };
+    if (st === 'contact') return { cls: 'contact-stock', label: 'Liên hệ', badge: '● Liên hệ', out: false };
+    return { cls: 'in-stock', label: 'Còn hàng', badge: '● Còn hàng', out: false };
+  }
+
+  function getSpecText(p) {
+    if (p.category === 'inverter') return `${p.powerKw} kW · ${p.phase || '1 pha'}`;
+    if (p.category === 'panel') return `${p.wattWp} Wp`;
+    if (p.category === 'battery') return `${p.capacityKwh} kWh`;
+    return p.specText || 'Phụ kiện lắp đặt';
+  }
+
   function applyTheme(cfg) {
     CFG = cfg;
     const t = cfg.theme || {}, b = cfg.branding || {}, f = cfg.footer || {};
@@ -54,7 +73,9 @@
     r.setProperty('--logo-h', (Number(b.logoHeight) || 54) + 'px');
     r.setProperty('--shadow', SHADOW_MAP[t.shadowLevel] || SHADOW_MAP.medium);
     document.body.classList.toggle('dark-mode', Boolean(t.darkMode));
-    if ($('heroSection') && cfg.hero && cfg.hero.style) $('heroSection').className = 'hero-banner style-' + cfg.hero.style;
+    if ($('heroSection') && cfg.hero && cfg.hero.style) {
+      $('heroSection').className = 'hero-banner style-' + cfg.hero.style;
+    }
 
     if (b.logoUrl) $('brandLogo').src = b.logoUrl;
     if (b.faviconUrl) $('docFavicon').href = b.faviconUrl;
@@ -87,34 +108,58 @@
     $('footerCompany').textContent = f.companyLine || b.companyName || '';
   }
 
-  function getStockMeta(p) {
-    const st = p.stockStatus || (p.inStock === false ? 'out_of_stock' : 'in_stock');
-    if (st === 'out_of_stock') return { cls: 'out-stock', label: 'Hết hàng', badge: '● Hết hàng', out: true };
-    if (st === 'contact') return { cls: 'contact-stock', label: 'Liên hệ', badge: '● Liên hệ', out: false };
-    return { cls: 'in-stock', label: 'Còn hàng', badge: '● Còn hàng', out: false };
+  function renderCardHtml(p, idx, attrName) {
+    const { tel, zalo } = getPrimaryContact();
+    const spec = esc(getSpecText(p));
+    const img = esc(p.imageUrl || `/assets/prod-${p.category}.jpg`);
+    const hasDocs = Boolean(p.datasheetUrl || (p.attachments && p.attachments.length));
+    const sm = getStockMeta(p);
+    return `<article class="card prod-card${sm.out ? ' out-of-stock' : ''}" ${attrName}="${idx}">
+      <div class="prod-img-wrap">
+        <img src="${img}" alt="${esc(p.name)}" loading="lazy">
+        <span class="prod-cat-tag">${esc(CAT_LABEL[p.category] || p.category)}</span>
+        ${hasDocs ? '<span class="prod-doc-badge">📄 Datasheet</span>' : ''}
+        <span class="prod-stock-badge ${sm.cls}">${sm.badge}</span>
+      </div>
+      <div class="prod-body">
+        <div class="prod-meta-top">
+          ${p.brand ? `<span class="prod-brand">${esc(p.brand)}</span>` : '<span></span>'}
+          <span class="prod-spec-pill">${spec}</span>
+        </div>
+        <h3 class="prod-name">${esc(p.name)}</h3>
+        ${p.warranty ? `<div class="prod-detail">Bảo hành: <b>${esc(p.warranty)}</b></div>` : ''}
+        ${p.description ? `<p class="prod-desc">${esc(p.description)}</p>` : (p.note ? `<div class="prod-detail">${esc(p.note)}</div>` : '')}
+        <div class="prod-price-contact">
+          <span>Giá bán:</span>
+          <strong>Liên hệ để báo giá</strong>
+        </div>
+        <div class="prod-actions">
+          <a class="cta-btn call" style="flex:1;justify-content:center" href="tel:${tel}" onclick="event.stopPropagation()">📞 Gọi ngay</a>
+          ${zalo ? `<a class="cta-btn zalo" style="flex:1;justify-content:center" href="https://zalo.me/${zalo}" target="_blank" rel="noopener" onclick="event.stopPropagation()">💬 Zalo</a>` : ''}
+        </div>
+      </div>
+    </article>`;
   }
 
-  function openProductModal(p) {
+  function openStandaloneProduct(p, pushUrl = true) {
     if (!p) return;
-    const specPill = p.category === 'inverter'
-      ? `${p.powerKw} kW · ${p.phase || '1 pha'}`
-      : p.category === 'panel' ? `${p.wattWp} Wp`
-      : p.category === 'battery' ? `${p.capacityKwh} kWh`
-      : (p.specText || 'Phụ kiện lắp đặt');
-    $('pmImg').src = p.imageUrl || `/assets/prod-${p.category}.jpg`;
-    $('pmImg').alt = p.name || '';
-    $('pmBrand').textContent = `${CAT_LABEL[p.category] || p.category}${p.brand ? ' · ' + p.brand : ''}`;
-    $('pmSpecPill').textContent = specPill;
-    const sm = getStockMeta(p);
-    if ($('pmStockPill')) {
-      $('pmStockPill').textContent = sm.badge;
-      $('pmStockPill').className = 'pm-stock-pill ' + sm.cls;
-    }
-    $('pmTitle').textContent = p.name || '';
-    $('pmDesc').textContent = p.description || p.note || '';
-    $('pmDesc').hidden = !(p.description || p.note);
+    $('prodListView').hidden = true;
+    $('prodDetailView').hidden = false;
+    document.title = `${p.name} – Hoàng Quân Electronics & Energy`;
 
-    // Build Technical Specs rows
+    const sm = getStockMeta(p);
+    $('pdBreadcrumb').textContent = `${CAT_LABEL[p.category] || p.category}${p.brand ? ' / ' + p.brand : ''}`;
+    $('pdImg').src = p.imageUrl || `/assets/prod-${p.category}.jpg`;
+    $('pdImg').alt = p.name || '';
+    $('pdStockBadge').textContent = sm.badge;
+    $('pdStockBadge').className = 'prod-stock-badge ' + sm.cls;
+    $('pdBrand').textContent = `${CAT_LABEL[p.category] || p.category}${p.brand ? ' · ' + p.brand : ''}`;
+    $('pdSpecPill').textContent = getSpecText(p);
+    $('pdTitle').textContent = p.name || '';
+    $('pdDesc').textContent = p.description || p.note || '';
+    $('pdDesc').hidden = !(p.description || p.note);
+
+    // Specs table
     const rows = [];
     if (p.brand) rows.push(['Hãng sản xuất', p.brand]);
     rows.push(['Phân loại', CAT_LABEL[p.category] || p.category]);
@@ -137,42 +182,67 @@
         else rows.push(['Thông số', line]);
       });
     }
-    $('pmSpecsBody').innerHTML = rows.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('');
+    $('pdSpecsBody').innerHTML = rows.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('');
 
-    // Build Datasheet & Attachments
+    // Datasheet & Attachments (hidden if empty)
     const docs = [];
-    if (p.datasheetUrl) {
-      docs.push({ label: p.datasheetName || 'Tải Datasheet (Thông số kỹ thuật)', url: p.datasheetUrl, primary: true });
-    }
+    if (p.datasheetUrl) docs.push({ label: p.datasheetName || 'Tải Datasheet (Thông số kỹ thuật)', url: p.datasheetUrl, primary: true });
     if (Array.isArray(p.attachments)) {
-      p.attachments.forEach(a => {
-        if (a && a.url) docs.push({ label: a.name || 'Tài liệu đính kèm', url: a.url, primary: false });
-      });
+      p.attachments.forEach(a => { if (a && a.url) docs.push({ label: a.name || 'Tài liệu đính kèm', url: a.url, primary: false }); });
     }
-    $('pmDocsWrap').hidden = !docs.length;
-    $('pmDocsList').innerHTML = docs.length
-      ? docs.map(d =>
-          `<a class="doc-dl-btn${d.primary ? '' : ' secondary'}" href="${esc(d.url)}" download target="_blank" rel="noopener">${d.primary ? '📄' : '📎'} ${esc(d.label)}</a>`
-        ).join('')
+    $('pdDocsWrap').hidden = !docs.length;
+    $('pdDocsList').innerHTML = docs.length
+      ? docs.map(d => `<a class="doc-dl-btn${d.primary ? '' : ' secondary'}" href="${esc(d.url)}" download target="_blank" rel="noopener">${d.primary ? '📄' : '📎'} ${esc(d.label)}</a>`).join('')
       : '';
 
     const { tel, zalo } = getPrimaryContact();
-    $('pmActions').innerHTML = `
+    $('pdActions').innerHTML = `
       <a class="cta-btn call" style="flex:1;justify-content:center" href="tel:${tel}">📞 Gọi ngay</a>
       ${zalo ? `<a class="cta-btn zalo" style="flex:1;justify-content:center" href="https://zalo.me/${zalo}" target="_blank" rel="noopener">💬 Báo giá Zalo</a>` : ''}
     `;
 
-    $('prodModal').hidden = false;
-    document.body.style.overflow = 'hidden';
+    // Related products in same category
+    const related = PRODUCTS.filter(x => x && x.active !== false && x.id !== p.id && x.category === p.category).slice(0, 3);
+    $('relatedProdsWrap').hidden = !related.length;
+    $('relatedProdsGrid').innerHTML = related.map((r, i) => renderCardHtml(r, i, 'data-open-rel-prod')).join('');
+    $('relatedProdsGrid').querySelectorAll('[data-open-rel-prod]').forEach(card => {
+      card.onclick = () => openStandaloneProduct(related[+card.dataset.openRelProd], true);
+    });
+
+    if (pushUrl && window.history && window.history.pushState) {
+      window.history.pushState({ prodId: p.id }, '', `/products?id=${encodeURIComponent(p.id)}`);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  function closeModal() {
-    $('prodModal').hidden = true;
-    document.body.style.overflow = '';
+  function showProductList(pushUrl = true) {
+    $('prodDetailView').hidden = true;
+    $('prodListView').hidden = false;
+    document.title = 'Sản phẩm tham khảo – Hoàng Quân Electronics & Energy';
+    if (pushUrl && window.history && window.history.pushState) {
+      window.history.pushState({}, '', '/products');
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
-  $('pmClose').onclick = closeModal;
-  $('prodModal').addEventListener('click', e => { if (e.target === $('prodModal')) closeModal(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('prodModal').hidden) closeModal(); });
+
+  $('btnBackProds').onclick = () => showProductList(true);
+  if ($('navProductsLink')) {
+    $('navProductsLink').addEventListener('click', e => {
+      if (!$('prodDetailView').hidden) {
+        e.preventDefault();
+        showProductList(true);
+      }
+    });
+  }
+
+  window.addEventListener('popstate', () => {
+    const id = new URLSearchParams(window.location.search).get('id');
+    if (id) {
+      const found = PRODUCTS.find(p => p.id === id);
+      if (found) return openStandaloneProduct(found, false);
+    }
+    showProductList(false);
+  });
 
   function renderCatalog() {
     const active = PRODUCTS.filter(p => p && p.active !== false);
@@ -185,55 +255,18 @@
     const q = searchQ.trim().toLowerCase();
     const list = active.filter(p => {
       if (activeCat !== 'all' && p.category !== activeCat) return false;
-      if (q && !(`${p.name} ${p.brand} ${p.note} ${p.description}`.toLowerCase().includes(q))) return false;
+      if (q && !(`${p.name} ${p.brand} ${p.note} ${p.description} ${p.specs || ''}`.toLowerCase().includes(q))) return false;
       return true;
     });
-
-    const { tel, zalo } = getPrimaryContact();
 
     if (!list.length) {
       $('catalogGrid').innerHTML = '<div class="card" style="grid-column:1/-1;text-align:center;color:var(--ink-3)">Không tìm thấy sản phẩm phù hợp.</div>';
       return;
     }
 
-    $('catalogGrid').innerHTML = list.map((p, idx) => {
-      const spec = p.category === 'inverter'
-        ? `${p.powerKw} kW · ${esc(p.phase || '1 pha')}`
-        : p.category === 'panel' ? `${p.wattWp} Wp`
-        : p.category === 'battery' ? `${p.capacityKwh} kWh`
-        : esc(p.specText || 'Phụ kiện');
-      const img = esc(p.imageUrl || `/assets/prod-${p.category}.jpg`);
-      const hasDocs = Boolean(p.datasheetUrl || (p.attachments && p.attachments.length));
-      const sm = getStockMeta(p);
-      return `<article class="card prod-card${sm.out ? ' out-of-stock' : ''}" data-open-prod="${idx}">
-        <div class="prod-img-wrap">
-          <img src="${img}" alt="${esc(p.name)}" loading="lazy">
-          <span class="prod-cat-tag">${esc(CAT_LABEL[p.category] || p.category)}</span>
-          ${hasDocs ? '<span class="prod-doc-badge">📄 Datasheet</span>' : ''}
-          <span class="prod-stock-badge ${sm.cls}">${sm.badge}</span>
-        </div>
-        <div class="prod-body">
-          <div class="prod-meta-top">
-            ${p.brand ? `<span class="prod-brand">${esc(p.brand)}</span>` : '<span></span>'}
-            <span class="prod-spec-pill">${spec}</span>
-          </div>
-          <h3 class="prod-name">${esc(p.name)}</h3>
-          ${p.warranty ? `<div class="prod-detail">Bảo hành: <b>${esc(p.warranty)}</b></div>` : ''}
-          ${p.description ? `<p class="prod-desc">${esc(p.description)}</p>` : (p.note ? `<div class="prod-detail">${esc(p.note)}</div>` : '')}
-          <div class="prod-price-contact">
-            <span>Giá bán:</span>
-            <strong>Liên hệ để báo giá</strong>
-          </div>
-          <div class="prod-actions">
-            <a class="cta-btn call" style="flex:1;justify-content:center" href="tel:${tel}" onclick="event.stopPropagation()">📞 Gọi ngay</a>
-            ${zalo ? `<a class="cta-btn zalo" style="flex:1;justify-content:center" href="https://zalo.me/${zalo}" target="_blank" rel="noopener" onclick="event.stopPropagation()">💬 Zalo</a>` : ''}
-          </div>
-        </div>
-      </article>`;
-    }).join('');
-
+    $('catalogGrid').innerHTML = list.map((p, idx) => renderCardHtml(p, idx, 'data-open-prod')).join('');
     $('catalogGrid').querySelectorAll('[data-open-prod]').forEach(card => {
-      card.onclick = () => openProductModal(list[+card.dataset.openProd]);
+      card.onclick = () => openStandaloneProduct(list[+card.dataset.openProd], true);
     });
   }
 
@@ -254,5 +287,10 @@
     applyTheme(cfgData.config);
     PRODUCTS = Array.isArray(prodData.products) ? prodData.products : [];
     renderCatalog();
+    const initialId = new URLSearchParams(window.location.search).get('id');
+    if (initialId) {
+      const found = PRODUCTS.find(p => p.id === initialId);
+      if (found) openStandaloneProduct(found, false);
+    }
   }).catch(err => console.error(err));
 })();

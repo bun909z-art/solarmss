@@ -470,7 +470,13 @@ const server = http.createServer(async (req, res) => {
     }
 
     // ---------- PAGE & STATIC ROUTES ----------
-    if (pathname === '/' || pathname === '/index.html') {
+    if (pathname === '/' || pathname === '/home' || pathname === '/home.html') {
+      if (parsedUrl.searchParams.get('preview') === '1') {
+        return serveThemedHtml(res, path.join(PUBLIC_DIR, 'index.html'));
+      }
+      return serveThemedHtml(res, path.join(PUBLIC_DIR, 'home.html'));
+    }
+    if (pathname === '/tuvan' || pathname === '/tuvan/' || pathname === '/index.html') {
       return serveThemedHtml(res, path.join(PUBLIC_DIR, 'index.html'));
     }
     if (pathname === '/products' || pathname === '/products/' || pathname === '/products.html') {
@@ -511,7 +517,8 @@ if (require.main === module) {
   leadStore.loadLeads();
   server.listen(PORT, HOST, () => {
     console.log(`Hoàng Quân Pin Hybrid Server đang chạy tại:`);
-    console.log(`  • Trang tư vấn:  http://localhost:${PORT}`);
+    console.log(`  • Trang chủ:      http://localhost:${PORT}/`);
+    console.log(`  • Trang tư vấn:  http://localhost:${PORT}/tuvan`);
     console.log(`  • Trang quản trị: http://localhost:${PORT}/admin (Mật khẩu mặc định: admin123)`);
   });
 }

@@ -255,10 +255,56 @@
     setVal('f_ctaAddress', f.ctaAddress || '');
     setVal('f_callBtnText', f.callBtnText || 'Gọi ngay');
     setVal('f_zaloBtnText', f.zaloBtnText || 'Chat Zalo');
+    
+    const hm = CONFIG.home || (CONFIG.home = {
+      showSlider: true, sliderKicker: '★ Nổi bật', sliderTitle: 'Tin tức & Dự án nổi bật',
+      autoSlide: true, sliderIntervalSec: 4.5, sliderHeight: 430, showQuickCards: true,
+      quickCards: [
+        { icon: '⚡', title: 'Tư vấn & Tính Pin Hybrid', desc: 'Nhập hóa đơn EVN hoặc số kWh để tính dung lượng pin lưu trữ cần thiết và nhận 3 gợi ý Combo lắp đặt chi tiết.', cta: 'Tính ngay →', href: '/tuvan', primary: true },
+        { icon: '🔋', title: 'Sản phẩm & Phụ kiện chính hãng', desc: 'Khám phá Inverter Hybrid, Tấm pin mặt trời, Pin Lithium LFP và trọn bộ Phụ kiện lắp đặt kèm thông số, Datasheet.', cta: 'Xem sản phẩm →', href: '/products', primary: false },
+        { icon: '📰', title: 'Kiến thức & Dự án thực tế', desc: 'Cập nhật kinh nghiệm chọn cấu hình, quy định giá điện mới nhất và các công trình Hybrid đã bàn giao.', cta: 'Đọc tin tức →', href: '/news', primary: false }
+      ],
+      showFeaturedProducts: true, productsKicker: 'Thiết bị chính hãng', productsTitle: 'Sản phẩm tiêu biểu', productsCount: 4, showContactCta: true
+    });
+    setChk('hm_showSlider', hm.showSlider !== false);
+    setChk('hm_autoSlide', hm.autoSlide !== false);
+    setVal('hm_sliderKicker', hm.sliderKicker || '★ Nổi bật');
+    setVal('hm_sliderTitle', hm.sliderTitle || 'Tin tức & Dự án nổi bật');
+    setVal('hm_sliderIntervalSec', hm.sliderIntervalSec || 4.5);
+    setVal('hm_sliderHeight', hm.sliderHeight || 430);
+    if ($('hmSliderHVal')) $('hmSliderHVal').textContent = hm.sliderHeight || 430;
+    setChk('hm_showQuickCards', hm.showQuickCards !== false);
+    setChk('hm_showFeaturedProducts', hm.showFeaturedProducts !== false);
+    setVal('hm_productsKicker', hm.productsKicker || 'Thiết bị chính hãng');
+    setVal('hm_productsTitle', hm.productsTitle || 'Sản phẩm tiêu biểu');
+    setVal('hm_productsCount', String(hm.productsCount || 4));
+    setChk('hm_showContactCta', hm.showContactCta !== false);
+    renderHomeQuickEditor();
     renderNotesEditor();
     renderProdList();
     renderNewsList();
     renderLeadsList();
+  }
+
+  
+  function renderHomeQuickEditor() {
+    const el = $('homeQuickEditor');
+    if (!el || !CONFIG || !CONFIG.home) return;
+    const cards = Array.isArray(CONFIG.home.quickCards) ? CONFIG.home.quickCards : [];
+    el.innerHTML = cards.map((c, idx) => `
+      <div class="list-item" style="flex-direction:column;align-items:stretch;gap:5px">
+        <div style="display:grid;grid-template-columns:56px 1fr;gap:5px">
+          <input type="text" class="f-input" data-hq-icon="${idx}" value="${escapeAttr(c.icon || '')}" placeholder="Icon" style="text-align:center">
+          <input type="text" class="f-input" data-hq-title="${idx}" value="${escapeAttr(c.title || '')}" placeholder="Tiêu đề thẻ">
+        </div>
+        <textarea class="f-input" rows="2" data-hq-desc="${idx}" placeholder="Mô tả ngắn...">${escapeAttr(c.desc || '')}</textarea>
+        <input type="text" class="f-input" data-hq-cta="${idx}" value="${escapeAttr(c.cta || '')}" placeholder="Nhãn nút (VD: Tính ngay →)">
+      </div>
+    `).join('');
+    el.querySelectorAll('[data-hq-icon]').forEach(inp => inp.oninput = () => { CONFIG.home.quickCards[+inp.dataset.hqIcon].icon = inp.value; setDirty(true); pushPreview(); });
+    el.querySelectorAll('[data-hq-title]').forEach(inp => inp.oninput = () => { CONFIG.home.quickCards[+inp.dataset.hqTitle].title = inp.value; setDirty(true); pushPreview(); });
+    el.querySelectorAll('[data-hq-desc]').forEach(inp => inp.oninput = () => { CONFIG.home.quickCards[+inp.dataset.hqDesc].desc = inp.value; setDirty(true); pushPreview(); });
+    el.querySelectorAll('[data-hq-cta]').forEach(inp => inp.oninput = () => { CONFIG.home.quickCards[+inp.dataset.hqCta].cta = inp.value; setDirty(true); pushPreview(); });
   }
 
   // ---------- DYNAMIC LIST EDITORS ----------
@@ -631,12 +677,14 @@
           <input type="date" class="f-input" data-n-date="${idx}" value="${escapeAttr(a.publishedAt || '')}">
         </div>
         <input type="text" class="f-input" data-n-author="${idx}" value="${escapeAttr(a.author || '')}" placeholder="Tác giả">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#B45309"><input type="checkbox" data-n-feat="${idx}" ${a.featured !== false ? 'checked' : ''}> ⭐ Nổi bật Trang chủ (trượt ngang)</label>
         <textarea class="f-input" rows="2" data-n-sum="${idx}" placeholder="Mô tả ngắn...">${escapeAttr(a.summary || '')}</textarea>
         <textarea class="f-input" rows="4" data-n-content="${idx}" placeholder="Nội dung bài viết đầy đủ...">${escapeAttr(a.content || '')}</textarea>
       </div>
     `).join('') || '<p class="hint">Chưa có bài viết tin tức nào.</p>';
 
     el.querySelectorAll('[data-n-pub]').forEach(cb => cb.onchange = () => { NEWS[+cb.dataset.nPub].published = cb.checked; });
+    el.querySelectorAll('[data-n-feat]').forEach(cb => cb.onchange = () => { NEWS[+cb.dataset.nFeat].featured = cb.checked; });
     el.querySelectorAll('[data-n-title]').forEach(inp => inp.oninput = () => { NEWS[+inp.dataset.nTitle].title = inp.value; });
     el.querySelectorAll('[data-n-cat]').forEach(sel => sel.onchange = () => { NEWS[+sel.dataset.nCat].category = sel.value; });
     el.querySelectorAll('[data-n-date]').forEach(inp => inp.oninput = () => { NEWS[+inp.dataset.nDate].publishedAt = inp.value; });
@@ -691,7 +739,8 @@
         imageUrl: newNewsImgUrl || '/assets/prod-panel.jpg',
         summary: $('nn_summary').value.trim(),
         content: $('nn_content').value.trim(),
-        published: true
+        published: true,
+        featured: $('nn_featured') ? $('nn_featured').checked : true
       });
       $('nn_title').value = ''; $('nn_summary').value = ''; $('nn_content').value = '';
       newNewsImgUrl = '';
@@ -894,6 +943,28 @@
   bind('t_shadowLevel', el => { CONFIG.theme.shadowLevel = el.value; });
   bind('t_fontFamily', el => { CONFIG.theme.fontFamily = el.value; });
   bind('t_stickyResult', el => { CONFIG.theme.stickyResult = el.checked; });
+
+  
+  bind('hm_showSlider', el => { CONFIG.home.showSlider = el.checked; });
+  bind('hm_autoSlide', el => { CONFIG.home.autoSlide = el.checked; });
+  bind('hm_sliderKicker', el => { CONFIG.home.sliderKicker = el.value; });
+  bind('hm_sliderTitle', el => { CONFIG.home.sliderTitle = el.value; });
+  bind('hm_sliderIntervalSec', el => { CONFIG.home.sliderIntervalSec = Math.max(2, Number(el.value) || 4.5); });
+  bind('hm_sliderHeight', el => { CONFIG.home.sliderHeight = Number(el.value) || 430; if ($('hmSliderHVal')) $('hmSliderHVal').textContent = el.value; });
+  bind('hm_showQuickCards', el => { CONFIG.home.showQuickCards = el.checked; });
+  bind('hm_showFeaturedProducts', el => { CONFIG.home.showFeaturedProducts = el.checked; });
+  bind('hm_productsKicker', el => { CONFIG.home.productsKicker = el.value; });
+  bind('hm_productsTitle', el => { CONFIG.home.productsTitle = el.value; });
+  bind('hm_productsCount', el => { CONFIG.home.productsCount = Number(el.value) || 4; });
+  bind('hm_showContactCta', el => { CONFIG.home.showContactCta = el.checked; });
+
+  document.querySelectorAll('[data-preview-page]').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('[data-preview-page]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      if ($('previewFrame')) $('previewFrame').src = btn.dataset.previewPage;
+    };
+  });
 
   bind('h_show', el => { CONFIG.hero.show = el.checked; });
   bind('h_style', el => { CONFIG.hero.style = el.value; });
