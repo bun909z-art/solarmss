@@ -102,8 +102,9 @@
   $('btnLogout').onclick = async () => {
     try { await api('/api/admin/logout', { method: 'POST' }); } catch {}
     setStoredToken('');
-    $('loginScreen').hidden = false;
-    $('adminApp').hidden = true;
+    if ($('loginErr')) $('loginErr').textContent = '';
+    if ($('loginPass')) $('loginPass').value = '';
+    setAuthView(false);
   };
 
   // ---------- LOAD & POPULATE ----------
