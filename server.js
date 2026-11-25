@@ -69,6 +69,76 @@ function readJsonBody(req, maxBytes = 4 * 1024 * 1024) {
   });
 }
 
+
+const SSR_SHADOW_MAP = {
+  none: 'none',
+  soft: '0 1px 3px rgba(15,23,42,.04), 0 4px 12px rgba(15,23,42,.04)',
+  medium: '0 2px 6px rgba(15,23,42,.04), 0 12px 28px rgba(15,23,42,.07)',
+  strong: '0 4px 12px rgba(15,23,42,.08), 0 20px 44px rgba(15,23,42,.14)'
+};
+
+function hexRgba(hex, alpha) {
+  const clean = String(hex || '#F26A1B').replace('#', '');
+  const full = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean;
+  const n = parseInt(full, 16);
+  if (isNaN(n)) return `rgba(242,106,27,${alpha})`;
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+}
+
+function buildServerThemeCss(cfg) {
+  const t = (cfg && cfg.theme) || {};
+  const b = (cfg && cfg.branding) || {};
+  const pri = t.primary || '#F26A1B';
+  const dark = Boolean(t.darkMode);
+  const vars = [
+    `--primary:${pri}`,
+    `--primary-deep:${t.primaryDeep || '#D9560B'}`,
+    `--grad-end:${t.gradientEnd || '#FFB400'}`,
+    `--primary-soft:${hexRgba(pri, dark ? 0.18 : 0.10)}`,
+    `--primary-line:${hexRgba(pri, dark ? 0.42 : 0.28)}`,
+    `--primary-glow:${hexRgba(pri, dark ? 0.45 : 0.30)}`,
+    `--bg:${t.bg || '#F3F5F9'}`,
+    `--card:${t.cardBg || '#FFFFFF'}`,
+    `--ink:${t.ink || '#111827'}`,
+    `--ink-2:${t.inkMuted || '#4B5563'}`,
+    `--day:${t.dayColor || '#F59E0B'}`,
+    `--night:${t.nightColor || '#1D4ED8'}`,
+    `--radius:${Number(t.radius) || 18}px`,
+    `--max-width:${Number(t.maxWidth) || 1160}px`,
+    `--logo-h:${Number(b.logoHeight) || 54}px`,
+    `--shadow:${SSR_SHADOW_MAP[t.shadowLevel] || SSR_SHADOW_MAP.medium}`
+  ];
+  return `<style id="hqServerTheme">:root{${vars.join(';')}}</style>`;
+}
+
+function serveThemedHtml(res, filePath) {
+  const resolved = path.resolve(filePath);
+  if (!resolved.startsWith(path.resolve(PUBLIC_DIR))) {
+    res.writeHead(403); res.end('Forbidden'); return;
+  }
+  fs.readFile(resolved, 'utf8', (err, html) => {
+    if (err) { res.writeHead(404); res.end('Not Found'); return; }
+    const cfg = store.loadConfig();
+    const t = (cfg && cfg.theme) || {};
+    const styleTag = buildServerThemeCss(cfg);
+    let out = html.replace('</head>', `${styleTag}
+</head>`);
+    if (t.primary) {
+      out = out.replace(/<meta name="theme-color" content="[^"]*"/, `<meta name="theme-color" content="${t.primary}"`);
+    }
+    if (t.darkMode) {
+      out = out.replace('<body>', '<body class="dark-mode">');
+    }
+    const buf = Buffer.from(out, 'utf8');
+    res.writeHead(200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Content-Length': buf.length,
+      'Cache-Control': 'no-cache, no-store, must-revalidate'
+    });
+    res.end(buf);
+  });
+}
+
 function serveFile(res, filePath) {
   const resolved = path.resolve(filePath);
   if (!resolved.startsWith(path.resolve(PUBLIC_DIR))) {
@@ -401,13 +471,13 @@ const server = http.createServer(async (req, res) => {
 
     // ---------- PAGE & STATIC ROUTES ----------
     if (pathname === '/' || pathname === '/index.html') {
-      return serveFile(res, path.join(PUBLIC_DIR, 'index.html'));
+      return serveThemedHtml(res, path.join(PUBLIC_DIR, 'index.html'));
     }
     if (pathname === '/products' || pathname === '/products/' || pathname === '/products.html') {
-      return serveFile(res, path.join(PUBLIC_DIR, 'products.html'));
+      return serveThemedHtml(res, path.join(PUBLIC_DIR, 'products.html'));
     }
     if (pathname === '/news' || pathname === '/news/' || pathname === '/news.html') {
-      return serveFile(res, path.join(PUBLIC_DIR, 'news.html'));
+      return serveThemedHtml(res, path.join(PUBLIC_DIR, 'news.html'));
     }
     if (pathname === '/admin' || pathname === '/admin/' || pathname === '/admin.html') {
       return serveFile(res, path.join(PUBLIC_DIR, 'admin.html'));

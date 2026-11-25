@@ -1475,7 +1475,7 @@ td.dim { opacity: 0.45; }
   100% { background-position: 32px 0; }
 }
 @keyframes hqCallPulse {
-  0% { box-shadow: 0 0 0 0 rgba(242, 106, 27, 0.45); }
+  0% { box-shadow: 0 0 0 0 var(--primary-glow, rgba(242, 106, 27, 0.35)); }
   70% { box-shadow: 0 0 0 10px rgba(242, 106, 27, 0); }
   100% { box-shadow: 0 0 0 0 rgba(242, 106, 27, 0); }
 }
@@ -1483,15 +1483,15 @@ td.dim { opacity: 0.45; }
 /* Layered Ambient Mesh Background */
 body {
   background-image:
-    radial-gradient(circle at 12% 8%, rgba(242, 106, 27, 0.08), transparent 36%),
-    radial-gradient(circle at 88% 18%, rgba(255, 180, 0, 0.08), transparent 34%),
+    radial-gradient(circle at 12% 8%, var(--primary-soft, rgba(242, 106, 27, 0.08)), transparent 36%),
+    radial-gradient(circle at 88% 18%, var(--primary-soft, rgba(255, 180, 0, 0.08)), transparent 34%),
     radial-gradient(circle at 50% 92%, rgba(14, 165, 233, 0.06), transparent 40%);
   background-attachment: fixed;
 }
 body.dark-mode {
   background-image:
-    radial-gradient(circle at 15% 10%, rgba(242, 106, 27, 0.16), transparent 38%),
-    radial-gradient(circle at 86% 20%, rgba(255, 180, 0, 0.1), transparent 34%),
+    radial-gradient(circle at 15% 10%, var(--primary-soft, rgba(242, 106, 27, 0.16)), transparent 38%),
+    radial-gradient(circle at 86% 20%, var(--primary-soft, rgba(255, 180, 0, 0.1)), transparent 34%),
     radial-gradient(circle at 50% 90%, rgba(14, 165, 233, 0.1), transparent 42%);
 }
 
@@ -1522,7 +1522,7 @@ body.dark-mode .topbar {
 .nav-link.active {
   background: linear-gradient(135deg, var(--primary), var(--grad-end)) !important;
   color: #FFFFFF !important;
-  box-shadow: 0 4px 14px rgba(242, 106, 27, 0.32);
+  box-shadow: 0 4px 14px var(--primary-glow, rgba(242, 106, 27, 0.32));
 }
 
 /* Dynamic Animated Hero Banner */
@@ -1606,13 +1606,13 @@ body.dark-mode .card {
   transform: translateY(-2px);
   border-color: var(--primary);
   color: var(--primary-deep);
-  box-shadow: 0 4px 12px rgba(242, 106, 27, 0.14);
+  box-shadow: 0 4px 12px var(--primary-soft, rgba(242, 106, 27, 0.14));
 }
 .chip.active, .cat-pill.active {
   background: linear-gradient(135deg, var(--primary), var(--grad-end)) !important;
   color: #FFFFFF !important;
   border-color: transparent !important;
-  box-shadow: 0 6px 16px rgba(242, 106, 27, 0.3);
+  box-shadow: 0 6px 16px var(--primary-glow, rgba(242, 106, 27, 0.3));
   transform: translateY(-1px);
 }
 
@@ -1641,7 +1641,7 @@ body.dark-mode .card {
   animation: hqShimmer 3.2s linear infinite;
 }
 .combo-item.selected {
-  box-shadow: 0 0 0 3px var(--primary-soft), 0 18px 40px rgba(242, 106, 27, 0.18) !important;
+  box-shadow: 0 0 0 3px var(--primary-soft), 0 18px 40px var(--primary-line, rgba(242, 106, 27, 0.18)) !important;
 }
 .combo-thumb img {
   transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
@@ -1654,7 +1654,7 @@ body.dark-mode .card {
 }
 .combo-mix-one:hover {
   transform: translateY(-2px) scale(1.03);
-  box-shadow: 0 6px 14px rgba(242, 106, 27, 0.2);
+  box-shadow: 0 6px 14px var(--primary-line, rgba(242, 106, 27, 0.2));
 }
 .combo-mix-one:active {
   transform: scale(0.95);
@@ -1667,7 +1667,7 @@ body.dark-mode .card {
 .prod-card:hover, .news-card:hover {
   transform: translateY(-7px);
   border-color: var(--primary-line);
-  box-shadow: 0 20px 44px rgba(15, 23, 42, 0.12), 0 4px 14px rgba(242, 106, 27, 0.1);
+  box-shadow: 0 20px 44px rgba(15, 23, 42, 0.12), 0 4px 14px var(--primary-soft, rgba(242, 106, 27, 0.1));
 }
 .prod-img-wrap img, .news-cover img {
   transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
@@ -1703,7 +1703,7 @@ body.dark-mode .card {
 }
 .btn-primary:hover, .combo-btn:hover, .cta-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(242, 106, 27, 0.26);
+  box-shadow: 0 8px 20px var(--primary-glow, rgba(242, 106, 27, 0.26));
 }
 .cta-btn.call {
   animation: hqCallPulse 2.8s infinite;

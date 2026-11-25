@@ -44,6 +44,7 @@
     r.setProperty('--grad-end', t.gradientEnd || '#FFB400');
     r.setProperty('--primary-soft', hexToRgba(t.primary || '#F26A1B', t.darkMode ? 0.18 : 0.1));
     r.setProperty('--primary-line', hexToRgba(t.primary || '#F26A1B', t.darkMode ? 0.42 : 0.28));
+    r.setProperty('--primary-glow', hexToRgba(t.primary || '#F26A1B', t.darkMode ? 0.45 : 0.30));
     r.setProperty('--bg', t.bg || '#F3F5F9');
     r.setProperty('--card', t.cardBg || '#FFFFFF');
     r.setProperty('--ink', t.ink || '#111827');
@@ -53,6 +54,7 @@
     r.setProperty('--logo-h', (Number(b.logoHeight) || 54) + 'px');
     r.setProperty('--shadow', SHADOW_MAP[t.shadowLevel] || SHADOW_MAP.medium);
     document.body.classList.toggle('dark-mode', Boolean(t.darkMode));
+    if ($('heroSection') && cfg.hero && cfg.hero.style) $('heroSection').className = 'hero-banner style-' + cfg.hero.style;
 
     if (b.logoUrl) $('brandLogo').src = b.logoUrl;
     if (b.faviconUrl) $('docFavicon').href = b.faviconUrl;
