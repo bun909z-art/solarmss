@@ -31,12 +31,12 @@
   let dirty = false;
 
   function getStoredToken() {
-    try { return sessionStorage.getItem(TOKEN_KEY) || ''; } catch { return ''; }
+    try { return sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY) || ''; } catch { return ''; }
   }
   function setStoredToken(t) {
     try {
-      if (t) sessionStorage.setItem(TOKEN_KEY, t);
-      else sessionStorage.removeItem(TOKEN_KEY);
+      if (t) { sessionStorage.setItem(TOKEN_KEY, t); localStorage.setItem(TOKEN_KEY, t); }
+      else { sessionStorage.removeItem(TOKEN_KEY); localStorage.removeItem(TOKEN_KEY); }
     } catch {}
   }
 
@@ -70,7 +70,7 @@
     const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(url, {
-      credentials: 'same-origin',
+      credentials: 'include',
       cache: 'no-store',
       ...opts,
       headers
@@ -134,7 +134,7 @@
     try { sessionStorage.removeItem(TOKEN_KEY); } catch {}
     try { localStorage.removeItem(TOKEN_KEY); } catch {}
     try {
-      await fetch('/api/admin/logout', { method: 'POST', credentials: 'same-origin', cache: 'no-store' });
+      await fetch('/api/admin/logout', { method: 'POST', credentials: 'include', cache: 'no-store' });
     } catch {}
     if ($('loginErr')) $('loginErr').textContent = '';
     if ($('loginUser')) $('loginUser').value = '';

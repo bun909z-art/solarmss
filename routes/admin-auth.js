@@ -17,7 +17,7 @@ async function handleAdminAuth(req, res, pathname, method, authState) {
 
   if (pathname === '/api/admin/login' && method === 'POST') {
     const body = await readJsonBody(req, 16 * 1024);
-    const username = String(body.username || '').trim().toLowerCase();
+    const username = String(body.username !== undefined ? body.username : 'admin').trim().toLowerCase();
     if (!username) return sendJson(res, 400, { error: 'Vui lòng nhập tên đăng nhập.' }), true;
     const password = String(body.password || '');
     const found = (authState.users || []).find(u => u && String(u.username).toLowerCase() === username);
