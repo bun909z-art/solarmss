@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quản trị giao diện – Hoàng Quân Pin Hybrid</title>
 <link rel="icon" type="image/png" href="/assets/favicon.png">
-<link rel="stylesheet" href="/css/admin.css?v=32">
+<link rel="stylesheet" href="/css/admin.css?v=33">
 </head>
 <body>
 
@@ -692,17 +692,17 @@
             <label class="f-lbl">Hành vi khi bật bảo trì</label>
             <select id="m_mode" class="f-input">
               <option value="error404">Báo lỗi 404 — Đang bảo trì toàn bộ trang khách</option>
-              <option value="allow_page">Chỉ cho phép khách truy cập 1 trang chỉ định</option>
+              <option value="allow_page">Chỉ mở các mục được chọn (ẩn các mục khác)</option>
             </select>
           </div>
           <div class="field-row" id="mAllowedWrap" hidden>
-            <label class="f-lbl">Trang được phép truy cập trong lúc bảo trì</label>
-            <select id="m_allowedRoute" class="f-input">
-              <option value="/">Trang chủ (/)</option>
-              <option value="/tuvan">Trang Tư vấn (/tuvan)</option>
-              <option value="/products">Trang Sản phẩm tham khảo (/products)</option>
-              <option value="/news">Trang Tin tức (/news)</option>
-            </select>
+            <label class="f-lbl">Chọn các mục cho phép khách truy cập (các mục không chọn sẽ tự ẩn):</label>
+            <div id="mAllowedChecks" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px">
+              <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;cursor:pointer"><input type="checkbox" data-m-route="/"><span>Trang chủ</span></label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;cursor:pointer"><input type="checkbox" data-m-route="/tuvan" checked><span>Tư vấn</span></label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;cursor:pointer"><input type="checkbox" data-m-route="/products"><span>Sản phẩm</span></label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;cursor:pointer"><input type="checkbox" data-m-route="/news"><span>Tin tức</span></label>
+            </div>
           </div>
           <div class="two-col" style="margin-bottom:12px">
             <button type="button" class="btn-primary full" id="btnToggleMaint">🔧 Bật bảo trì ngay</button>
@@ -842,7 +842,7 @@
     <!-- Right Live Preview -->
     <section class="adm-preview">
       <div class="preview-bar">
-        <div style="display:flex;align-items:center;gap:8px"><span class="preview-title">Xem trước:</span><button type="button" class="vp-btn active" data-preview-page="/">Trang chủ</button><button type="button" class="vp-btn" data-preview-page="/?preview=1">Tư vấn</button></div>
+        <div style="display:flex;align-items:center;gap:8px"><span class="preview-title">Xem trước:</span><button type="button" class="vp-btn active" data-preview-page="/?preview=home">Trang chủ</button><button type="button" class="vp-btn" data-preview-page="/?preview=1">Tư vấn</button></div>
         <div class="viewport-btns">
           <button type="button" class="vp-btn active" data-vp="100%">Desktop</button>
           <button type="button" class="vp-btn" data-vp="820px">Tablet</button>
@@ -850,7 +850,7 @@
         </div>
       </div>
       <div class="preview-stage">
-        <iframe id="previewFrame" src="/" title="Xem trước giao diện"></iframe>
+        <iframe id="previewFrame" src="/?preview=home" title="Xem trước giao diện"></iframe>
       </div>
     </section>
   </div>

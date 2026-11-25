@@ -51,27 +51,34 @@
   function applyMaintenanceNav(cfg) {
     const mt = cfg && cfg.maintenance;
     const isRestrict = Boolean(mt && mt.enabled && mt.mode === 'allow_page');
-    const allowed = (mt && mt.allowedRoute) || '/tuvan';
+    const allowed = (mt && Array.isArray(mt.allowedRoutes) && mt.allowedRoutes.length)
+      ? mt.allowedRoutes
+      : (mt && mt.allowedRoute ? [mt.allowedRoute] : ['/tuvan']);
     const nav = document.querySelector('.main-nav');
     if (nav) {
       let visibleCount = 0;
       nav.querySelectorAll('a.nav-link').forEach(a => {
         const href = a.getAttribute('href') || '/';
-        const show = !isRestrict || href === allowed;
+        const show = !isRestrict || allowed.includes(href);
         a.hidden = !show;
         if (show) visibleCount++;
       });
-      // When restricted to 1 single page, hide the redundant 1-item nav pill bar so Logo & Hotline align cleanly!
       nav.hidden = isRestrict && visibleCount <= 1;
     }
-    document.body.classList.toggle('maint-single-page', isRestrict);
-    // Hide cross-page shortcut buttons pointing to blocked routes
-    if (isRestrict) {
-      document.querySelectorAll('a[href="/tuvan"], a[href="/products"], a[href="/news"], a.home-more-link, a.home-quick-card').forEach(el => {
-        const href = el.getAttribute('href');
-        if (href && href !== allowed && !el.closest('.main-nav')) el.hidden = true;
-      });
-      if ($('homeQuickGrid') && allowed === '/') $('homeQuickGrid').hidden = true;
+    document.body.classList.toggle('maint-single-page', isRestrict && allowed.length <= 1);
+    document.querySelectorAll('a.home-quick-card, a.home-more-link, a.art-tool-btn.primary-outline').forEach(el => {
+      const href = el.getAttribute('href');
+      if (href && ['/', '/tuvan', '/products', '/news'].includes(href)) {
+        el.hidden = isRestrict && !allowed.includes(href);
+      }
+    });
+    const qg = document.getElementById('homeQuickGrid');
+    if (qg && isRestrict) {
+      const visCards = Array.from(qg.querySelectorAll('a.home-quick-card')).filter(x => !x.hidden);
+      if (!visCards.length) qg.hidden = true;
+      else qg.style.gridTemplateColumns = `repeat(${Math.min(3, visCards.length)}, minmax(0, 1fr))`;
+    } else if (qg) {
+      qg.style.gridTemplateColumns = '';
     }
   }
 

@@ -334,7 +334,8 @@
       message: 'Website đang được nâng cấp và bảo trì định kỳ. Quý khách vui lòng quay lại sau ít phút hoặc liên hệ hotline bên dưới để được hỗ trợ ngay.'
     });
     setVal('m_mode', mt.mode || 'error404');
-    setVal('m_allowedRoute', mt.allowedRoute || '/tuvan');
+    const ar = Array.isArray(mt.allowedRoutes) && mt.allowedRoutes.length ? mt.allowedRoutes : (mt.allowedRoute ? [mt.allowedRoute] : ['/tuvan']);
+    document.querySelectorAll('[data-m-route]').forEach(cb => { cb.checked = ar.includes(cb.dataset.mRoute); });
     updateMaintUI();
     const gsc = CONFIG.gsheet || (CONFIG.gsheet = {
       enabled: false, webhookUrl: '', secretKey: '', syncLeads: true, syncProducts: true, syncNews: true, autoPullProducts: false, pullIntervalSec: 60
@@ -1321,12 +1322,14 @@
     if ($('mAllowedWrap')) $('mAllowedWrap').hidden = !isAllow;
     if ($('maintStatusBox')) {
       if (mt.enabled) {
-        const routeLbl = { '/': 'Trang chủ', '/tuvan': 'Tư vấn', '/products': 'Sản phẩm', '/news': 'Tin tức' }[mt.allowedRoute] || mt.allowedRoute;
+        const rMap = { '/': 'Trang chủ', '/tuvan': 'Tư vấn', '/products': 'Sản phẩm', '/news': 'Tin tức' };
+        const ar = Array.isArray(mt.allowedRoutes) && mt.allowedRoutes.length ? mt.allowedRoutes : (mt.allowedRoute ? [mt.allowedRoute] : []);
+        const names = ar.map(r => rMap[r] || r).join(', ');
         $('maintStatusBox').style.background = '#FEF2F2';
         $('maintStatusBox').style.color = '#B91C1C';
         $('maintStatusBox').style.borderColor = '#FECACA';
-        $('maintStatusBox').textContent = mt.mode === 'allow_page'
-          ? `🔴 ĐANG BẢO TRÌ — Chỉ cho phép vào: ${routeLbl} (${mt.allowedRoute})`
+        $('maintStatusBox').textContent = (mt.mode === 'allow_page' && ar.length)
+          ? `🔴 ĐANG BẢO TRÌ — Chỉ mở: ${names}`
           : '🔴 ĐANG BẢO TRÌ — Toàn bộ trang khách đang báo 404 Error';
       } else {
         $('maintStatusBox').style.background = '#ECFDF5';
@@ -1345,7 +1348,7 @@
     const payload = {
       enabled: enabledVal,
       mode: $('m_mode') ? $('m_mode').value : 'error404',
-      allowedRoute: $('m_allowedRoute') ? $('m_allowedRoute').value : '/tuvan',
+      allowedRoutes: Array.from(document.querySelectorAll('[data-m-route]')).filter(c => c.checked).map(c => c.dataset.mRoute),
       title: '404 — Hệ thống đang bảo trì',
       message: 'Website đang được nâng cấp và bảo trì định kỳ. Quý khách vui lòng quay lại sau ít phút hoặc liên hệ hotline bên dưới để được hỗ trợ ngay.'
     };

@@ -9,6 +9,9 @@ function handlePagesAndStatic(req, res, pathname, parsedUrl) {
     if (parsedUrl.searchParams.get('preview') === '1') {
       return serveThemedHtml(res, path.join(PUBLIC_DIR, 'index.html')), true;
     }
+    if (parsedUrl.searchParams.get('preview') === 'home') {
+      return serveThemedHtml(res, path.join(PUBLIC_DIR, 'home.html')), true;
+    }
     if (checkMaintenanceGate(req, res, pathname, parsedUrl)) return true;
     return serveThemedHtml(res, path.join(PUBLIC_DIR, 'home.html')), true;
   }

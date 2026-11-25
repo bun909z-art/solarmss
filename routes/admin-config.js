@@ -41,13 +41,19 @@ async function handleAdminConfig(req, res, pathname, method, authState) {
   if (pathname === '/api/admin/maintenance' && (method === 'PUT' || method === 'POST')) {
     if (!requireAdmin(req, res, authState, ['security'])) return true;
     const body = await readJsonBody(req, 32 * 1024);
+    const valid = ['/', '/tuvan', '/products', '/news'];
+    const allowedRoutes = Array.isArray(body.allowedRoutes)
+      ? body.allowedRoutes.filter(r => valid.includes(r))
+      : (valid.includes(body.allowedRoute) ? [body.allowedRoute] : []);
+    const mode = (body.mode === 'allow_page' && allowedRoutes.length > 0) ? 'allow_page' : 'error404';
     const updated = store.saveConfig({
       maintenance: {
         enabled: Boolean(body.enabled),
-        mode: body.mode === 'allow_page' ? 'allow_page' : 'error404',
-        allowedRoute: ['/', '/tuvan', '/products', '/news'].includes(body.allowedRoute) ? body.allowedRoute : '/tuvan',
-        title: String(body.title || '404 — Hệ thống đang bảo trì').trim(),
-        message: String(body.message || '').trim()
+        mode,
+        allowedRoute: allowedRoutes[0] || '/tuvan',
+        allowedRoutes,
+        title: '404 — Hệ thống đang bảo trì',
+        message: 'Website đang được nâng cấp và bảo trì định kỳ. Quý khách vui lòng quay lại sau ít phút hoặc liên hệ hotline bên dưới để được hỗ trợ ngay.'
       }
     });
     return sendJson(res, 200, { ok: true, config: updated }), true;
