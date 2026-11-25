@@ -370,3 +370,22 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .adm-preview { height: 70vh; }
   .adm-header { flex-wrap: wrap; height: auto; padding: 10px 14px; }
 }
+
+@media (max-width: 640px) {
+  .adm-header { padding: 10px 12px; gap: 8px; }
+  .adm-header-left { width: 100%; justify-content: space-between; font-size: 14px; }
+  .adm-header-right { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .adm-header-right .btn-primary, .adm-header-right .btn-ghost { width: 100%; padding: 8px 10px; font-size: 12.5px; }
+  .adm-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px 10px;
+  }
+  .tab-btn { flex: none; white-space: nowrap; }
+  .adm-panel-scroll { padding: 14px 12px 24px; }
+  .color-grid { grid-template-columns: repeat(2, 1fr); }
+  .two-col { grid-template-columns: 1fr; }
+  .adm-preview { height: 56vh; }
+  .preview-stage { padding: 8px; }
+}
