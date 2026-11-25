@@ -41,7 +41,7 @@ function triggerRealtimeSheetPush(type, data) {
 
 async function handleAdminGsheet(req, res, pathname, method, authState) {
   if (pathname === '/api/admin/gsheet/status' && method === 'GET') {
-    if (!requireAdmin(req, res, authState)) return true;
+    if (!requireAdmin(req, res, authState, ['gsheet'])) return true;
     const cfg = store.loadConfig();
     return sendJson(res, 200, {
       status: gsheet.getStatus(cfg),
@@ -50,7 +50,7 @@ async function handleAdminGsheet(req, res, pathname, method, authState) {
   }
 
   if (pathname === '/api/admin/gsheet/config' && (method === 'PUT' || method === 'POST')) {
-    if (!requireAdmin(req, res, authState, ['gsheet', 'security'])) return true;
+    if (!requireAdmin(req, res, authState, ['gsheet'])) return true;
     const body = await readJsonBody(req, 32 * 1024);
     const updated = store.saveConfig({
       gsheet: {
@@ -69,7 +69,7 @@ async function handleAdminGsheet(req, res, pathname, method, authState) {
   }
 
   if (pathname === '/api/admin/gsheet/test' && method === 'POST') {
-    if (!requireAdmin(req, res, authState, ['gsheet', 'security'])) return true;
+    if (!requireAdmin(req, res, authState, ['gsheet'])) return true;
     const body = await readJsonBody(req, 16 * 1024);
     const cfg = store.loadConfig();
     const testCfg = {
@@ -81,7 +81,7 @@ async function handleAdminGsheet(req, res, pathname, method, authState) {
   }
 
   if (pathname === '/api/admin/gsheet/sync-all' && method === 'POST') {
-    if (!requireAdmin(req, res, authState, ['gsheet', 'security'])) return true;
+    if (!requireAdmin(req, res, authState, ['gsheet'])) return true;
     const cfg = store.loadConfig();
     const gs = cfg.gsheet || {};
     const results = {};
@@ -93,7 +93,7 @@ async function handleAdminGsheet(req, res, pathname, method, authState) {
   }
 
   if (pathname === '/api/admin/gsheet/pull-products' && method === 'POST') {
-    if (!requireAdmin(req, res, authState, ['gsheet', 'products'])) return true;
+    if (!requireAdmin(req, res, authState, ['gsheet'])) return true;
     const cfg = store.loadConfig();
     const resPull = await gsheet.pullProductsFromSheet(cfg.gsheet || {});
     if (!resPull.ok) return sendJson(res, 400, { ok: false, error: resPull.error, status: gsheet.getStatus(cfg) }), true;

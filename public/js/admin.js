@@ -71,6 +71,7 @@
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(url, {
       credentials: 'same-origin',
+      cache: 'no-store',
       ...opts,
       headers
     });
@@ -89,10 +90,12 @@
   async function checkSession() {
     try {
       const me = await api('/api/admin/me');
-      if (me.authenticated) {
+      if (me.authenticated && me.user) {
+        CURRENT_USER = me.user;
         setAuthView(true);
         await loadAdminData();
       } else {
+        CURRENT_USER = null;
         setStoredToken('');
         setAuthView(false);
       }
@@ -111,6 +114,7 @@
         body: JSON.stringify({ username: ($('loginUser') ? $('loginUser').value.trim() : 'admin'), password: $('loginPass').value })
       });
       if (res.token) setStoredToken(res.token);
+      CURRENT_USER = res.user || null;
       $('loginPass').value = '';
       setAuthView(true);
       await loadAdminData();
@@ -121,8 +125,12 @@
 
   $('btnLogout').onclick = async () => {
     try { await api('/api/admin/logout', { method: 'POST' }); } catch {}
+    CURRENT_USER = null;
+    USERS = [];
     setStoredToken('');
+    try { localStorage.removeItem(TOKEN_KEY); } catch {}
     if ($('loginErr')) $('loginErr').textContent = '';
+    if ($('loginUser')) $('loginUser').value = '';
     if ($('loginPass')) $('loginPass').value = '';
     setAuthView(false);
   };
@@ -134,8 +142,8 @@
         const me = await api('/api/admin/me').catch(() => null);
         if (me && me.user) CURRENT_USER = me.user;
       }
-      const isSuper = !CURRENT_USER || CURRENT_USER.role === 'admin';
-      const perms = isSuper ? PERM_LABELS.map(x => x[0]) : (CURRENT_USER.permissions || []);
+      const isSuper = Boolean(CURRENT_USER && CURRENT_USER.role === 'admin');
+      const perms = isSuper ? PERM_LABELS.map(x => x[0]) : ((CURRENT_USER && CURRENT_USER.permissions) || []);
       const can = (p) => isSuper || perms.includes(p);
 
       const [data, prodData, newsData, leadsData, usersData, tgData] = await Promise.all([
@@ -971,7 +979,7 @@
   
   // ---------- RBAC PERMISSIONS & USER MANAGEMENT ----------
   function applyPermissionsUI() {
-    const isSuper = !CURRENT_USER || CURRENT_USER.role === 'admin';
+    const isSuper = Boolean(CURRENT_USER && CURRENT_USER.role === 'admin');
     const perms = isSuper ? PERM_LABELS.map(x => x[0]) : (CURRENT_USER.permissions || []);
     if ($('currentUserBadge')) {
       const label = CURRENT_USER ? `${CURRENT_USER.displayName || CURRENT_USER.username} (${isSuper ? 'Admin' : 'Nhân viên'})` : 'Admin';
@@ -981,13 +989,22 @@
     if ($('siteUpdateSection')) $('siteUpdateSection').hidden = !isSuper;
     const canSaveConfig = isSuper || ['branding', 'home', 'theme', 'layout', 'tariffs', 'footer'].some(p => perms.includes(p));
     if ($('btnSave')) $('btnSave').hidden = !canSaveConfig;
-    if ($('btnReset')) $('btnReset').hidden = !canSaveConfig;
+    if ($('btnReset')) $('btnReset').hidden = !isSuper;
+    const canSec = isSuper || perms.includes('security');
+    if ($('securityPrivilegedWrap')) $('securityPrivilegedWrap').hidden = !canSec;
+    if ($('jsonBackupPrivilegedWrap')) $('jsonBackupPrivilegedWrap').hidden = !canSec;
+    if ($('tgConfigBox')) $('tgConfigBox').hidden = !isSuper;
 
     let firstVisible = null;
     document.querySelectorAll('.adm-tabs .tab-btn[data-tab]').forEach(btn => {
       const tab = btn.dataset.tab;
       const allowed = tab === 'users' ? isSuper : (tab === 'security' ? true : (isSuper || perms.includes(tab)));
       btn.hidden = !allowed;
+      const pane = $('tab-' + tab);
+      if (pane) {
+        pane.hidden = !allowed;
+        if (!allowed) pane.classList.remove('active');
+      }
       if (allowed && !firstVisible) firstVisible = btn;
     });
     const activeBtn = document.querySelector('.adm-tabs .tab-btn[data-tab].active');
@@ -1181,14 +1198,14 @@
 
   async function fetchGsheetStatus() {
     try {
-      const res = await api('/api/admin/gsheet/status');
+      const res = await (can('gsheet') ? api('/api/admin/gsheet/status') : Promise.resolve(null));
       if (res.scriptTemplate) GS_SCRIPT_TEMPLATE = res.scriptTemplate;
       if (res.status) renderGsheetStatus(res.status);
     } catch {}
     if (!gsPollTimer) {
       gsPollTimer = setInterval(() => {
         if ($('adminApp') && !$('adminApp').hidden) {
-          api('/api/admin/gsheet/status').then(r => { if (r && r.status) renderGsheetStatus(r.status); }).catch(() => {});
+          (can('gsheet') ? api('/api/admin/gsheet/status') : Promise.resolve(null)).then(r => { if (r && r.status) renderGsheetStatus(r.status); }).catch(() => {});
         }
       }, 10000);
     }

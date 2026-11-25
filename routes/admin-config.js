@@ -8,14 +8,30 @@ const { sendJson, readJsonBody, requireAdmin } = require('../lib/http-helpers');
 
 async function handleAdminConfig(req, res, pathname, method, authState) {
   if (pathname === '/api/admin/config' && (method === 'PUT' || method === 'POST')) {
-    if (!requireAdmin(req, res, authState, ['branding', 'home', 'theme', 'layout', 'tariffs', 'footer'])) return true;
+    const user = requireAdmin(req, res, authState, ['branding', 'home', 'theme', 'layout', 'tariffs', 'footer']);
+    if (!user) return true;
     const body = await readJsonBody(req, 1024 * 1024);
-    const updated = store.saveConfig(body);
+    let patch = body;
+    if (user.role !== 'admin') {
+      const perms = Array.isArray(user.permissions) ? user.permissions : [];
+      patch = {};
+      if (perms.includes('branding') && body.branding) patch.branding = body.branding;
+      if (perms.includes('home') && body.home) patch.home = body.home;
+      if (perms.includes('theme') && body.theme) patch.theme = body.theme;
+      if ((perms.includes('theme') || perms.includes('layout')) && body.hero) patch.hero = body.hero;
+      if (perms.includes('layout') && body.sections) patch.sections = body.sections;
+      if (perms.includes('tariffs')) {
+        if (body.defaults) patch.defaults = body.defaults;
+        if (body.tariffs) patch.tariffs = body.tariffs;
+      }
+      if (perms.includes('footer') && body.footer) patch.footer = body.footer;
+    }
+    const updated = store.saveConfig(patch);
     return sendJson(res, 200, { ok: true, config: updated }), true;
   }
 
   if (pathname === '/api/admin/reset' && method === 'POST') {
-    if (!requireAdmin(req, res, authState, ['branding', 'home', 'theme', 'layout', 'tariffs', 'footer'])) return true;
+    if (!requireAdmin(req, res, authState, 'SUPER_ADMIN')) return true;
     const updated = store.resetConfig();
     return sendJson(res, 200, { ok: true, config: updated }), true;
   }
