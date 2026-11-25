@@ -15,7 +15,6 @@
   let activeCat = 'all';
   let searchQ = '';
   let currentArticle = null;
-  let fontSizePx = 15.5;
 
   function getLikesMap() {
     try { return JSON.parse(localStorage.getItem(LIKES_KEY) || '{}') || {}; } catch { return {}; }
@@ -142,8 +141,6 @@
 
     const paras = String(a.content || '').split(/\r?\n\r?\n+/).map(p => p.trim()).filter(Boolean);
     $('artContent').innerHTML = paras.map(p => `<p>${esc(p).replace(/\r?\n/g, '<br>')}</p>`).join('') || '<p>Nội dung đang được cập nhật.</p>';
-    $('artContent').style.fontSize = fontSizePx + 'px';
-    $('artShareMsg').hidden = true;
 
     updateLikeUI(a.id);
 
@@ -200,8 +197,6 @@
       }
     });
   }
-  $('btnFontInc').onclick = () => { fontSizePx = Math.min(20, fontSizePx + 1.5); $('artContent').style.fontSize = fontSizePx + 'px'; };
-  $('btnFontDec').onclick = () => { fontSizePx = Math.max(13, fontSizePx - 1.5); $('artContent').style.fontSize = fontSizePx + 'px'; };
   $('btnLikeArt').onclick = () => {
     if (!currentArticle) return;
     const map = getLikesMap();
@@ -211,14 +206,6 @@
     map[currentArticle.id] = entry;
     saveLikesMap(map);
     updateLikeUI(currentArticle.id);
-  };
-  $('btnShareArt').onclick = () => {
-    const url = window.location.href;
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(url).catch(() => {});
-    }
-    $('artShareMsg').hidden = false;
-    setTimeout(() => { $('artShareMsg').hidden = true; }, 2600);
   };
 
   window.addEventListener('popstate', () => {

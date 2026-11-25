@@ -1426,7 +1426,7 @@ td.dim { opacity: 0.45; }
 .article-cover-full img {
   width: 100%; max-height: 440px; object-fit: contain; display: block; background: #F8FAFC;
 }
-.article-prose p { font-size: inherit; line-height: 1.78; margin: 0 0 14px; color: var(--ink); }
+.article-prose p { font-size: 15.5px; line-height: 1.78; margin: 0 0 14px; color: var(--ink); }
 .article-interact-bar {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--line);
