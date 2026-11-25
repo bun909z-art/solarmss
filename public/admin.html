@@ -61,7 +61,8 @@
         <button type="button" class="tab-btn" data-tab="leads">Khách hàng (<span id="leadsTabCount">0</span>)</button>
         <button type="button" class="tab-btn" data-tab="footer">Chân trang</button>
         <button type="button" class="tab-btn" data-tab="gsheet">Google Sheets</button>
-        <button type="button" class="tab-btn" data-tab="security">Bảo trì &amp; Cập nhật</button>
+        <button type="button" class="tab-btn" data-tab="security" id="tabBtnSecurity" hidden>Sao lưu &amp; Bảo trì</button>
+        <button type="button" class="tab-btn" data-tab="account" id="tabBtnAccount">Tài khoản của tôi</button>
         <button type="button" class="tab-btn" data-tab="users" id="tabBtnUsers" hidden>Tài khoản &amp; Cơ sở dữ liệu</button>
       </nav>
 
@@ -747,19 +748,6 @@
 
           <hr class="sep">
           </div>
-          <h3>Đổi mật khẩu tài khoản</h3>
-          <form id="passForm">
-            <div class="field-row">
-              <label class="f-lbl">Mật khẩu hiện tại</label>
-              <input type="password" id="curPass" class="f-input" required>
-            </div>
-            <div class="field-row">
-              <label class="f-lbl">Mật khẩu mới (tối thiểu 6 ký tự)</label>
-              <input type="password" id="newPass" class="f-input" minlength="6" required>
-            </div>
-            <button type="submit" class="btn-primary full">Cập nhật mật khẩu</button>
-          </form>
-
           <div id="jsonBackupPrivilegedWrap">
           <div id="adminOnlyJsonBackup">
           <hr class="sep">
@@ -773,6 +761,33 @@
             </label>
           </div>
           </div>
+        </section>
+
+        
+        <!-- TAB MY ACCOUNT (STAFF & ADMIN SELF PASSWORD CHANGE) -->
+        <section class="tab-pane" id="tab-account">
+          <h3>Thông tin tài khoản của tôi</h3>
+          <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;display:flex;flex-direction:column;gap:4px">
+            <div>Tên đăng nhập: <b id="myAccUser">—</b></div>
+            <div>Tên hiển thị: <b id="myAccName">—</b></div>
+            <div>Vai trò: <b id="myAccRole" style="color:#EA580C">—</b></div>
+          </div>
+          <h3>Đổi mật khẩu cá nhân</h3>
+          <form id="passForm">
+            <div class="field-row">
+              <label class="f-lbl">Mật khẩu hiện tại</label>
+              <input type="password" id="curPass" class="f-input" required autocomplete="current-password">
+            </div>
+            <div class="field-row">
+              <label class="f-lbl">Mật khẩu mới (tối thiểu 6 ký tự)</label>
+              <input type="password" id="newPass" class="f-input" minlength="6" required autocomplete="new-password">
+            </div>
+            <div class="field-row">
+              <label class="f-lbl">Nhập lại mật khẩu mới</label>
+              <input type="password" id="confirmPass" class="f-input" minlength="6" required autocomplete="new-password">
+            </div>
+            <button type="submit" class="btn-primary full">Cập nhật mật khẩu</button>
+          </form>
         </section>
 
         <!-- TAB USERS (SUPER ADMIN ONLY) -->

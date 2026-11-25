@@ -993,6 +993,12 @@
       const label = CURRENT_USER ? `${CURRENT_USER.displayName || CURRENT_USER.username} (${isSuper ? 'Admin' : 'Nhân viên'})` : 'Admin';
       $('currentUserBadge').textContent = '👤 ' + label;
     }
+    if ($('myAccUser')) $('myAccUser').textContent = CURRENT_USER ? '@' + CURRENT_USER.username : '@admin';
+    if ($('myAccName')) $('myAccName').textContent = CURRENT_USER ? (CURRENT_USER.displayName || CURRENT_USER.username) : 'Quản trị viên';
+    if ($('myAccRole')) $('myAccRole').textContent = isSuper ? 'Admin (Full tính năng)' : 'Nhân viên phân quyền';
+    if ($('tabBtnSecurity')) $('tabBtnSecurity').hidden = !isSuper;
+    if (false) {
+    }
     if ($('tabBtnUsers')) $('tabBtnUsers').hidden = !isSuper;
     if ($('adminOnlyMaintBackup')) $('adminOnlyMaintBackup').hidden = !isSuper;
     if ($('adminOnlyJsonBackup')) $('adminOnlyJsonBackup').hidden = !isSuper;
@@ -1009,7 +1015,7 @@
     let firstVisible = null;
     document.querySelectorAll('.adm-tabs .tab-btn[data-tab]').forEach(btn => {
       const tab = btn.dataset.tab;
-      const allowed = tab === 'users' ? isSuper : (tab === 'security' ? true : (isSuper || perms.includes(tab)));
+      const allowed = (tab === 'users' || tab === 'security') ? isSuper : (tab === 'account' ? true : (isSuper || perms.includes(tab)));
       btn.hidden = !allowed;
       const pane = $('tab-' + tab);
       if (pane) {
@@ -1697,6 +1703,7 @@
 
   $('passForm').addEventListener('submit', async e => {
     e.preventDefault();
+    if ($('confirmPass') && $('newPass').value !== $('confirmPass').value) return toast('Mật khẩu nhập lại không khớp.');
     try {
       const res = await api('/api/admin/password', {
         method: 'POST',
@@ -1707,6 +1714,7 @@
       });
       $('curPass').value = '';
       $('newPass').value = '';
+      if ($('confirmPass')) $('confirmPass').value = '';
       toast(res.message || 'Đã đổi mật khẩu.');
     } catch (err) { toast(err.message); }
   });
