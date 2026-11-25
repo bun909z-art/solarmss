@@ -337,6 +337,20 @@
     const ar = Array.isArray(mt.allowedRoutes) && mt.allowedRoutes.length ? mt.allowedRoutes : (mt.allowedRoute ? [mt.allowedRoute] : ['/tuvan']);
     document.querySelectorAll('[data-m-route]').forEach(cb => { cb.checked = ar.includes(cb.dataset.mRoute); });
     updateMaintUI();
+    const ig = CONFIG.integrations || (CONFIG.integrations = { defaultAssignee: 'admin', autoPushOnSubmit: true, telegramEnabled: false, telegramBotToken: '', telegramChatId: '', webhookEnabled: false, webhookUrl: '', webhookSecret: '' });
+    if ($('int_defaultAssignee')) {
+      const opts = (USERS && USERS.length ? USERS : [{ username: 'admin', displayName: 'Quản trị viên' }])
+        .map(u => `<option value="${escapeAttr(u.username)}">${escapeAttr(u.displayName || u.username)} (@${escapeAttr(u.username)})</option>`).join('');
+      $('int_defaultAssignee').innerHTML = opts;
+      $('int_defaultAssignee').value = ig.defaultAssignee || 'admin';
+    }
+    setChk('int_autoPushOnSubmit', ig.autoPushOnSubmit !== false);
+    setChk('int_telegramEnabled', Boolean(ig.telegramEnabled));
+    setVal('int_telegramBotToken', ig.telegramBotToken || '');
+    setVal('int_telegramChatId', ig.telegramChatId || '');
+    setChk('int_webhookEnabled', Boolean(ig.webhookEnabled));
+    setVal('int_webhookUrl', ig.webhookUrl || '');
+    setVal('int_webhookSecret', ig.webhookSecret || '');
     const gsc = CONFIG.gsheet || (CONFIG.gsheet = {
       enabled: false, webhookUrl: '', secretKey: '', syncLeads: true, syncProducts: true, syncNews: true, autoPullProducts: false, pullIntervalSec: 60
     });
@@ -910,6 +924,17 @@
           ${c.batterySummary ? `<div>• Pin lưu trữ: ${escapeAttr(c.batterySummary)}</div>` : ''}
           ${c.accessoriesSummary ? `<div style="font-size:11px;color:#7C2D12">• Phụ kiện: ${escapeAttr(c.accessoriesSummary)}</div>` : ''}
         </div>` : '<div style="font-size:11.5px;color:#94A3B8;font-style:italic">Khách chưa bấm chọn Combo cụ thể.</div>'}
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;font-size:11.5px">
+          <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+            <span style="font-weight:700;color:#475569">👤 Phụ trách:</span>
+            <select class="f-input" data-l-assign="${escapeAttr(l.id)}" style="width:auto;padding:3px 7px;font-size:11.5px">
+              ${(USERS && USERS.length ? USERS : [{ username: 'admin', displayName: 'admin' }]).map(u => `<option value="${escapeAttr(u.username)}" ${(l.assignedTo || 'admin') === u.username ? 'selected' : ''}>@${escapeAttr(u.username)}</option>`).join('')}
+            </select>
+            ${l.botSentAt ? '<span style="background:#DCFCE7;color:#166534;padding:2px 6px;border-radius:99px;font-weight:700">🤖 Bot OK</span>' : ''}
+            ${l.webhookSentAt ? '<span style="background:#DBEAFE;color:#1E40AF;padding:2px 6px;border-radius:99px;font-weight:700">🗄 CSDL OK</span>' : ''}
+          </div>
+          <button type="button" class="btn-ghost small" data-l-push="${escapeAttr(l.id)}" style="padding:3px 8px;font-size:11px">📤 Đẩy Bot/CSDL</button>
+        </div>
         <div style="display:grid;grid-template-columns:130px 1fr;gap:6px;align-items:center">
           <select class="f-input" data-l-status="${escapeAttr(l.id)}" style="font-weight:700;color:${stColor}">
             <option value="new" ${st === 'new' ? 'selected' : ''}>🆕 Mới</option>
@@ -922,6 +947,28 @@
         </div>
       </div>`;
     }).join('') || '<p class="hint">Chưa có dữ liệu khách hàng nào. Khi khách nhập thông tin hoặc chọn Combo ngoài trang chủ, hệ thống sẽ tự lưu tại đây.</p>';
+
+    
+    el.querySelectorAll('[data-l-assign]').forEach(sel => sel.onchange = async () => {
+      const id = sel.dataset.lAssign, assignedTo = sel.value;
+      const item = LEADS.find(x => x.id === id);
+      if (item) item.assignedTo = assignedTo;
+      try {
+        await api('/api/admin/leads', { method: 'PUT', body: JSON.stringify({ id, assignedTo }) });
+        toast(`Đã chuyển khách cho tài khoản @${assignedTo}.`);
+      } catch (err) { toast(err.message); }
+    });
+    el.querySelectorAll('[data-l-push]').forEach(btn => btn.onclick = async () => {
+      try {
+        const res = await api('/api/admin/leads/push', { method: 'POST', body: JSON.stringify({ id: btn.dataset.lPush }) });
+        LEADS = res.leads || LEADS;
+        renderLeadsList();
+        const s = res.sync || {};
+        if (s.errors && s.errors.length) toast('Lỗi đẩy: ' + s.errors.join(' | '));
+        else if (s.telegramOk || s.webhookOk) toast('Đã đẩy dữ liệu khách sang Bot / CSDL thành công!');
+        else toast('Chưa bật Telegram Bot hoặc Webhook CSDL ở khung cài đặt phía trên.');
+      } catch (err) { toast(err.message); }
+    });
 
     el.querySelectorAll('[data-l-status]').forEach(sel => sel.onchange = async () => {
       const id = sel.dataset.lStatus;
@@ -1356,6 +1403,20 @@
       const res = await api('/api/admin/maintenance', { method: 'PUT', body: JSON.stringify(payload) });
       CONFIG = res.config;
       updateMaintUI();
+    const ig = CONFIG.integrations || (CONFIG.integrations = { defaultAssignee: 'admin', autoPushOnSubmit: true, telegramEnabled: false, telegramBotToken: '', telegramChatId: '', webhookEnabled: false, webhookUrl: '', webhookSecret: '' });
+    if ($('int_defaultAssignee')) {
+      const opts = (USERS && USERS.length ? USERS : [{ username: 'admin', displayName: 'Quản trị viên' }])
+        .map(u => `<option value="${escapeAttr(u.username)}">${escapeAttr(u.displayName || u.username)} (@${escapeAttr(u.username)})</option>`).join('');
+      $('int_defaultAssignee').innerHTML = opts;
+      $('int_defaultAssignee').value = ig.defaultAssignee || 'admin';
+    }
+    setChk('int_autoPushOnSubmit', ig.autoPushOnSubmit !== false);
+    setChk('int_telegramEnabled', Boolean(ig.telegramEnabled));
+    setVal('int_telegramBotToken', ig.telegramBotToken || '');
+    setVal('int_telegramChatId', ig.telegramChatId || '');
+    setChk('int_webhookEnabled', Boolean(ig.webhookEnabled));
+    setVal('int_webhookUrl', ig.webhookUrl || '');
+    setVal('int_webhookSecret', ig.webhookSecret || '');
       pushPreview();
       if ($('previewFrame')) {
         const targetUrl = (payload.enabled && payload.mode === 'allow_page') ? payload.allowedRoute : '/';
@@ -1365,8 +1426,36 @@
     } catch (err) { toast(err.message); }
   }
 
-  if ($('m_mode')) $('m_mode').onchange = () => { updateMaintUI(); if (CONFIG && CONFIG.maintenance && CONFIG.maintenance.enabled) saveMaintState(true); };
-  if ($('m_allowedRoute')) $('m_allowedRoute').onchange = () => { updateMaintUI(); if (CONFIG && CONFIG.maintenance && CONFIG.maintenance.enabled) saveMaintState(true); };
+  if ($('m_mode')) $('m_mode').onchange = () => { updateMaintUI();
+    const ig = CONFIG.integrations || (CONFIG.integrations = { defaultAssignee: 'admin', autoPushOnSubmit: true, telegramEnabled: false, telegramBotToken: '', telegramChatId: '', webhookEnabled: false, webhookUrl: '', webhookSecret: '' });
+    if ($('int_defaultAssignee')) {
+      const opts = (USERS && USERS.length ? USERS : [{ username: 'admin', displayName: 'Quản trị viên' }])
+        .map(u => `<option value="${escapeAttr(u.username)}">${escapeAttr(u.displayName || u.username)} (@${escapeAttr(u.username)})</option>`).join('');
+      $('int_defaultAssignee').innerHTML = opts;
+      $('int_defaultAssignee').value = ig.defaultAssignee || 'admin';
+    }
+    setChk('int_autoPushOnSubmit', ig.autoPushOnSubmit !== false);
+    setChk('int_telegramEnabled', Boolean(ig.telegramEnabled));
+    setVal('int_telegramBotToken', ig.telegramBotToken || '');
+    setVal('int_telegramChatId', ig.telegramChatId || '');
+    setChk('int_webhookEnabled', Boolean(ig.webhookEnabled));
+    setVal('int_webhookUrl', ig.webhookUrl || '');
+    setVal('int_webhookSecret', ig.webhookSecret || ''); if (CONFIG && CONFIG.maintenance && CONFIG.maintenance.enabled) saveMaintState(true); };
+  if ($('m_allowedRoute')) $('m_allowedRoute').onchange = () => { updateMaintUI();
+    const ig = CONFIG.integrations || (CONFIG.integrations = { defaultAssignee: 'admin', autoPushOnSubmit: true, telegramEnabled: false, telegramBotToken: '', telegramChatId: '', webhookEnabled: false, webhookUrl: '', webhookSecret: '' });
+    if ($('int_defaultAssignee')) {
+      const opts = (USERS && USERS.length ? USERS : [{ username: 'admin', displayName: 'Quản trị viên' }])
+        .map(u => `<option value="${escapeAttr(u.username)}">${escapeAttr(u.displayName || u.username)} (@${escapeAttr(u.username)})</option>`).join('');
+      $('int_defaultAssignee').innerHTML = opts;
+      $('int_defaultAssignee').value = ig.defaultAssignee || 'admin';
+    }
+    setChk('int_autoPushOnSubmit', ig.autoPushOnSubmit !== false);
+    setChk('int_telegramEnabled', Boolean(ig.telegramEnabled));
+    setVal('int_telegramBotToken', ig.telegramBotToken || '');
+    setVal('int_telegramChatId', ig.telegramChatId || '');
+    setChk('int_webhookEnabled', Boolean(ig.webhookEnabled));
+    setVal('int_webhookUrl', ig.webhookUrl || '');
+    setVal('int_webhookSecret', ig.webhookSecret || ''); if (CONFIG && CONFIG.maintenance && CONFIG.maintenance.enabled) saveMaintState(true); };
   if ($('btnToggleMaint')) {
     $('btnToggleMaint').onclick = () => {
       const cur = Boolean(CONFIG && CONFIG.maintenance && CONFIG.maintenance.enabled);
@@ -1553,6 +1642,49 @@
       try {
         const res = await api('/api/admin/telegram/test', { method: 'POST', body: JSON.stringify({ botToken, chatId }) });
         toast(res.message || 'Đã gửi tin nhắn thử tới Telegram!');
+      } catch (err) { toast(err.message); }
+    };
+  }
+
+  
+  if ($('btnToggleMobilePreview')) {
+    $('btnToggleMobilePreview').onclick = () => {
+      const prev = document.querySelector('.adm-preview');
+      if (!prev) return;
+      const open = prev.classList.toggle('mobile-open');
+      $('btnToggleMobilePreview').textContent = open ? '✕ Đóng xem trước' : '👁 Xem trước';
+      if (open) prev.scrollIntoView({ behavior: 'smooth' });
+    };
+  }
+  if ($('btnSaveInteg')) {
+    $('btnSaveInteg').onclick = async () => {
+      try {
+        const res = await api('/api/admin/integrations', {
+          method: 'PUT',
+          body: JSON.stringify({
+            defaultAssignee: $('int_defaultAssignee') ? $('int_defaultAssignee').value : 'admin',
+            autoPushOnSubmit: $('int_autoPushOnSubmit') ? $('int_autoPushOnSubmit').checked : true,
+            telegramEnabled: $('int_telegramEnabled') ? $('int_telegramEnabled').checked : false,
+            telegramBotToken: $('int_telegramBotToken') ? $('int_telegramBotToken').value.trim() : '',
+            telegramChatId: $('int_telegramChatId') ? $('int_telegramChatId').value.trim() : '',
+            webhookEnabled: $('int_webhookEnabled') ? $('int_webhookEnabled').checked : false,
+            webhookUrl: $('int_webhookUrl') ? $('int_webhookUrl').value.trim() : '',
+            webhookSecret: $('int_webhookSecret') ? $('int_webhookSecret').value.trim() : ''
+          })
+        });
+        CONFIG = res.config;
+        toast('Đã lưu cài đặt Bot, CSDL và tài khoản nhận khách!');
+      } catch (err) { toast(err.message); }
+    };
+  }
+  if ($('btnTestInteg')) {
+    $('btnTestInteg').onclick = async () => {
+      try {
+        const res = await api('/api/admin/integrations/test', { method: 'POST' });
+        const s = res.sync || {};
+        if (s.errors && s.errors.length) toast('Lỗi kết nối: ' + s.errors.join(' | '));
+        else if (s.telegramOk || s.webhookOk) toast('Gửi thử thành công sang Bot / CSDL!');
+        else toast('Hãy bật ít nhất 1 kênh (Telegram Bot hoặc Webhook CSDL) rồi bấm Lưu trước khi thử.');
       } catch (err) { toast(err.message); }
     };
   }

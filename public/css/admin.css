@@ -392,3 +392,86 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* V15 Admin Header Polish */
 .adm-header { min-height: 60px; height: auto; flex-wrap: wrap; padding-top: 8px; padding-bottom: 8px; }
 #currentUserBadge { white-space: nowrap; }
+
+/* ==================== MOBILE ADMIN OPTIMIZATION ==================== */
+.mobile-preview-toggle { display: none; }
+
+@media (max-width: 960px) {
+  body { overflow-y: auto; }
+  .admin-shell { height: auto; min-height: 100vh; }
+  .adm-header {
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    padding: 8px 12px;
+    gap: 8px;
+  }
+  .adm-header-left { font-size: 13.5px; gap: 8px; }
+  .adm-header-right {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .adm-header .btn-primary,
+  .adm-header .btn-ghost {
+    padding: 7px 10px;
+    font-size: 12px;
+    min-height: 36px;
+  }
+  .mobile-preview-toggle { display: inline-flex; }
+
+  .adm-body {
+    display: block;
+    height: auto;
+    overflow: visible;
+  }
+  .adm-panel {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-right: 0;
+    height: auto;
+    overflow: visible;
+  }
+  .adm-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 8px 10px;
+    gap: 6px;
+  }
+  .adm-tabs::-webkit-scrollbar { display: none; }
+  .adm-tabs .tab-btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 8px 12px;
+    font-size: 12.5px;
+    min-height: 36px;
+  }
+  .adm-panel-scroll {
+    overflow: visible;
+    padding: 14px 12px 32px;
+  }
+  .adm-preview {
+    display: none;
+    height: 75vh;
+    border-top: 2px solid var(--a-border);
+  }
+  .adm-preview.mobile-open {
+    display: flex;
+  }
+  .f-input { font-size: 16px !important; padding: 10px 11px; }
+  .btn-primary, .btn-ghost { min-height: 40px; }
+  .login-card { padding: 24px 18px; border-radius: 16px; }
+}
+
+@media (max-width: 520px) {
+  .two-col, .two { grid-template-columns: 1fr !important; }
+  .color-grid { grid-template-columns: repeat(2, 1fr); }
+  .preset-grid { grid-template-columns: 1fr 1fr; }
+}

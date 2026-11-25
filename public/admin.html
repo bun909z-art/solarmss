@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quản trị giao diện – Hoàng Quân Pin Hybrid</title>
 <link rel="icon" type="image/png" href="/assets/favicon.png">
-<link rel="stylesheet" href="/css/admin.css?v=33">
+<link rel="stylesheet" href="/css/admin.css?v=32">
 </head>
 <body>
 
@@ -40,6 +40,7 @@
     <div class="adm-header-right">
       <a class="btn-ghost" href="/" target="_blank" rel="noopener">Mở trang thực tế ↗</a>
       <button type="button" class="btn-ghost danger" id="btnReset">Khôi phục mặc định</button>
+      <button type="button" class="btn-ghost mobile-preview-toggle" id="btnToggleMobilePreview">👁 Xem trước</button>
       <button type="button" class="btn-primary" id="btnSave">Lưu cấu hình</button>
       <button type="button" id="gsheetHeaderBadge" title="Trạng thái đồng bộ Google Sheets (bấm để mở cài đặt)" style="cursor:pointer;font-size:11.5px;font-weight:800;padding:5px 10px;border-radius:999px;background:#F1F5F9;color:#475569;border:1px solid #CBD5E1;white-space:nowrap">⚪ Sheets: Chưa kết nối</button>
       <span id="currentUserBadge" style="font-size:12px;font-weight:800;padding:6px 10px;border-radius:999px;background:#FFF7ED;color:#C2410C;border:1px solid #FED7AA"></span>
@@ -586,6 +587,38 @@
               <option value="cancelled">❌ Hủy</option>
             </select>
           </div>
+          
+          <details style="margin-bottom:12px;background:#F8FAFC;border:1px solid #CBD5E1;border-radius:10px;padding:10px">
+            <summary style="cursor:pointer;font-size:13px;font-weight:800;color:#0F172A">🤖 Đẩy dữ liệu sang Bot (Telegram / Webhook CSDL) &amp; Tài khoản</summary>
+            <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
+              <div class="field-row" style="margin:0">
+                <label class="f-lbl">Tài khoản phụ trách khách hàng mới</label>
+                <select id="int_defaultAssignee" class="f-input"><option value="admin">admin</option></select>
+              </div>
+              <div class="toggle-row" style="margin:0">
+                <span>Tự động đẩy sang Bot/CSDL khi khách chọn Combo</span>
+                <input type="checkbox" id="int_autoPushOnSubmit" checked>
+              </div>
+              <div class="toggle-row" style="margin:0">
+                <span>Bật đẩy thông báo qua Telegram Bot</span>
+                <input type="checkbox" id="int_telegramEnabled">
+              </div>
+              <div class="two-col">
+                <input type="text" id="int_telegramBotToken" class="f-input" placeholder="Telegram Bot Token">
+                <input type="text" id="int_telegramChatId" class="f-input" placeholder="Telegram Chat ID / Group ID">
+              </div>
+              <div class="toggle-row" style="margin:0">
+                <span>Bật đẩy dữ liệu sang CSDL ngoài / Google Sheet / Zalo Bot (Webhook)</span>
+                <input type="checkbox" id="int_webhookEnabled">
+              </div>
+              <input type="url" id="int_webhookUrl" class="f-input" placeholder="https://... (API CSDL / Apps Script / n8n / Make)">
+              <input type="text" id="int_webhookSecret" class="f-input" placeholder="Mã bảo mật X-HQ-Secret (tùy chọn)">
+              <div class="two-col">
+                <button type="button" class="btn-primary full" id="btnSaveInteg">💾 Lưu kết nối Bot/CSDL</button>
+                <button type="button" class="btn-ghost full" id="btnTestInteg">🧪 Gửi thử Bot/CSDL</button>
+              </div>
+            </div>
+          </details>
           <div id="leadsListEditor" class="list-editor"></div>
         </section>
 
@@ -858,6 +891,6 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="/js/admin.js?v=33"></script>
+<script src="/js/admin.js?v=32"></script>
 </body>
 </html>
