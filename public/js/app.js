@@ -382,8 +382,74 @@
 
     window._hqLastResult = { kwhUsed, billTotal, bat, modules, eveDay };
     renderCombos(kwhUsed, bat);
+    scheduleLeadSave(false);
   }
 
+
+  
+  // ---------- AUTO-SAVE CUSTOMER DATA & COMBO ----------
+  const IS_PREVIEW = new URLSearchParams(window.location.search).get('preview') === '1';
+  let leadSessionId = '';
+  try {
+    leadSessionId = sessionStorage.getItem('hq_lead_sid') || '';
+    if (!leadSessionId) {
+      leadSessionId = 'lead-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+      sessionStorage.setItem('hq_lead_sid', leadSessionId);
+    }
+  } catch {
+    leadSessionId = 'lead-' + Date.now();
+  }
+  let leadSaveTimer = null;
+  let lastLeadSig = '';
+
+  function buildLeadPayload() {
+    const r = window._hqLastResult || {};
+    const c = (window._hqCombos || []).find(x => x.key === selectedComboKey) || null;
+    return {
+      sessionId: leadSessionId,
+      customerName: (S.name || '').trim(),
+      customerPhone: (S.phone || '').trim(),
+      customerAddress: (S.address || '').trim(),
+      billTotal: Math.round(r.billTotal || 0),
+      kwhUsed: Math.round(r.kwhUsed || 0),
+      evePct: S.eve,
+      batNeededKwh: Number((r.bat || 0).toFixed(2)),
+      modulesCount: r.mods || 0,
+      moduleKwh: S.mod,
+      selectedCombo: c ? {
+        key: c.key,
+        badge: c.badge,
+        title: c.title,
+        inverterName: c.inverter ? c.inverter.name : '',
+        panelSummary: c.panel ? `${c.panelCount} tấm × ${c.panel.name} (${nf2.format(c.solarKwp)} kWp)` : '',
+        batterySummary: c.battery ? `${c.batCount} module × ${c.battery.name} (${nf2.format(c.batTotalKwh)} kWh)` : '',
+        accessoriesSummary: (c.accessories && c.accessories.length) ? c.accessories.map(a => a.name).join(' · ') : ''
+      } : null
+    };
+  }
+
+  function saveLeadNow(force = false) {
+    if (IS_PREVIEW) return;
+    const payload = buildLeadPayload();
+    const hasInfo = Boolean(payload.customerName || payload.customerPhone || payload.customerAddress || payload.selectedCombo);
+    if (!hasInfo) return;
+    const sig = JSON.stringify(payload);
+    if (!force && sig === lastLeadSig) return;
+    lastLeadSig = sig;
+    fetch('/api/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: sig,
+      keepalive: true
+    }).catch(() => {});
+  }
+
+  function scheduleLeadSave(immediate = false) {
+    if (IS_PREVIEW) return;
+    clearTimeout(leadSaveTimer);
+    if (immediate) saveLeadNow(true);
+    else leadSaveTimer = setTimeout(() => saveLeadNow(false), 1200);
+  }
 
   function renderCombos(kwhUsed, bat) {
     const grid = $('comboGrid');
@@ -457,7 +523,8 @@
       btn.onclick = () => {
         selectedComboKey = btn.dataset.selectCombo;
         renderCombos(kwhUsed, bat);
-        showToast('Đã chọn gói Combo vào phiếu tư vấn!');
+        scheduleLeadSave(true);
+        showToast('Đã chọn gói Combo và lưu thông tin tư vấn!');
       };
     });
     grid.querySelectorAll('[data-mix-idx]').forEach(btn => {

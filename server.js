@@ -9,6 +9,7 @@ const auth = require('./lib/auth');
 const calc = require('./lib/calculator');
 const productStore = require('./lib/products');
 const newsStore = require('./lib/news');
+const leadStore = require('./lib/leads');
 
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -121,6 +122,7 @@ const server = http.createServer(async (req, res) => {
       const cfg = store.loadConfig();
   productStore.loadProducts();
   newsStore.loadNews();
+  leadStore.loadLeads();
       const tiers = Array.isArray(body.tiers) ? body.tiers : cfg.tariffs.tiers;
       const mode = body.mode === 'kwh' ? 'kwh' : 'bill';
       const vat = (Number(body.vat ?? cfg.defaults.vat) || 0) / 100;
@@ -162,9 +164,49 @@ const server = http.createServer(async (req, res) => {
 
     
     
+    
+    // ---------- CUSTOMER LEADS API ----------
+    if (pathname === '/api/leads' && method === 'POST') {
+      const body = await readJsonBody(req, 64 * 1024);
+      const saved = leadStore.upsertLead(body);
+      return sendJson(res, 200, { ok: true, lead: saved });
+    }
+
+    if (pathname === '/api/admin/leads' && method === 'GET') {
+      if (!requireAdmin(req, res, authState)) return;
+      return sendJson(res, 200, { leads: leadStore.loadLeads() });
+    }
+
+    if (pathname === '/api/admin/leads' && (method === 'PUT' || method === 'PATCH')) {
+      if (!requireAdmin(req, res, authState)) return;
+      const body = await readJsonBody(req, 64 * 1024);
+      const updated = leadStore.updateLead(String(body.id || ''), body);
+      if (!updated) return sendJson(res, 404, { error: 'Không tìm thấy khách hàng.' });
+      return sendJson(res, 200, { ok: true, lead: updated });
+    }
+
+    if (pathname === '/api/admin/leads' && method === 'DELETE') {
+      if (!requireAdmin(req, res, authState)) return;
+      const body = await readJsonBody(req, 16 * 1024);
+      const next = leadStore.deleteLead(String(body.id || ''));
+      return sendJson(res, 200, { ok: true, leads: next });
+    }
+
+    if (pathname === '/api/admin/leads/export.csv' && method === 'GET') {
+      if (!requireAdmin(req, res, authState)) return;
+      const csv = leadStore.toLeadsCsv(leadStore.loadLeads());
+      res.writeHead(200, {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="khach-hang-tu-van-${new Date().toISOString().slice(0, 10)}.csv"`
+      });
+      res.end(csv);
+      return;
+    }
+
     // ---------- NEWS / ARTICLES API ----------
     if (pathname === '/api/news' && method === 'GET') {
       const all = newsStore.loadNews();
+  leadStore.loadLeads();
       return sendJson(res, 200, { articles: all.filter(a => a.published !== false) });
     }
 
@@ -396,6 +438,7 @@ if (require.main === module) {
   store.loadConfig();
   productStore.loadProducts();
   newsStore.loadNews();
+  leadStore.loadLeads();
   server.listen(PORT, HOST, () => {
     console.log(`Hoàng Quân Pin Hybrid Server đang chạy tại:`);
     console.log(`  • Trang tư vấn:  http://localhost:${PORT}`);
