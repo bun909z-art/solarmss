@@ -1,35 +1,60 @@
-# Hoàng Quân – Ứng dụng Tư vấn Pin lưu trữ Hybrid (Node.js + Trang Admin)
+# Hoàng Quân – Hệ thống Tư vấn Pin Lưu Trữ Hybrid (Node.js)
 
-Ứng dụng web triển khai bằng **Node.js thuần (không cần cài thêm thư viện ngoài)** giúp tư vấn dung lượng pin lưu trữ điện mặt trời Hybrid từ hóa đơn điện EVN hoặc sản lượng kWh, tích hợp **trang quản trị Admin (`/admin`)** cho phép thay đổi chi tiết giao diện, màu sắc, bố cục, logo và biểu giá EVN với chế độ xem trước trực tiếp (Live Preview).
+Ứng dụng web độc lập chạy trực tiếp trên **Node.js 18+** (0 thư viện ngoài, không cần `npm install`).
 
-## Yêu cầu hệ thống
-- Node.js phiên bản **18 trở lên** (`node -v`).
-
-## Cách chạy nhanh
-
-1. Giải nén thư mục dự án và mở Terminal tại thư mục `hoangquan-pin-hybrid`.
-2. Khởi chạy máy chủ (không cần `npm install`):
+## Khởi chạy nhanh
 
 ```bash
-npm start
-# hoặc
 node server.js
 ```
 
-3. Truy cập trên trình duyệt:
-- **Trang tư vấn khách hàng:** `http://localhost:3000`
-- **Trang quản trị Admin:** `http://localhost:3000/admin`
-- **Mật khẩu Admin mặc định:** `admin123` (có thể đổi ngay trong mục **Bảo mật & Backup** trên trang Admin).
+Mặc định chạy tại `http://localhost:3000`:
+- `/` — Trang chủ (banner bài viết nổi bật trượt ngang, giải pháp nhanh, sản phẩm tiêu biểu)
+- `/tuvan` — Công cụ tư vấn dung lượng Pin Hybrid & gợi ý Combo
+- `/products` — Danh mục sản phẩm, phụ kiện & trang chi tiết độc lập (`/products?id=...`)
+- `/news` — Tin tức & trang bài viết độc lập (`/news?id=...`)
+- `/admin` — Trang quản trị & phân quyền (mặc định: `admin` / `admin123`)
 
-## Tùy chọn biến môi trường
-- `PORT`: Đổi cổng chạy server (mặc định `3000`), ví dụ: `PORT=8080 node server.js`.
-- `ADMIN_PASSWORD`: Đặt mật khẩu quản trị ban đầu trước lần chạy đầu tiên.
+## Cấu trúc thư mục (đã tách mô-đun dễ bảo trì)
 
-## Tính năng nổi bật
-- **Giao diện tư vấn hiện đại:** Thiết kế tối ưu cho desktop & điện thoại, hỗ trợ sao chép nhanh kết quả tư vấn (gửi Zalo/Messenger), chọn nhanh dung lượng module pin phổ biến (`5.12`, `10.24`, `14.33`, `15.36 kWh`), và in/lưu phiếu tư vấn PDF sắc nét.
-- **Trang Admin Studio (`/admin`) có Live Preview:**
-  - **Thương hiệu:** Tải lên logo mới (PNG/JPG/WebP/SVG), chỉnh kích thước logo, tên công ty, quản lý danh sách Hotline.
-  - **Màu sắc & Hero:** 5 bộ giao diện mẫu (bao gồm Dark Mode), bảng chọn màu chi tiết từng thành phần, độ bo góc, đổ bóng, độ rộng khung, phông chữ, kiểu nền và nội dung Banner Hero.
-  - **Bố cục & Tiêu đề:** Bật/tắt độc lập từng khối chức năng và tùy chỉnh toàn bộ tiêu đề mục.
-  - **Thông số & Biểu giá EVN:** Chỉnh sửa trực tiếp biểu giá điện 5 bậc EVN, VAT, các mốc chọn nhanh và thông số pin mặc định cho toàn bộ người dùng.
-  - **Bảo mật & Sao lưu:** Đổi mật khẩu quản trị (mã hóa `scrypt` + phiên cookie `HttpOnly` ký `HMAC-SHA256`), xuất/nhập tệp sao lưu `config.json`.
+```
+hoangquan-pin-hybrid/
+├── server.js                  # Điểm khởi chạy & điều phối chính (~60 dòng)
+├── lib/                       # Xử lý dữ liệu & nghiệp vụ cốt lõi
+│   ├── auth.js                # Mã hóa mật khẩu (scrypt), ký token (HMAC) & RBAC
+│   ├── calculator.js          # Công thức tính bậc thang EVN & dung lượng pin lưu trữ
+│   ├── http-helpers.js        # Tiện ích JSON/Static, tiêm CSS SSR & cổng Bảo trì
+│   ├── leads.js               # Lưu & xuất CSV dữ liệu khách hàng (CRM)
+│   ├── news.js                # Quản lý bài viết Tin tức
+│   ├── products.js            # Quản lý Kho sản phẩm, Phụ kiện & nhập/xuất Excel
+│   ├── store.js               # Lưu cấu hình giao diện, Trang chủ, Bảo trì & tài khoản
+│   └── xlsx-lite.js           # Đọc/ghi Excel (.xlsx) & tách ảnh nhúng không cần thư viện
+├── routes/                    # Định tuyến API & Trang theo từng nghiệp vụ
+│   ├── public-api.js          # API công khai (/api/config, /calculate, /products, /news, /leads)
+│   ├── admin-auth.js          # Đăng nhập, đổi mật khẩu & quản lý tài khoản phân quyền
+│   ├── admin-config.js        # Lưu cấu hình, chế độ Bảo trì & Sao lưu/Khôi phục toàn bộ
+│   ├── admin-catalog.js       # Quản lý Sản phẩm, Tin tức, Khách hàng & tải tệp/ảnh
+│   └── pages.js               # Định tuyến các trang HTML & tệp tĩnh
+├── public/
+│   ├── home.html, index.html, products.html, news.html, admin.html
+│   ├── css/
+│   │   ├── app.css            # Tệp gom @import 4 mô-đun CSS bên dưới
+│   │   ├── base.css           # Biến màu, header, nav, card, dark mode
+│   │   ├── calculator.css     # Bố cục công cụ tính EVN, Combo & bản in PDF
+│   │   ├── catalog.css        # Sản phẩm, trang chi tiết, Tin tức & slider Trang chủ
+│   │   ├── effects.css        # Hiệu ứng chuyển động v3 & chống sao chép ảnh
+│   │   └── admin.css          # Giao diện trang Quản trị
+│   └── js/
+│       ├── app.js, home-page.js, products-page.js, news-page.js
+│       ├── calculator.js, combo.js, img-protect.js
+│       └── admin/             # Tách riêng 7 mô-đun giao diện quản trị
+│           ├── core.js        # Trạng thái dùng chung, gọi API, đăng nhập/đăng xuất
+│           ├── config-ui.js   # Thương hiệu, Trang chủ, Giao diện, Bố cục, EVN, Chân trang
+│           ├── products-ui.js # Kho sản phẩm, trạng thái kho, Datasheet & Excel
+│           ├── news-ui.js     # Quản lý Tin tức & bài nổi bật
+│           ├── leads-ui.js    # Quản lý Khách hàng & xuất CSV
+│           ├── system-ui.js   # Bảo trì 404/1-trang, Sao lưu toàn bộ & Phân quyền tài khoản
+│           └── init.js        # Khởi tạo tab, xem trước trực tiếp & kiểm tra phiên
+├── data/                      # Lưu dữ liệu JSON (config, products, news, leads, admin-auth)
+└── public/uploads/            # Lưu ảnh & tài liệu PDF/Datasheet tải lên
+```
