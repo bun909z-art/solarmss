@@ -390,6 +390,7 @@
           <input type="number" class="f-input" data-p-price="${idx}" value="${p.price || 0}" step="100000" title="Giá nội bộ (tính Combo)">
           <input type="text" class="f-input" data-p-war="${idx}" value="${escapeAttr(p.warranty || '')}" placeholder="Bảo hành">
           <input type="text" class="f-input" data-p-note="${idx}" value="${escapeAttr(p.note || '')}" placeholder="Ghi chú ngắn">
+          <textarea class="f-input" style="grid-column:1/-1" rows="2" data-p-desc="${idx}" placeholder="Mô tả chi tiết sản phẩm...">${escapeAttr(p.description || '')}</textarea>
         </div>
       </div>
     `).join('') || '<p class="hint">Chưa có sản phẩm nào trong nhóm này.</p>';
@@ -404,6 +405,7 @@
     });
     el.querySelectorAll('[data-p-war]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pWar].warranty = inp.value; });
     el.querySelectorAll('[data-p-note]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pNote].note = inp.value; });
+    el.querySelectorAll('[data-p-desc]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pDesc].description = inp.value; });
     el.querySelectorAll('[data-p-price]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pPrice].price = Math.max(0, Number(inp.value) || 0); pushPreview(); });
     el.querySelectorAll('[data-p-img]').forEach(inp => {
       inp.onchange = () => {
@@ -449,6 +451,7 @@
         price: Math.max(0, Number($('np_price').value) || 0),
         warranty: cat === 'inverter' ? '5 năm' : ($('np_phase').value.trim() || '10 năm'),
         note: '',
+        description: $('np_desc') ? $('np_desc').value.trim() : '',
         imageUrl: `/assets/prod-${cat}.jpg`,
         active: true
       };
@@ -456,7 +459,7 @@
       else if (cat === 'panel') item.wattWp = spec;
       else item.capacityKwh = spec;
       PRODUCTS.unshift(item);
-      $('np_name').value = ''; $('np_spec').value = ''; $('np_price').value = '';
+      $('np_name').value = ''; $('np_spec').value = ''; $('np_price').value = ''; if ($('np_desc')) $('np_desc').value = '';
       renderProdList(); pushPreview();
       toast('Đã thêm sản phẩm. Bấm "Lưu danh mục sản phẩm" để ghi lên máy chủ.');
     };

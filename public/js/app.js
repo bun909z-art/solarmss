@@ -24,6 +24,7 @@
   let CFG = null;
   let PRODUCTS = [];
   let selectedComboKey = 'recommended';
+  let comboMixSeeds = [0, 0, 0];
   let S = {
     name: '',
     phone: '',
@@ -392,20 +393,21 @@
       return;
     }
     const sunHours = (CFG && CFG.defaults && Number(CFG.defaults.sunHours)) || 4.0;
-    const showPrices = !(CFG && CFG.sections && CFG.sections.showComboPrices === false);
+    const showPrices = Boolean(CFG && CFG.sections && CFG.sections.showComboPrices === true);
     const combos = window.HQCombo.recommendCombos({
       kwhMonth: kwhUsed,
       batNeededKwh: bat,
       days: S.days,
       sunHours,
-      products: PRODUCTS
+      products: PRODUCTS,
+      mixSeeds: comboMixSeeds
     });
     window._hqCombos = combos;
     if (!combos.length) {
       grid.innerHTML = '<p class="note">Chưa đủ dữ liệu 3 nhóm sản phẩm (Inverter, Tấm pin, Pin lưu trữ) đang kích hoạt. Hãy tải lên danh mục sản phẩm tại trang Quản trị.</p>';
       return;
     }
-    grid.innerHTML = combos.map(c => {
+    grid.innerHTML = combos.map((c, idx) => {
       const isSel = selectedComboKey === c.key;
       const isFeat = c.key === 'recommended';
       return `<div class="combo-item${isFeat ? ' featured' : ''}${isSel ? ' selected' : ''}">
@@ -418,7 +420,7 @@
           <p class="combo-desc">${escapeHtml(c.desc)}</p>
         </div>
         <div class="combo-price">
-          ${showPrices ? nf0.format(c.totalPrice) + ' đ' : 'Liên hệ báo giá'}
+          ${showPrices ? nf0.format(c.totalPrice) + ' đ' : 'Liên hệ để báo giá'}
           <small>Tổng thiết bị chính (Inverter + Tấm pin + Pin lưu trữ)</small>
         </div>
         <div class="combo-gallery">
@@ -440,9 +442,10 @@
             <div><span class="sp-cat">Pin lưu trữ</span><span class="sp-name">${c.batCount} module × ${escapeHtml(c.battery.name)}</span><span class="sp-meta">Tổng ${nf2.format(c.batTotalKwh)} kWh${showPrices ? ' · ' + nf0.format(c.batTotal) + ' đ' : ''}</span></div>
           </li>
         </ul>
-        <button type="button" class="combo-btn noprint" data-select-combo="${c.key}">
-          ${isSel ? '✓ Đã chọn vào báo giá' : 'Chọn gói này'}
-        </button>
+        <div class="combo-card-actions noprint">
+          <button type="button" class="combo-btn" data-select-combo="${c.key}">${isSel ? '✓ Đã chọn' : 'Chọn gói này'}</button>
+          <button type="button" class="combo-mix-one" data-mix-idx="${idx}" title="Phối ghép ngẫu nhiên riêng gói này">🔀 Mix</button>
+        </div>
       </div>`;
     }).join('');
     grid.querySelectorAll('[data-select-combo]').forEach(btn => {
@@ -450,6 +453,14 @@
         selectedComboKey = btn.dataset.selectCombo;
         renderCombos(kwhUsed, bat);
         showToast('Đã chọn gói Combo vào phiếu tư vấn!');
+      };
+    });
+    grid.querySelectorAll('[data-mix-idx]').forEach(btn => {
+      btn.onclick = () => {
+        const i = +btn.dataset.mixIdx;
+        comboMixSeeds[i] = (comboMixSeeds[i] || 0) + 1 + Math.floor(Math.random() * 97);
+        renderCombos(kwhUsed, bat);
+        showToast(`Đã Mix lại Combo #${i + 1}!`);
       };
     });
   }
@@ -531,7 +542,7 @@
       `• Tỷ lệ dùng buổi tối: ${S.eve}% (≈ ${nf2.format(r.eveDay || 0)} kWh/tối)`,
       `• Dung lượng pin cần: ${nf1.format(r.bat || 0)} kWh (DoD ${S.dod}%, hiệu suất ${S.eff}%)`,
       r.modules ? `• Gợi ý cấu hình pin: ${r.modules} module × ${nf2.format(S.mod)} kWh = ${nf2.format(r.modules * S.mod)} kWh` : null,
-      ...(function(){ const c = (window._hqCombos || []).find(x => x.key === selectedComboKey); if (!c) return []; const sp = !(CFG && CFG.sections && CFG.sections.showComboPrices === false); return [`• Combo đề xuất (${c.badge}):`, `  - Inverter: 1 × ${c.inverter.name}`, `  - Pin MT: ${c.panelCount} tấm × ${c.panel.name} (${nf2.format(c.solarKwp)} kWp)`, `  - Lưu trữ: ${c.batCount} × ${c.battery.name} (${nf2.format(c.batTotalKwh)} kWh)`, sp ? `  - Dự kiến thiết bị: ${nf0.format(c.totalPrice)} đ` : null]; })()
+      ...(function(){ const c = (window._hqCombos || []).find(x => x.key === selectedComboKey); if (!c) return []; const sp = Boolean(CFG && CFG.sections && CFG.sections.showComboPrices === true); return [`• Combo đề xuất (${c.badge}):`, `  - Inverter: 1 × ${c.inverter.name}`, `  - Pin MT: ${c.panelCount} tấm × ${c.panel.name} (${nf2.format(c.solarKwp)} kWp)`, `  - Lưu trữ: ${c.batCount} × ${c.battery.name} (${nf2.format(c.batTotalKwh)} kWh)`, sp ? `  - Dự kiến thiết bị: ${nf0.format(c.totalPrice)} đ` : '  - Giá bán: Liên hệ để báo giá']; })()
     ].filter(Boolean).join('\n');
     try {
       await navigator.clipboard.writeText(lines);

@@ -121,6 +121,7 @@
           <h3 class="prod-name">${esc(p.name)}</h3>
           ${p.warranty ? `<div class="prod-detail">Bảo hành: <b>${esc(p.warranty)}</b></div>` : ''}
           ${p.note ? `<div class="prod-detail">${esc(p.note)}</div>` : ''}
+          ${p.description ? `<p class="prod-desc">${esc(p.description)}</p>` : ''}
           <div class="prod-price-contact">
             <span>Giá bán:</span>
             <strong>Liên hệ để báo giá</strong>
