@@ -2,6 +2,7 @@
   'use strict';
 
   const $ = id => document.getElementById(id);
+  const demoToggles = [...document.querySelectorAll('[data-toggle-solar-demo]')];
   const TOKEN_KEY = 'hq_admin_token_v1';
   const EDITOR_KEYS = ['branding', 'home', 'theme', 'hero', 'sections', 'defaults', 'tariffs', 'footer'];
   const TAB_INFO = {
@@ -163,15 +164,20 @@
     $('btnSave').disabled = !dirty || configSaving;
   }
 
-  function renderDemoStatus() {
+  function renderDemoStatus(updating = false) {
     if (!CONFIG) return;
     const enabled = CONFIG.sections.showSolarDemo !== false;
-    const status = $('demoStatus');
-    status.textContent = enabled ? 'Đang bật' : 'Đang tắt';
-    status.dataset.enabled = String(enabled);
-    $('adminDemoLink').hidden = !enabled;
-    $('btnToggleDemo').textContent = enabled ? 'Tắt Demo 3D' : 'Bật Demo 3D';
-    $('btnToggleDemo').disabled = configSaving || !can('layout');
+    document.querySelectorAll('.adm-demo-status').forEach(status => {
+      status.textContent = enabled ? 'Đang bật' : 'Đang tắt';
+      status.dataset.enabled = String(enabled);
+    });
+    document.querySelectorAll('[data-solar-demo-link]').forEach(link => { link.hidden = !enabled; });
+    const action = enabled ? 'Tắt Demo 3D' : 'Bật Demo 3D';
+    const disabled = configSaving || !can('layout');
+    demoToggles.forEach(button => {
+      button.textContent = updating ? 'Đang cập nhật…' : action;
+      button.disabled = disabled;
+    });
   }
 
   function escapeAttr(str) {
@@ -1955,13 +1961,12 @@
   };
 
   // ---------- SAVE / RESET / PASSWORD / BACKUP ----------
-  $('btnToggleDemo').onclick = async () => {
+  async function toggleDemo() {
     if (!CONFIG || configSaving || !can('layout')) return;
     const showSolarDemo = CONFIG.sections.showSolarDemo === false;
     configSaving = true;
     $('btnSave').disabled = true;
-    $('btnToggleDemo').disabled = true;
-    $('btnToggleDemo').textContent = 'Đang cập nhật…';
+    renderDemoStatus(true);
     try {
       const { config } = await api('/api/admin/config', {
         method: 'PUT',
@@ -1977,7 +1982,8 @@
       $('btnSave').disabled = !dirty;
       renderDemoStatus();
     }
-  };
+  }
+  demoToggles.forEach(button => button.addEventListener('click', toggleDemo));
 
   $('btnSave').onclick = async () => {
     if (!CONFIG || configSaving || !dirty) return;

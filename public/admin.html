@@ -367,8 +367,8 @@
           </div>
           <p class="hint">Khi bật, khách có thể mở mô phỏng từ menu Demo 3D. Thay đổi áp dụng ngay cả với khách đang mở website.</p>
           <div class="adm-demo-actions">
-            <button type="button" class="btn-primary" id="btnToggleDemo" disabled>Bật / Tắt Demo 3D</button>
-            <a class="btn-ghost" id="adminDemoLink" href="/demo" hidden>Mở trang Demo</a>
+            <button type="button" class="btn-primary" id="btnToggleDemo" data-toggle-solar-demo disabled>Bật / Tắt Demo 3D</button>
+            <a class="btn-ghost" id="adminDemoLink" data-solar-demo-link href="/demo" hidden>Mở trang Demo</a>
           </div>
         </section>
 
@@ -784,7 +784,19 @@
           </div>
 
           <hr class="sep">
-          
+
+          <div class="adm-demo-header">
+            <h3>Demo 3D</h3>
+            <span class="adm-demo-status" id="maintenanceDemoStatus" role="status">Đang tải</span>
+          </div>
+          <p class="hint">Bật hoặc tắt riêng trang mô phỏng điện mặt trời. Thay đổi áp dụng ngay cho khách đang mở website.</p>
+          <div class="adm-demo-actions">
+            <button type="button" class="btn-primary" id="btnToggleMaintenanceDemo" data-toggle-solar-demo disabled>Bật / Tắt Demo 3D</button>
+            <a class="btn-ghost" data-solar-demo-link href="/demo" hidden>Mở trang Demo</a>
+          </div>
+
+          <hr class="sep">
+
           <div id="siteUpdateSection">
             <h3>🚀 Cập nhật trang web (Gói .zip)</h3>
             <p class="hint" style="margin-bottom:8px">Tải lên gói mã nguồn <b>.zip</b> mới: hệ thống tự động giải nén, ghi đè mã nguồn mới, xóa tệp cũ thừa, đồng thời <b>tự động sao lưu và giữ nguyên 100% sản phẩm, cấu hình, tin tức, khách hàng, tài khoản và ảnh đã tải lên</b>.</p>
