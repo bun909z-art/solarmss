@@ -7,20 +7,6 @@
   const nf2 = new Intl.NumberFormat('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const LOCAL_KEY = 'hq_pin_tuvan_node_v1';
 
-  const SHADOW_MAP = {
-    none: 'none',
-    soft: '0 1px 3px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.04)',
-    medium: '0 2px 6px rgba(15, 23, 42, 0.04), 0 12px 28px rgba(15, 23, 42, 0.07)',
-    strong: '0 4px 12px rgba(15, 23, 42, 0.08), 0 20px 44px rgba(15, 23, 42, 0.14)'
-  };
-
-  const FONT_MAP = {
-    system: '"Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui, sans-serif',
-    inter: '"Inter", "Segoe UI", Roboto, system-ui, sans-serif',
-    roboto: 'Roboto, "Segoe UI", Arial, sans-serif',
-    segoe: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif'
-  };
-
   let CFG = null;
   let PRODUCTS = [];
   let selectedComboKey = 'recommended';
@@ -43,17 +29,6 @@
 
   const isPreview = new URLSearchParams(window.location.search).get('preview') === '1';
 
-  function hexToRgba(hex, alpha) {
-    const clean = String(hex || '#F26A1B').replace('#', '');
-    const full = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean;
-    const num = parseInt(full, 16);
-    if (isNaN(num)) return `rgba(242,106,27,${alpha})`;
-    const r = (num >> 16) & 255;
-    const g = (num >> 8) & 255;
-    const b = num & 255;
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  }
-
   function showToast(msg) {
     const el = $('toast');
     el.textContent = msg;
@@ -74,7 +49,6 @@
   function applyConfig(cfg, resetStateToDefaults) {
     const previous = CFG;
     CFG = cfg;
-    const root = document.documentElement.style;
     const t = cfg.theme || {};
     const b = cfg.branding || {};
     const h = cfg.hero || {};
@@ -83,26 +57,7 @@
     const tar = cfg.tariffs || {};
     const ft = cfg.footer || {};
 
-    // Theme variables
-    root.setProperty('--primary', t.primary || '#F26A1B');
-    root.setProperty('--primary-deep', t.primaryDeep || '#D9560B');
-    root.setProperty('--grad-end', t.gradientEnd || '#FFB400');
-    root.setProperty('--primary-soft', hexToRgba(t.primary || '#F26A1B', t.darkMode ? 0.18 : 0.1));
-    root.setProperty('--primary-line', hexToRgba(t.primary || '#F26A1B', t.darkMode ? 0.42 : 0.28));
-    root.setProperty('--bg', t.bg || '#F3F5F9');
-    root.setProperty('--card', t.cardBg || '#FFFFFF');
-    root.setProperty('--ink', t.ink || '#111827');
-    root.setProperty('--ink-2', t.inkMuted || '#4B5563');
-    root.setProperty('--day', t.dayColor || '#F59E0B');
-    root.setProperty('--night', t.nightColor || '#1E293B');
-    root.setProperty('--good', t.accentGood || '#15803D');
-    root.setProperty('--radius', (Number(t.radius) || 18) + 'px');
-    root.setProperty('--max-width', (Number(t.maxWidth) || 1160) + 'px');
-    root.setProperty('--logo-h', (Number(b.logoHeight) || 54) + 'px');
-    root.setProperty('--shadow', SHADOW_MAP[t.shadowLevel] || SHADOW_MAP.medium);
-    root.setProperty('--font', FONT_MAP[t.fontFamily] || FONT_MAP.system);
-    document.body.classList.toggle('dark-mode', Boolean(t.darkMode));
-    $('metaTheme').setAttribute('content', t.primary || '#F26A1B');
+    SiteTheme.apply(cfg);
     $('stickyCol').classList.toggle('is-sticky', t.stickyResult !== false);
 
     // Branding

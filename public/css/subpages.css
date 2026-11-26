@@ -215,6 +215,28 @@ body {
 .consult-workspace .combo-sub { font-size: .9375rem; }
 #calcResult, #calcWorkspaceTitle { scroll-margin-top: var(--subpage-anchor); }
 
+.coordinated-theme {
+  --subpage-forest: var(--theme-band-raised);
+  --subpage-outline: var(--line);
+}
+.coordinated-theme .catalog-hero { background: radial-gradient(ellipse at 90% 15%, var(--hero-dark), transparent 65%), var(--solar-night); }
+.coordinated-theme .catalog-hero[data-style="solid"] { background: var(--solar-night); }
+.coordinated-theme .catalog-hero[data-style="mesh"] { background: radial-gradient(ellipse at 75% 40%, var(--hero-dark), transparent 67%), var(--solar-night); }
+.coordinated-theme .journal-hero { background: linear-gradient(115deg, var(--surface-2), var(--bg)); color: var(--ink); }
+.coordinated-theme .journal-hero[data-style="solid"] { background: var(--surface-2); }
+.coordinated-theme .journal-hero[data-style="mesh"] { background: radial-gradient(ellipse at 85% 22%, var(--card), transparent 65%), var(--bg); }
+.coordinated-theme .journal-intro .subpage-kicker,
+.coordinated-theme .journal-intro-copy { color: var(--ink-2); }
+.coordinated-theme .journal-intro-copy { border-color: var(--line); }
+.coordinated-theme .article-heading,
+.coordinated-theme .consult-workspace .lead-gate-card .card-head,
+.coordinated-theme .consult-workspace .result-hero {
+  background: linear-gradient(135deg, var(--theme-band), var(--theme-band-raised));
+}
+.coordinated-theme :is(.catalog-workspace, .prod-detail-wrap, .article-contact) .cta-btn.call {
+  color: var(--solar-light);
+}
+
 @media (max-width: 900px) {
   body { --subpage-anchor: max(135px, calc(var(--logo-h) + 82px)); }
   .catalog-workspace { grid-template-columns: minmax(0, 1fr); gap: 16px; }

@@ -2,12 +2,6 @@
   'use strict';
 
   const $ = id => document.getElementById(id);
-  const SHADOW_MAP = {
-    none: 'none',
-    soft: '0 1px 3px rgba(15,23,42,.04), 0 4px 12px rgba(15,23,42,.04)',
-    medium: '0 2px 6px rgba(15,23,42,.04), 0 12px 28px rgba(15,23,42,.07)',
-    strong: '0 4px 12px rgba(15,23,42,.08), 0 20px 44px rgba(15,23,42,.14)'
-  };
   const LIKES_KEY = 'hq_news_likes_v1';
 
   let CFG = null;
@@ -29,14 +23,6 @@
 
   function esc(str) {
     return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
-
-  function hexToRgba(hex, alpha) {
-    const clean = String(hex || '#F26A1B').replace('#', '');
-    const full = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean;
-    const n = parseInt(full, 16);
-    if (isNaN(n)) return `rgba(242,106,27,${alpha})`;
-    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
   }
 
   function formatDate(d) {
@@ -96,23 +82,8 @@
   function applyTheme(cfg) {
     applyMaintenanceNav(cfg);
     CFG = cfg;
-    const t = cfg.theme || {}, b = cfg.branding || {}, f = cfg.footer || {};
-    const r = document.documentElement.style;
-    r.setProperty('--primary', t.primary || '#F26A1B');
-    r.setProperty('--primary-deep', t.primaryDeep || '#D9560B');
-    r.setProperty('--grad-end', t.gradientEnd || '#FFB400');
-    r.setProperty('--primary-soft', hexToRgba(t.primary || '#F26A1B', t.darkMode ? 0.18 : 0.1));
-    r.setProperty('--primary-line', hexToRgba(t.primary || '#F26A1B', t.darkMode ? 0.42 : 0.28));
-    r.setProperty('--primary-glow', hexToRgba(t.primary || '#F26A1B', t.darkMode ? 0.45 : 0.30));
-    r.setProperty('--bg', t.bg || '#F3F5F9');
-    r.setProperty('--card', t.cardBg || '#FFFFFF');
-    r.setProperty('--ink', t.ink || '#111827');
-    r.setProperty('--ink-2', t.inkMuted || '#4B5563');
-    r.setProperty('--radius', (Number(t.radius) || 18) + 'px');
-    r.setProperty('--max-width', (Number(t.maxWidth) || 1160) + 'px');
-    r.setProperty('--logo-h', (Number(b.logoHeight) || 54) + 'px');
-    r.setProperty('--shadow', SHADOW_MAP[t.shadowLevel] || SHADOW_MAP.medium);
-    document.body.classList.toggle('dark-mode', Boolean(t.darkMode));
+    const b = cfg.branding || {}, f = cfg.footer || {};
+    SiteTheme.apply(cfg);
     $('heroSection').dataset.style = cfg.hero?.style || 'gradient';
 
     if ($('newsArticleView').hidden) document.title = pageTitle('Tin tức & Kiến thức');

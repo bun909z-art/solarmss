@@ -230,10 +230,18 @@
           <h3>Bộ giao diện mẫu (Presets)</h3>
           <div class="preset-grid" id="presetGrid"></div>
 
-          <div class="toggle-row" style="margin-top:14px">
-            <span>Chế độ nền tối (Dark Mode)</span>
+          <hr class="sep">
+          <h3>Nền toàn trang</h3>
+          <label class="color-item"><span>Màu nền trang khách</span><input type="color" id="t_bg"></label>
+          <label class="toggle-row">
+            <span>Tự phối màu theo nền</span>
+            <input type="checkbox" id="t_autoPalette" aria-describedby="themePaletteHint">
+          </label>
+          <p class="hint" id="themePaletteHint">Tự cân màu chữ, thẻ và thanh đầu trang theo màu nền đã chọn. Bạn vẫn có thể chỉnh phông chữ và độ rộng nội dung bên dưới.</p>
+          <label class="toggle-row">
+            <span>Dùng nền tối khi chỉnh màu thủ công</span>
             <input type="checkbox" id="t_darkMode">
-          </div>
+          </label>
 
           <hr class="sep">
           <h3>Màu sắc chi tiết</h3>
@@ -241,7 +249,6 @@
             <label class="color-item"><span>Màu chính</span><input type="color" id="t_primary"></label>
             <label class="color-item"><span>Màu chính đậm</span><input type="color" id="t_primaryDeep"></label>
             <label class="color-item"><span>Màu cuối Gradient</span><input type="color" id="t_gradientEnd"></label>
-            <label class="color-item"><span>Nền trang</span><input type="color" id="t_bg"></label>
             <label class="color-item"><span>Nền thẻ (Card)</span><input type="color" id="t_cardBg"></label>
             <label class="color-item"><span>Màu chữ chính</span><input type="color" id="t_ink"></label>
             <label class="color-item"><span>Màu chữ phụ</span><input type="color" id="t_inkMuted"></label>

@@ -358,6 +358,12 @@
   function setVal(id, v) { if ($(id)) $(id).value = v ?? ''; }
   function setChk(id, v) { if ($(id)) $(id).checked = Boolean(v); }
 
+  function syncPaletteControls() {
+    ['t_darkMode', 't_cardBg', 't_ink', 't_inkMuted'].forEach(id => {
+      $(id).disabled = CONFIG.theme.autoPalette === true;
+    });
+  }
+
   function populateForm() {
     const { branding: b, hero: h, theme: t, sections: s, defaults: d, tariffs: tar, footer: f } = CONFIG;
 
@@ -372,6 +378,8 @@
     renderHotlineEditor();
 
     setChk('t_darkMode', Boolean(t.darkMode));
+    setChk('t_autoPalette', t.autoPalette === true);
+    syncPaletteControls();
     setVal('t_primary', t.primary || '#F26A1B');
     setVal('t_primaryDeep', t.primaryDeep || '#D9560B');
     setVal('t_gradientEnd', t.gradientEnd || '#FFB400');
@@ -1840,6 +1848,10 @@
       CONFIG.theme.bg = '#F3F5F9'; CONFIG.theme.cardBg = '#FFFFFF'; CONFIG.theme.ink = '#111827'; CONFIG.theme.inkMuted = '#4B5563';
       populateForm();
     }
+  });
+  bind('t_autoPalette', el => {
+    CONFIG.theme.autoPalette = el.checked;
+    syncPaletteControls();
   });
   ['primary', 'primaryDeep', 'gradientEnd', 'bg', 'cardBg', 'ink', 'inkMuted', 'dayColor', 'nightColor'].forEach(k => {
     bind('t_' + k, el => { CONFIG.theme[k] = el.value; CONFIG.theme.preset = 'custom'; renderPresets(); });

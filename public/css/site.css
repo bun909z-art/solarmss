@@ -312,6 +312,75 @@ body:has(.home-main) { background: var(--solar-night); }
 body:has(.home-main) .site-footer { background: #0d1d1a; border-color: #a8c8b737; color: var(--solar-muted); }
 body:has(.home-main) .site-footer .co { margin: 0; padding: 0; border: 0; color: var(--solar-muted); }
 
+body.coordinated-theme {
+  --surface-2: var(--theme-surface);
+  --line: var(--theme-line);
+  --ink-3: var(--ink-2);
+  --accent-ink: var(--primary-deep);
+  --solar-night: var(--theme-band);
+  --hero-dark: var(--theme-band-raised);
+  background: var(--bg);
+  color-scheme: light;
+}
+body.coordinated-theme.dark-mode { color-scheme: dark; }
+body.coordinated-theme .topbar { background: var(--theme-band); }
+.coordinated-theme :is(input, textarea)::placeholder { color: var(--ink-2); opacity: 1; }
+.coordinated-theme .hero-banner { background: linear-gradient(112deg, var(--solar-night), var(--hero-dark)); }
+.coordinated-theme .hero-banner.style-solid { background: var(--hero-dark); }
+.coordinated-theme .hero-banner.style-mesh {
+  background: radial-gradient(ellipse at 88% 24%, var(--hero-dark), transparent 72%), var(--solar-night);
+}
+.coordinated-theme .home-main {
+  --ink: inherit;
+  --ink-2: inherit;
+  --ink-3: inherit;
+  --card: inherit;
+  --line: inherit;
+  --surface-2: inherit;
+  --accent-ink: inherit;
+}
+.coordinated-theme .home-hero {
+  --ink: var(--solar-light);
+  --ink-2: var(--solar-muted);
+  --accent-ink: var(--solar-gold);
+  background: var(--theme-band);
+  color: var(--solar-light);
+}
+.coordinated-theme .home-hero-visual::after {
+  background: linear-gradient(90deg, var(--theme-band), color-mix(in srgb, var(--theme-band) 88%, transparent) 19%, transparent 82%);
+}
+.coordinated-theme .home-action-secondary { background: var(--theme-band-raised); }
+.coordinated-theme .home-quick-card.primary-card,
+.coordinated-theme .home-quick-card:hover,
+.coordinated-theme .home-more-link,
+.coordinated-theme .home-main .prod-spec-pill {
+  background: var(--surface-2);
+  color: var(--ink);
+  border-color: var(--line);
+}
+.coordinated-theme .home-more-link:hover { color: var(--accent-ink); }
+.coordinated-theme .home-main .contact-cta {
+  background: var(--card);
+  color: var(--ink);
+}
+.coordinated-theme .home-main .cta-head p { color: var(--ink-2); }
+.coordinated-theme .home-main .cta-phone { color: var(--accent-ink); }
+.coordinated-theme .slider-dot[aria-current]::after { background: var(--accent-ink); }
+.coordinated-theme .lead-gate-card .card-head,
+.coordinated-theme .result-hero {
+  background: linear-gradient(135deg, var(--theme-band), var(--theme-band-raised));
+}
+.coordinated-theme:has(.home-main) .site-footer { background: var(--theme-band); }
+.coordinated-theme :is(.chip:hover, .mix-btn:hover, .doc-dl-btn:not(.secondary):hover,
+  .combo-btn:hover, .combo-item.featured .combo-btn, .cta-btn.call) {
+  color: var(--theme-on-primary);
+}
+.coordinated-theme .combo-item.selected .combo-btn { color: #fff; }
+.coordinated-theme .combo-item.featured .combo-badge { background: var(--theme-band); }
+.coordinated-theme .home-main .cta-btn.call { color: #211708; }
+.coordinated-theme :focus-visible { outline-color: var(--ink); }
+.coordinated-theme .topbar :focus-visible { outline-color: var(--solar-gold); }
+
 @media (max-width: 900px) {
   .topbar-inner { flex-wrap: wrap; }
   .main-nav { order: 3; width: 100%; justify-content: flex-start; border-top: 1px solid #a8c8b737; }
@@ -329,6 +398,7 @@ body:has(.home-main) .site-footer .co { margin: 0; padding: 0; border: 0; color:
   .home-hero-actions { margin-top: 21px; }
   .home-hero-visual { position: relative; inset: auto; aspect-ratio: 16 / 10; }
   .home-hero-visual::after { background: linear-gradient(180deg, #102721, transparent 28%, transparent 78%, #0b19178c); }
+  .coordinated-theme .home-hero-visual::after { background: linear-gradient(180deg, var(--theme-band), transparent 32%); }
   .home-hero-visual figcaption { bottom: 12px; }
   .featured-slide-card, .lead-gate-card { grid-template-columns: minmax(0, 1fr); }
   .featured-slide-card { min-height: 0; grid-template-rows: auto 1fr; }
