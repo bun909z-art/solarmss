@@ -77,7 +77,7 @@
 
     <div class="demo-results">
       <details class="demo-report demo-roof-editor" id="demoRoofEditor" open>
-        <summary>Thiết kế mái &amp; bố trí tấm pin</summary>
+        <summary>Thiết kế mái &amp; bố trí tấm pin <span class="demo-roof-result" id="demoRoofResult"></span></summary>
         <div class="demo-roof-switch">
           <label><input type="checkbox" id="demoEnableAnnex"> Thêm mái phụ</label>
           <div class="demo-roof-toolbar" id="demoRoofZoneSwitch" role="group" aria-label="Mái đang chỉnh" hidden>
@@ -116,12 +116,12 @@
         <div class="demo-roof-summary" id="demoRoofSummary"></div>
         <div class="demo-roof-toolbar">
           <button class="demo-plan-add" type="button" id="demoAddPanel" aria-pressed="false">＋ Tấm pin mới</button>
-          <button type="button" id="demoAutoPanels">Xếp tự động</button>
+          <button type="button" id="demoAutoPanels" title="Tính lại toàn bộ vị trí trên mái">Xếp lại</button>
           <button type="button" id="demoRotatePanel" disabled>Xoay tấm</button>
           <button type="button" id="demoRemovePanel" disabled>Gỡ tấm</button>
           <button type="button" id="demoClearRoof" disabled>Dọn mái</button>
         </div>
-        <p class="demo-muted demo-roof-hint" id="demoRoofHint">Kéo tấm pin trên bản vẽ để đổi vị trí. Bạn cũng có thể bấm <b>Tấm pin mới</b> rồi chạm vào mái để đặt.</p>
+        <p class="demo-muted demo-roof-hint" id="demoRoofHint">Tấm pin tự xếp theo kích thước mái, số lượng và mẫu đã chọn trong <b>Cấu hình hệ thống</b>. Kéo tấm trên bản vẽ để đổi vị trí hoặc bấm <b>Tấm pin mới</b> rồi chạm vào mái để đặt.</p>
         <div class="demo-roof-stage">
           <div class="demo-roof-board" id="demoRoofBoard" role="group" aria-label="Bản vẽ mái nhìn từ trên" aria-describedby="demoRoofHint">
             <div class="demo-roof-ridge" id="demoRoofRidge" hidden></div>

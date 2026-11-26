@@ -32,6 +32,8 @@
 .demo-equipment:empty { display: none; }
 
 .demo-roof-editor > summary { cursor: pointer; font-size: 1.14rem; font-weight: 750; }
+.demo-roof-result { display: inline-block; margin: 3px 0 0 4px; padding: 2px 7px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); color: var(--ink); font-size: .78rem; }
+.demo-roof-result:empty { display: none; }
 .demo-roof-switch { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 15px; margin-top: 10px; }
 .demo-roof-switch label { display: inline-flex; align-items: center; min-height: 44px; gap: 7px; font-weight: 700; cursor: pointer; }
 .demo-roof-switch .demo-roof-toolbar { margin: 0; }

@@ -4,6 +4,7 @@
   const edge = 0.20;
   const gap = 0.06;
   const snap = value => Math.round(value * 10) / 10;
+  const upToCentimetre = value => Math.ceil(value * 100 - 1e-6) / 100;
   const radians = degrees => degrees * Math.PI / 180;
   const limit = 60;
 
@@ -12,6 +13,19 @@
     if (!/^\d+(?:[.,]\d{1,2})?$/.test(input)) return null;
     const result = Number(input.replace(',', '.'));
     return result >= min && result <= max ? result : null;
+  }
+
+  function moduleSize(specs) {
+    const factors = { mm: 0.001, cm: 0.01, m: 1 };
+    const pattern = /\b(\d+(?:[.,]\d+)?)\s*(mm|cm|m)?\s*[×x*]\s*(\d+(?:[.,]\d+)?)\s*(mm|cm|m)?(?:\s*[×x*]\s*\d+(?:[.,]\d+)?\s*(mm|cm|m)?)?/gi;
+    for (const [, first, firstUnit, second, secondUnit, lastUnit] of String(specs || '').matchAll(pattern)) {
+      const unit = (lastUnit || secondUnit || firstUnit)?.toLowerCase();
+      if (!unit) continue;
+      const metres = (number, specificUnit) => Number(number.replace(',', '.')) * factors[specificUnit?.toLowerCase() || unit];
+      const [width, length] = [metres(first, firstUnit), metres(second, secondUnit)].sort((a, b) => a - b);
+      if (width >= 0.4 && length <= 4) return { width, length, estimated: false };
+    }
+    return { width: 1.134, length: 2.278, estimated: true };
   }
 
   function faces(roof) {
@@ -46,7 +60,7 @@
     if (panel.x < edge - 1e-6 || panel.x + footprint.width > roof.width - edge + 1e-6 ||
         faceAt(panel, footprint, roof) < 0) return false;
     return panels.every(other => {
-      if (other.id === panel.id) return true;
+      if (panel.id !== undefined && other.id === panel.id) return true;
       const occupied = dimensions(other, size, roof);
       return panel.x + footprint.width + gap <= other.x + 1e-6 ||
         other.x + occupied.width + gap <= panel.x + 1e-6 ||
@@ -55,23 +69,32 @@
     });
   }
 
-  function fill(panels, count, size, roof, createId) {
+  function pack(panels, count, size, roof, orientations) {
     const placed = panels.slice(0, count);
     for (const face of faces(roof).reverse()) {
-      for (const rotated of [false, true]) {
+      for (const rotated of orientations) {
         const footprint = dimensions({ rotated }, size, roof);
-        const dx = Math.ceil((footprint.width + gap) * 10) / 10;
-        const dz = Math.ceil((footprint.depth + gap) * 10) / 10;
-        const firstRow = Math.ceil((face.from + edge - 1e-6) * 10) / 10;
+        const dx = upToCentimetre(footprint.width + gap);
+        const dz = upToCentimetre(footprint.depth + gap);
+        const firstRow = upToCentimetre(face.from + edge);
         for (let z = firstRow; placed.length < count && z + footprint.depth <= face.to - edge + 1e-6; z += dz) {
           for (let x = edge; placed.length < count && x + footprint.width <= roof.width - edge + 1e-6; x += dx) {
-            const panel = { x: snap(x), z: snap(z), rotated };
-            if (fits(panel, placed, size, roof)) placed.push({ ...panel, id: createId() });
+            const panel = { x: upToCentimetre(x), z: upToCentimetre(z), rotated };
+            if (fits(panel, placed, size, roof)) placed.push(panel);
           }
         }
       }
     }
     return placed;
+  }
+
+  function fill(panels, count, size, roof, createId) {
+    let layout = pack(panels, count, size, roof, [false, true]);
+    if (layout.length < count) {
+      const landscapeFirst = pack(panels, count, size, roof, [true, false]);
+      if (landscapeFirst.length > layout.length) layout = landscapeFirst;
+    }
+    return layout.map(panel => panel.id === undefined ? { ...panel, id: createId() } : panel);
   }
 
   function arrays(panels, size, roof) {
@@ -83,7 +106,7 @@
     return groups.filter(group => group.count > 0);
   }
 
-  const api = { limit, snap, parseMeasure, faces, elevation, dimensions, fits, fill, arrays };
+  const api = { limit, snap, parseMeasure, moduleSize, faces, elevation, dimensions, fits, fill, arrays };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else window.SolarRoof = api;
 })();

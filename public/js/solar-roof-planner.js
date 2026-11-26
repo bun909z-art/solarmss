@@ -14,6 +14,18 @@
     const selectedPanel = () => panels.find(panel => panel.id === selected);
     const report = message => { $('demoRoofMessage').textContent = message; };
 
+    function reportPacking() {
+      if (!requested) return report('Nhập số tấm muốn lắp để hệ thống tự bố trí.');
+      if (!panels.length) {
+        return report('Không đủ chỗ cho một tấm của mẫu đang chọn. Tăng kích thước mái hoặc chọn tấm nhỏ hơn.');
+      }
+      if (panels.length < requested) {
+        return report('Đã xếp ' + panels.length + ' tấm. Còn ' + (requested - panels.length) +
+          ' tấm chưa có chỗ phù hợp với mái và kích thước tấm đang chọn.');
+      }
+      report('Đã xếp đủ ' + requested + ' tấm. Có thể kéo hoặc xoay từng tấm để chỉnh lại.');
+    }
+
     function position(element, panel) {
       const footprint = SolarRoof.dimensions(panel, size, roof);
       element.style.left = (panel.x / roof.width * 100) + '%';
@@ -75,18 +87,21 @@
       if (geometryChanged || detailsChanged || count !== requested) {
         roof = nextRoof;
         size = nextSize;
-        if (!custom && (geometryChanged || count !== requested)) {
-          panels = SolarRoof.fill([], count, size, roof, newId);
-        } else if (geometryChanged) {
-          const valid = [];
-          for (const panel of panels) if (SolarRoof.fits(panel, valid, size, roof)) valid.push(panel);
-          panels = valid;
+        if (geometryChanged || count !== requested) {
+          const kept = [];
+          if (custom) {
+            for (const panel of panels) if (SolarRoof.fits(panel, kept, size, roof)) kept.push(panel);
+          }
+          panels = SolarRoof.fill(kept, count, size, roof, newId);
+          if (kept.length && panels.length < count) {
+            const repacked = SolarRoof.fill([], count, size, roof, newId);
+            if (repacked.length > panels.length) panels = repacked;
+          }
         }
-        if (custom && count !== requested) panels = SolarRoof.fill(panels, count, size, roof, newId);
         requested = count;
         if (!selectedPanel()) selected = null;
         render();
-        report(panels.length < requested ? 'Một số tấm chưa có chỗ phù hợp. Hãy chỉnh kích thước mái hoặc sắp lại bố trí.' : '');
+        reportPacking();
       }
       return { panels, arrays: SolarRoof.arrays(panels, size, roof) };
     }
@@ -230,7 +245,8 @@
       if (!roof) return;
       panels = SolarRoof.fill([], requested, size, roof, newId);
       selected = null;
-      commit(panels.length < requested ? 'Đã xếp các tấm phù hợp với kích thước mái.' : 'Đã xếp tấm pin tự động.');
+      commit('');
+      reportPacking();
       custom = false;
     });
     return { sync };

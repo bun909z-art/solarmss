@@ -12,6 +12,7 @@
   annexRoof.querySelector('[aria-describedby]').setAttribute('aria-describedby', 'demoRoofHintAux');
   mainRoof.after(annexRoof);
   const enableAnnex = $('demoEnableAnnex');
+  const lastNumericValues = new WeakMap();
   const canvas = $('demoCanvas');
   const hourInput = $('demoHour');
   const playButton = $('demoPlay');
@@ -47,10 +48,10 @@
   const roofPlanner = SolarRoofPlanner.create(simulate);
   const annexPlanner = SolarRoofPlanner.create(simulate, 'Aux');
 
-  $('demoRoofWidthAux').value = '4,5';
-  $('demoRoofDepthAux').value = '4';
-  $('demoTiltAux').value = '12';
-  $('demoPanelCountAux').value = '4';
+  $('demoRoofWidthAux').defaultValue = '4,5';
+  $('demoRoofDepthAux').defaultValue = '4';
+  $('demoTiltAux').defaultValue = '12';
+  $('demoPanelCountAux').defaultValue = '4';
   for (let month = 1; month <= 12; month++) $('demoMonth').add(new Option('Tháng ' + month, month));
   $('demoMonth').value = '3';
   $('demoSettings').open = !matchMedia('(max-width: 820px)').matches;
@@ -83,15 +84,6 @@
     populateSelect('demoBattery', equipment.battery, 'capacityKwh', 'kWh', true, firstLoad);
   }
 
-  function panelDimensions(panel) {
-    const match = String(panel?.specs || '').match(/\b(\d{3,4})\s*[×x]\s*(\d{3,4})(?:\s*[×x]\s*\d{1,3})?\s*mm\b/i);
-    if (match) {
-      const [width, length] = match.slice(1).map(value => Number(value) / 1000).sort((a, b) => a - b);
-      if (width >= 0.4 && length <= 4) return { width, length, estimated: false };
-    }
-    return { width: 1.134, length: 2.278, estimated: true };
-  }
-
   function readRoof(suffix = '') {
     const input = id => $(id + suffix);
     const type = input('demoRoofType').value;
@@ -105,29 +97,28 @@
     const roof = { type, azimuth: Number(input('demoAzimuth').value) };
     const error = [];
     const name = suffix ? 'Mái phụ' : 'Mái chính';
-    for (const { id, key, label, min, max, unit, example } of measurements) {
-      const element = input(id);
-      const value = element.disabled ? 0 : SolarRoof.parseMeasure(element.value, min, max);
+    function validValue(element, value, fallback, message) {
       if (value === null) {
         element.setAttribute('aria-invalid', 'true');
         element.setAttribute('aria-describedby', 'demoRoofInputStatus');
-        error.push(name + ' · ' + label + ' cần từ ' + min + ' đến ' + max + ' ' + unit + '. Ví dụ ' + example + '.');
-      } else {
-        element.removeAttribute('aria-invalid');
-        element.removeAttribute('aria-describedby');
-        roof[key] = value;
+        error.push(name + ' · ' + message);
+        return lastNumericValues.get(element) ?? fallback;
       }
+      element.removeAttribute('aria-invalid');
+      element.removeAttribute('aria-describedby');
+      if (!element.disabled) lastNumericValues.set(element, value);
+      return value;
     }
-    const count = input('demoPanelCount');
-    if (!count.validity.valid) {
-      error.push(name + ' · Số tấm cần là số nguyên từ 0 đến ' + SolarRoof.limit + '.');
-      count.setAttribute('aria-invalid', 'true');
-      count.setAttribute('aria-describedby', 'demoRoofInputStatus');
-    } else {
-      count.removeAttribute('aria-invalid');
-      count.removeAttribute('aria-describedby');
+    for (const { id, key, label, min, max, unit, example } of measurements) {
+      const element = input(id);
+      const value = element.disabled ? 0 : SolarRoof.parseMeasure(element.value, min, max);
+      roof[key] = validValue(element, value, SolarRoof.parseMeasure(element.defaultValue, min, max),
+        label + ' cần từ ' + min + ' đến ' + max + ' ' + unit + '. Ví dụ ' + example + '.');
     }
-    return { roof, count: count.valueAsNumber, error };
+    const countInput = input('demoPanelCount');
+    const count = validValue(countInput, countInput.validity.valid ? countInput.valueAsNumber : null,
+      Number(countInput.defaultValue), 'Số tấm cần là số nguyên từ 0 đến ' + SolarRoof.limit + '.');
+    return { roof, count, error };
   }
 
   function readSettings() {
@@ -137,25 +128,33 @@
     $('demoInitialSoc').disabled = !batteryOn;
     const main = readRoof();
     const aux = enableAnnex.checked ? readRoof('Aux') : null;
-    const roofError = main.error[0] || aux?.error[0] || '';
-    $('demoRoofInputStatus').textContent = roofError;
-    if (!form.checkValidity() || roofError) return null;
+    const roofErrors = [main.error[0], aux?.error[0]].filter(Boolean);
+    $('demoRoofInputStatus').textContent = roofErrors.length
+      ? roofErrors.join(' ') + ' Các ô chưa hợp lệ tạm dùng giá trị hợp lệ gần nhất.' : '';
     const rating = (category, id, key) => Number(equipment[category].find(item => item.id === $(id).value)?.[key]) || 0;
     const panel = equipment.panel.find(item => item.id === $('demoPanel').value);
-    const size = panelDimensions(panel);
+    const size = SolarRoof.moduleSize(panel?.specs);
     const layout = roofPlanner.sync(main.roof, size, main.count);
     const auxLayout = aux && annexPlanner.sync(aux.roof, size, aux.count);
     const annex = aux && { roof: aux.roof, panels: auxLayout.panels, position: $('demoAnnexPositionAux').value };
+    const equipmentValue = id => {
+      const input = $(id);
+      if (!input.validity.valid) return lastNumericValues.get(input) ?? Number(input.defaultValue);
+      const value = number(id);
+      lastNumericValues.set(input, value);
+      return value;
+    };
     return {
       panelWp: Number(panel?.wattWp) || 0, panelCount: layout.panels.length + (annex?.panels.length || 0),
       roof: main.roof, panelSize: size, panels: layout.panels, annex,
       arrays: auxLayout ? [...layout.arrays, ...auxLayout.arrays] : layout.arrays,
       inverterKw: rating('inverter', 'demoInverter', 'powerKw'),
       batteryKwh: rating('battery', 'demoBattery', 'capacityKwh'),
-      batteryCount: batteryOn ? number('demoBatteryCount') : 0,
-      initialSoc: batteryOn ? number('demoInitialSoc') : 0,
+      batteryCount: batteryOn ? equipmentValue('demoBatteryCount') : 0,
+      initialSoc: batteryOn ? equipmentValue('demoInitialSoc') : 0,
       azimuth: main.roof.azimuth, tilt: main.roof.tilt, latitude: Number($('demoLatitude').value),
-      month: Number($('demoMonth').value), weather: $('demoWeather').value, dailyLoad: number('demoLoad')
+      month: Number($('demoMonth').value), weather: $('demoWeather').value,
+      dailyLoad: equipmentValue('demoLoad')
     };
   }
 
@@ -262,19 +261,15 @@
     }).join('');
     $('demoSceneMeta').textContent = format.format(dcKw) + ' kWp · ' + settings.panelCount + ' tấm · ' +
       format.format(capacity) + ' kWh lưu trữ' + (settings.annex ? ' · 2 mái' : '');
+    $('demoRoofResult').textContent = settings.panelCount + ' tấm đã xếp · ' + format.format(dcKw) + ' kWp';
   }
 
   function simulate() {
     if (!enabled()) return;
-    const next = readSettings();
-    if (!next) {
-      if (form.matches(':invalid')) {
-        $('demoEquipmentNote').textContent = 'Kiểm tra các ô số. Kết quả đang hiển thị theo cấu hình hợp lệ gần nhất.';
-      }
-      return;
-    }
-    settings = next;
-    $('demoEquipmentNote').textContent = usingSamples ? 'Dùng cấu hình mẫu cho nhóm thiết bị chưa có dữ liệu trong danh mục.' : '';
+    settings = readSettings();
+    $('demoEquipmentNote').textContent = form.matches(':invalid')
+      ? 'Kiểm tra các ô số trong cấu hình. Mô phỏng tạm dùng giá trị hợp lệ gần nhất cho ô đang sai.'
+      : usingSamples ? 'Dùng cấu hình mẫu cho nhóm thiết bị chưa có dữ liệu trong danh mục.' : '';
     model = SolarModel.simulate(settings);
     renderReport();
     renderHour();
@@ -309,11 +304,10 @@
   motionButton.addEventListener('click', () => setWeatherMotion(!animateWeather));
   reducedMotion.addEventListener('change', event => setWeatherMotion(!event.matches));
   hourInput.addEventListener('input', () => { stop(); renderHour(); });
-  form.addEventListener('submit', event => { event.preventDefault(); simulate(); });
-  form.addEventListener('input', simulate);
-  for (const roofForm of [$('demoRoofGeometry'), $('demoRoofGeometryAux')]) {
-    roofForm.addEventListener('submit', event => { event.preventDefault(); simulate(); });
-    roofForm.addEventListener('input', simulate);
+  for (const editor of [form, $('demoRoofGeometry'), $('demoRoofGeometryAux')]) {
+    editor.addEventListener('submit', event => { event.preventDefault(); simulate(); });
+    editor.addEventListener('input', simulate);
+    editor.addEventListener('change', simulate);
   }
   function selectRoof(useAnnex) {
     mainRoof.hidden = useAnnex;
