@@ -286,25 +286,17 @@
     if ($('pAddress')) $('pAddress').textContent = S.address || '—';
 
     const vat = S.vat / 100;
-    const eve = S.eve / 100;
     const dod = S.dod / 100;
     const eff = S.eff / 100;
 
-    let kwhExact, kwhUsed, billTotal, noteKwh = '&nbsp;', noteBill = '&nbsp;';
+    const { kwhExact, kwhUsed, preVat, billTotal, bat, modules, eveDay } = HQCalc.calculateRecommendation(S);
+    let noteKwh, noteBill;
     if (isBill) {
-      const pre = S.bill / (1 + vat);
-      kwhExact = HQCalc.kwhFromPreVat(pre, S.tiers);
-      kwhUsed = Math.round(kwhExact);
-      billTotal = S.bill;
       noteKwh = S.bill > 0 ? `Quy đổi ≈ ${nf2.format(kwhExact)} → làm tròn` : '&nbsp;';
       noteBill = 'Số tiền khách cung cấp';
     } else {
-      kwhExact = S.kwh;
-      kwhUsed = S.kwh;
-      const pre = HQCalc.preVatFromKwh(S.kwh, S.tiers);
-      billTotal = pre + Math.round(pre * vat);
       noteKwh = 'Số khách cung cấp';
-      noteBill = S.kwh > 0 ? `Trước VAT ${nf0.format(pre)} đ` : '&nbsp;';
+      noteBill = kwhUsed > 0 ? `Trước VAT ${nf0.format(preVat)} đ` : '&nbsp;';
     }
     const has = kwhUsed > 0;
 
@@ -313,10 +305,7 @@
     $('sBill').textContent = billTotal > 0 ? nf0.format(billTotal) : '—';
     $('sBillNote').innerHTML = noteBill;
 
-    const bat = HQCalc.batteryKwh(kwhUsed, eve, dod, eff, S.days);
     const perDay = kwhUsed / S.days;
-    const eveDay = perDay * eve;
-    const modules = has && S.mod > 0 ? Math.max(1, Math.ceil(bat / S.mod - 1e-9)) : 0;
 
     $('rBat').textContent = has ? nf1.format(bat) : '—';
     if (has && S.mod > 0) {
@@ -414,7 +403,7 @@
       kwhUsed: Math.round(r.kwhUsed || 0),
       evePct: S.eve,
       batNeededKwh: Number((r.bat || 0).toFixed(2)),
-      modulesCount: r.mods || 0,
+      modulesCount: r.modules || 0,
       moduleKwh: S.mod,
       selectedCombo: c ? {
         key: c.key,

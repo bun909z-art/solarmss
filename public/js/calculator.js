@@ -10,7 +10,7 @@
   ];
 
   function normalizeTiers(tiers) {
-    if (!Array.isArray(tiers) || tiers.length === 0) return DEFAULT_TIERS;
+    if (!Array.isArray(tiers) || tiers.length === 0) tiers = DEFAULT_TIERS;
     return tiers.map((t, idx) => ({
       label: String(t.label || `Bậc ${idx + 1}`),
       size: (t.size === null || t.size === undefined || t.size === '' || !isFinite(Number(t.size)))
@@ -72,12 +72,29 @@
     return d > 0 ? (kwhMonth * eve) / d : 0;
   }
 
-  global.HQCalc = {
+  function calculateRecommendation({ mode, bill, kwh, eve, dod, eff, mod, vat, days, tiers }) {
+    const isBill = mode === 'bill';
+    const taxRate = vat / 100;
+    const preVat = isBill ? bill / (1 + taxRate) : preVatFromKwh(kwh, tiers);
+    const kwhExact = isBill ? kwhFromPreVat(preVat, tiers) : kwh;
+    const kwhUsed = isBill ? Math.round(kwhExact) : kwh;
+    const billTotal = isBill ? bill : preVat + Math.round(preVat * taxRate);
+    const eveRate = eve / 100;
+    const eveDay = (kwhUsed / days) * eveRate;
+    const bat = batteryKwh(kwhUsed, eveRate, dod / 100, eff / 100, days);
+    const modules = kwhUsed > 0 && mod > 0 ? Math.max(1, Math.ceil(bat / mod - 1e-9)) : 0;
+    return { kwhExact, kwhUsed, preVat, billTotal, bat, modules, eveDay };
+  }
+
+  const calculator = {
     DEFAULT_TIERS,
     normalizeTiers,
     preVatFromKwh,
     kwhFromPreVat,
     tierBreakdown,
-    batteryKwh
+    batteryKwh,
+    calculateRecommendation
   };
-})(window);
+  if (typeof module !== 'undefined' && module.exports) module.exports = calculator;
+  else global.HQCalc = calculator;
+})(globalThis);
