@@ -13,6 +13,7 @@
     home: ['Trang chủ', 'Sắp xếp các mục nổi bật trên trang chủ.', '/?preview=home'],
     theme: ['Màu sắc & banner', 'Tùy chỉnh bảng màu, kiểu chữ và banner tư vấn.', '/?preview=1'],
     layout: ['Bố cục & tiêu đề', 'Chọn thông tin hiển thị trên công cụ tính pin.', '/?preview=1'],
+    demo: ['Demo 3D', 'Quản lý quyền truy cập mô phỏng điện mặt trời trên trang khách.'],
     tariffs: ['Thông số & biểu giá', 'Thiết lập thông số tính pin và các bậc giá điện.', '/?preview=1'],
     footer: ['Chân trang', 'Sửa phần liên hệ và lưu ý cho khách hàng.', '/?preview=1'],
     gsheet: ['Google Sheets', 'Thiết lập đồng bộ và theo dõi các lần kết nối.'],
@@ -160,6 +161,17 @@
     if (val) editRevision++;
     $('dirtyPill').hidden = !val;
     $('btnSave').disabled = !dirty || configSaving;
+  }
+
+  function renderDemoStatus() {
+    if (!CONFIG) return;
+    const enabled = CONFIG.sections.showSolarDemo !== false;
+    const status = $('demoStatus');
+    status.textContent = enabled ? 'Đang bật' : 'Đang tắt';
+    status.dataset.enabled = String(enabled);
+    $('adminDemoLink').hidden = !enabled;
+    $('btnToggleDemo').textContent = enabled ? 'Tắt Demo 3D' : 'Bật Demo 3D';
+    $('btnToggleDemo').disabled = configSaving || !can('layout');
   }
 
   function escapeAttr(str) {
@@ -366,6 +378,7 @@
 
   function populateForm() {
     const { branding: b, hero: h, theme: t, sections: s, defaults: d, tariffs: tar, footer: f } = CONFIG;
+    renderDemoStatus();
 
     if ($('logoPreview')) $('logoPreview').src = b.logoUrl || '/assets/logo-default.jpg?v=mss';
     setVal('b_logoHeight', b.logoHeight || 54);
@@ -405,7 +418,6 @@
     setVal('h_subtitle', h.subtitle || '');
 
     [
-      'showSolarDemo',
       'showCustomerName', 'showCustomerPhone', 'showCustomerAddress', 'showQuickChips',
       'showSliders', 'showAdvancedSettings', 'showDayNightBar', 'showCalcSteps',
       'showTierTable', 'showScenarioTable', 'showComboSection', 'showComboPrices',
@@ -1263,7 +1275,7 @@
     tabs.forEach(btn => {
       const tab = btn.dataset.tab;
       if (tab === 'overview') btn.hidden = !['leads', 'products', 'news'].some(can);
-      else btn.hidden = !(tab === 'users' || tab === 'security' ? isSuper : tab === 'account' || can(tab));
+      else btn.hidden = !(tab === 'users' || tab === 'security' ? isSuper : tab === 'account' || can(tab === 'demo' ? 'layout' : tab));
     });
     document.querySelectorAll('.adm-nav-group').forEach(group => { group.hidden = !group.querySelector('[data-tab]:not([hidden])'); });
     const available = tabs.filter(btn => !btn.hidden);
@@ -1885,7 +1897,6 @@
   bind('h_subtitle', el => { CONFIG.hero.subtitle = el.value; });
 
   [
-    'showSolarDemo',
     'showCustomerName', 'showCustomerPhone', 'showCustomerAddress', 'showQuickChips',
     'showSliders', 'showAdvancedSettings', 'showDayNightBar', 'showCalcSteps',
     'showTierTable', 'showScenarioTable', 'showComboSection', 'showComboPrices',
@@ -1944,18 +1955,47 @@
   };
 
   // ---------- SAVE / RESET / PASSWORD / BACKUP ----------
+  $('btnToggleDemo').onclick = async () => {
+    if (!CONFIG || configSaving || !can('layout')) return;
+    const showSolarDemo = CONFIG.sections.showSolarDemo === false;
+    configSaving = true;
+    $('btnSave').disabled = true;
+    $('btnToggleDemo').disabled = true;
+    $('btnToggleDemo').textContent = 'Đang cập nhật…';
+    try {
+      const { config } = await api('/api/admin/config', {
+        method: 'PUT',
+        body: JSON.stringify({ sections: { showSolarDemo } })
+      });
+      CONFIG.sections.showSolarDemo = config.sections.showSolarDemo;
+      CONFIG.updatedAt = config.updatedAt;
+      pushPreview();
+      toast(showSolarDemo ? 'Đã bật Demo 3D.' : 'Đã tắt Demo 3D.');
+    } catch (err) { toast(err.message); }
+    finally {
+      configSaving = false;
+      $('btnSave').disabled = !dirty;
+      renderDemoStatus();
+    }
+  };
+
   $('btnSave').onclick = async () => {
     if (!CONFIG || configSaving || !dirty) return;
     const revision = editRevision;
     configSaving = true;
     $('btnSave').disabled = true;
     $('btnSave').textContent = 'Đang lưu…';
+    renderDemoStatus();
     try {
-      const res = await api('/api/admin/config', { method: 'PUT', body: JSON.stringify(editorConfig()) });
+      const payload = editorConfig();
+      payload.sections = { ...payload.sections };
+      delete payload.sections.showSolarDemo;
+      const res = await api('/api/admin/config', { method: 'PUT', body: JSON.stringify(payload) });
       if (editRevision === revision) {
         CONFIG = res.config;
         setDirty(false);
       } else {
+        CONFIG.sections.showSolarDemo = res.config.sections.showSolarDemo;
         CONFIG.updatedAt = res.config.updatedAt;
       }
       pushPreview();
@@ -1965,6 +2005,7 @@
       configSaving = false;
       $('btnSave').disabled = !dirty;
       $('btnSave').textContent = 'Lưu giao diện';
+      renderDemoStatus();
     }
   };
 
