@@ -78,11 +78,21 @@ async function handleAdminCatalog(req, res, pathname, method, authState) {
     const updated = leadStore.updateLead(lead.id, { botSentAt: new Date().toISOString() });
     return sendJson(res, 200, { ok: true, lead: updated }), true;
   }
-  if (pathname === '/api/admin/leads/export.csv' && method === 'GET') {
+  if (pathname === '/api/admin/leads/export.csv' && (method === 'GET' || method === 'POST')) {
     if (!requireAdmin(req, res, authState, ['leads'])) return true;
-    const csv = leadStore.toLeadsCsv(leadStore.loadLeads());
+    let leads = leadStore.loadLeads();
+    if (method === 'POST') {
+      const body = await readJsonBody(req, 64 * 1024);
+      if (!Array.isArray(body?.ids) || body.ids.length > 500 || body.ids.some(id => typeof id !== 'string' || !id || id.length > 80)) {
+        return sendJson(res, 400, { error: 'Danh sách khách hàng xuất CSV không hợp lệ.' }), true;
+      }
+      const ids = new Set(body.ids);
+      leads = leads.filter(lead => ids.has(lead.id));
+    }
+    const csv = leadStore.toLeadsCsv(leads);
     res.writeHead(200, {
       'Content-Type': 'text/csv; charset=utf-8',
+      'Cache-Control': 'no-store',
       'Content-Disposition': `attachment; filename="khach-hang-tu-van-${new Date().toISOString().slice(0, 10)}.csv"`
     });
     res.end(csv);

@@ -5,6 +5,7 @@
   const TOKEN_KEY = 'hq_admin_token_v1';
   const EDITOR_KEYS = ['branding', 'home', 'theme', 'hero', 'sections', 'defaults', 'tariffs', 'footer'];
   const TAB_INFO = {
+    overview: ['Tổng quan', 'Mở nhanh khách hàng cần theo dõi, thiết bị hết hàng và bài chưa công khai.'],
     leads: ['Khách hàng', 'Theo dõi yêu cầu tư vấn và trạng thái chăm sóc.'],
     products: ['Kho sản phẩm', 'Quản lý thiết bị, tồn kho và tài liệu kỹ thuật.'],
     news: ['Tin tức', 'Soạn bài, cập nhật nội dung và chọn bài nổi bật.'],
@@ -26,6 +27,7 @@
   let NEWS = [];
   let LEADS = [];
   let USERS = [];
+  let datasetReady = {};
   let CURRENT_USER = null;
   const PERM_LABELS = [
     ['branding', 'Thương hiệu'],
@@ -40,10 +42,10 @@
     ['gsheet', 'Google Sheets'],
     ['security', 'Bảo trì & Cập nhật']
   ];
-  let leadSearchQ = '';
-  let leadStatusFilter = 'all';
   let newNewsImgUrl = '';
   let prodFilter = 'all';
+  const selectedProducts = new Set();
+  let leadRecordId = '';
   let dirty = false;
   let editRevision = 0;
   let configSaving = false;
@@ -52,6 +54,14 @@
 
   function can(permission) {
     return Boolean(CURRENT_USER && (CURRENT_USER.role === 'admin' || CURRENT_USER.permissions?.includes(permission)));
+  }
+
+  function normalizeSearch(value) {
+    return String(value ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/đ/g, 'd').trim();
+  }
+
+  function productStock(product) {
+    return product.stockStatus || (product.inStock === false ? 'out_of_stock' : 'in_stock');
   }
 
   function editorConfig() {
@@ -70,6 +80,60 @@
     link.download = filename;
     link.click();
     setTimeout(() => URL.revokeObjectURL(href), 1000);
+  }
+
+  function openOverviewList(tab, filter, lead) {
+    if (tab === 'leads') {
+      leadRecordId = lead?.id || '';
+      $('leadSearch').value = lead?.customerName || '';
+      $('leadStatusFilter').value = filter;
+      $('leadAssigneeFilter').value = 'all';
+      $('leadAgeFilter').value = 'all';
+      renderLeadsList();
+    } else if (tab === 'products') {
+      $('prodSearch').value = '';
+      $('prodStockFilter').value = filter;
+      $('prodVisibility').value = 'all';
+      $('prodFilterTabs').querySelector('[data-pcat="all"]').click();
+    } else {
+      $('newsSearch').value = '';
+      $('newsStateFilter').value = filter;
+      renderNewsList();
+    }
+    const button = tabs.find(item => item.dataset.tab === tab);
+    selectTab(button);
+    button.focus();
+  }
+
+  function renderOverview() {
+    const cards = [
+      ['leads', 'new', LEADS.filter(lead => !lead.status || lead.status === 'new').length, 'Khách mới', 'Chờ liên hệ'],
+      ['leads', 'quoted', LEADS.filter(lead => lead.status === 'quoted').length, 'Đã báo giá', 'Theo dõi phản hồi'],
+      ['products', 'out_of_stock', PRODUCTS.filter(product => productStock(product) === 'out_of_stock').length, 'Thiết bị hết hàng', 'Xem tình trạng kho'],
+      ['news', 'draft', NEWS.filter(article => article.published === false).length, 'Bài chưa công khai', 'Mở danh sách bản nháp']
+    ];
+    const actions = $('overviewActions');
+    actions.innerHTML = cards.filter(([tab]) => can(tab)).map(([tab, filter, count, title, note]) => `
+      <button type="button" class="overview-card" data-overview-tab="${tab}" data-overview-filter="${filter}">
+        <span>${title}</span><strong>${datasetReady[tab] ? count : '—'}</strong><small>${datasetReady[tab] ? note : 'Chưa tải được dữ liệu'}</small>
+      </button>`).join('');
+    actions.querySelectorAll('[data-overview-tab]').forEach(btn => {
+      btn.onclick = () => openOverviewList(btn.dataset.overviewTab, btn.dataset.overviewFilter);
+    });
+
+    const recent = $('overviewRecent');
+    recent.hidden = !can('leads');
+    if (recent.hidden) return;
+    const statusNames = { new: 'Mới', contacted: 'Đã liên hệ', quoted: 'Đã báo giá', closed: 'Đã chốt', cancelled: 'Đã hủy' };
+    const latest = [...LEADS].sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt))).slice(0, 5);
+    const list = $('overviewRecentList');
+    list.innerHTML = latest.map((lead, index) => `
+      <button type="button" class="overview-row" data-overview-lead="${index}">
+        <strong>${escapeAttr(lead.customerName)}</strong><span>${escapeAttr(fmtLeadTime(lead.updatedAt || lead.createdAt))}</span><span class="adm-tag">${statusNames[lead.status] || 'Mới'}</span>
+      </button>`).join('') || `<p class="hint adm-empty">${datasetReady.leads ? 'Chưa có hồ sơ tư vấn.' : 'Không tải được hồ sơ tư vấn.'}</p>`;
+    list.querySelectorAll('[data-overview-lead]').forEach(btn => {
+      btn.onclick = () => openOverviewList('leads', 'all', latest[Number(btn.dataset.overviewLead)]);
+    });
   }
 
   function getStoredToken() {
@@ -205,17 +269,20 @@
 
       const [data, prodData, newsData, leadsData, usersData, tgData] = await Promise.all([
         api('/api/config'),
-        api('/api/products').catch(() => ({ products: [] })),
-        can('news') ? api('/api/admin/news').catch(() => ({ articles: [] })) : Promise.resolve({ articles: [] }),
-        can('leads') ? api('/api/admin/leads').catch(() => ({ leads: [] })) : Promise.resolve({ leads: [] }),
+        api('/api/products').catch(() => null),
+        can('news') ? api('/api/admin/news').catch(() => null) : null,
+        can('leads') ? api('/api/admin/leads').catch(() => null) : null,
         isSuper ? api('/api/admin/users').catch(() => ({ users: [] })) : Promise.resolve({ users: [] }),
         isSuper ? api('/api/admin/telegram').catch(() => ({ telegram: {} })) : Promise.resolve({ telegram: {} })
       ]);
       CONFIG = data.config;
       PRESETS = data.presets || {};
-      PRODUCTS = Array.isArray(prodData.products) ? prodData.products : [];
-      NEWS = Array.isArray(newsData.articles) ? newsData.articles : [];
-      LEADS = Array.isArray(leadsData.leads) ? leadsData.leads : [];
+      datasetReady = { products: Array.isArray(prodData?.products), news: Array.isArray(newsData?.articles), leads: Array.isArray(leadsData?.leads) };
+      PRODUCTS = datasetReady.products ? prodData.products : [];
+      NEWS = datasetReady.news ? newsData.articles : [];
+      LEADS = datasetReady.leads ? leadsData.leads : [];
+      $('btnSaveProds').disabled = !datasetReady.products;
+      $('btnSaveNews').disabled = !datasetReady.news;
       USERS = Array.isArray(usersData.users) ? usersData.users : [];
       const tg = (tgData && tgData.telegram) || {};
       setChk('tg_enabled', Boolean(tg.enabled));
@@ -531,15 +598,41 @@
   };
 
   // ---------- PRODUCT CATALOG MANAGER ----------
+  function filteredProducts() {
+    const query = normalizeSearch($('prodSearch').value);
+    const stock = $('prodStockFilter').value;
+    const visibility = $('prodVisibility').value;
+    return PRODUCTS.map((p, idx) => ({ p, idx })).filter(({ p }) => (
+      (prodFilter === 'all' || p.category === prodFilter) &&
+      (stock === 'all' || productStock(p) === stock) &&
+      (visibility === 'all' || (p.active !== false) === (visibility === 'visible')) &&
+      normalizeSearch([p.name, p.brand, p.id].join(' ')).includes(query)
+    ));
+  }
+
+  function updateProductSelection() {
+    const count = selectedProducts.size;
+    $('productBulkBar').hidden = count === 0;
+    $('productSelectionCount').textContent = `Đã chọn ${count} sản phẩm`;
+    $('btnClearProducts').disabled = count === 0;
+    $('btnApplyProductBulk').disabled = !count || !$('productBulkAction').value;
+  }
+
   function renderProdList() {
     const el = $('prodListEditor');
     if (!el) return;
     if ($('prodCount')) $('prodCount').textContent = PRODUCTS.length;
-    const filtered = PRODUCTS.map((p, idx) => ({ p, idx })).filter(x => prodFilter === 'all' || x.p.category === prodFilter);
+    const filtered = filteredProducts();
+    const visible = new Set(filtered.map(({ p }) => p));
+    for (const product of selectedProducts) if (!visible.has(product)) selectedProducts.delete(product);
+    $('prodResults').textContent = datasetReady.products ? `${filtered.length} / ${PRODUCTS.length} sản phẩm` : 'Không tải được kho. Tải lại trang trước khi lưu.';
+    $('btnSelectProducts').disabled = filtered.length === 0;
+    updateProductSelection();
     const catLabel = { inverter: 'Inverter', panel: 'Pin MT', battery: 'Lưu trữ', accessory: 'Phụ kiện' };
 
     el.innerHTML = filtered.map(({ p, idx }) => `
       <div class="list-item" style="flex-direction:column;align-items:stretch;gap:6px">
+        <label class="adm-check"><input type="checkbox" data-p-select="${idx}" aria-label="Chọn ${escapeAttr(p.name)}" ${selectedProducts.has(p) ? 'checked' : ''}> Chọn để cập nhật hàng loạt</label>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
           <img src="${escapeAttr(p.imageUrl || '/assets/prod-' + p.category + '.jpg')}" alt="" style="width:36px;height:36px;border-radius:7px;object-fit:cover;border:1px solid #E2E8F0;flex:none">
           <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;flex:1;min-width:0">
@@ -580,9 +673,19 @@
         </div>
         ${(Array.isArray(p.attachments) && p.attachments.length) ? `<div style="display:flex;flex-wrap:wrap;gap:5px">${p.attachments.map((a, ai) => `<span style="display:inline-flex;align-items:center;gap:4px;background:#EEF2FF;color:#3730A3;padding:3px 8px;border-radius:99px;font-size:11px;font-weight:700">📎 ${escapeAttr(a.name)} <button type="button" data-p-del-att="${idx}:${ai}" style="border:0;background:none;color:#DC2626;cursor:pointer;font-weight:900;padding:0">×</button></span>`).join('')}</div>` : ''}
       </div>
-    `).join('') || '<p class="hint">Chưa có sản phẩm nào trong nhóm này.</p>';
+    `).join('') || '<p class="hint adm-empty">Không có sản phẩm phù hợp với bộ lọc.</p>';
 
-    el.querySelectorAll('[data-p-act]').forEach(cb => cb.onchange = () => { PRODUCTS[+cb.dataset.pAct].active = cb.checked; pushPreview(); });
+    el.querySelectorAll('[data-p-select]').forEach(cb => cb.onchange = () => {
+      const product = PRODUCTS[Number(cb.dataset.pSelect)];
+      if (cb.checked) selectedProducts.add(product);
+      else selectedProducts.delete(product);
+      updateProductSelection();
+    });
+    el.querySelectorAll('[data-p-act]').forEach(cb => cb.onchange = () => {
+      PRODUCTS[+cb.dataset.pAct].active = cb.checked;
+      if ($('prodVisibility').value !== 'all') renderProdList();
+      pushPreview();
+    });
     el.querySelectorAll('[data-p-name]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pName].name = inp.value; pushPreview(); });
     el.querySelectorAll('[data-p-brand]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pBrand].brand = inp.value; pushPreview(); });
     el.querySelectorAll('[data-p-spec]').forEach(inp => inp.oninput = () => {
@@ -601,6 +704,7 @@
       PRODUCTS[+sel.dataset.pStock].inStock = st !== 'out_of_stock';
       PRODUCTS[+sel.dataset.pStock].manualStockOverride = true;
       sel.style.color = st === 'out_of_stock' ? '#B91C1C' : (st === 'contact' ? '#B45309' : '#047857');
+      if ($('prodStockFilter').value !== 'all') renderProdList();
       pushPreview();
     });
     el.querySelectorAll('[data-p-note]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pNote].note = inp.value; });
@@ -665,13 +769,36 @@
   if ($('prodFilterTabs')) {
     $('prodFilterTabs').querySelectorAll('[data-pcat]').forEach(btn => {
       btn.onclick = () => {
-        $('prodFilterTabs').querySelectorAll('[data-pcat]').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
         prodFilter = btn.dataset.pcat;
+        highlightButton([...$('prodFilterTabs').querySelectorAll('[data-pcat]')], btn);
         renderProdList();
       };
     });
   }
+
+  $('prodSearch').oninput = renderProdList;
+  $('prodStockFilter').onchange = renderProdList;
+  $('prodVisibility').onchange = renderProdList;
+  $('btnSelectProducts').onclick = () => {
+    for (const { p } of filteredProducts()) selectedProducts.add(p);
+    renderProdList();
+  };
+  $('btnClearProducts').onclick = () => { selectedProducts.clear(); renderProdList(); };
+  $('productBulkAction').onchange = updateProductSelection;
+  $('btnApplyProductBulk').onclick = () => {
+    const action = $('productBulkAction').value;
+    if (!action || !selectedProducts.size) return;
+    const count = selectedProducts.size;
+    for (const product of selectedProducts) {
+      if (action === 'show' || action === 'hide') product.active = action === 'show';
+      else Object.assign(product, { stockStatus: action, inStock: action !== 'out_of_stock', manualStockOverride: true });
+    }
+    selectedProducts.clear();
+    $('productBulkAction').value = '';
+    renderProdList();
+    pushPreview();
+    toast(`Đã chỉnh ${count} sản phẩm. Bấm Lưu danh mục sản phẩm để áp dụng.`);
+  };
 
   if ($('btnAddProd')) {
     $('btnAddProd').onclick = () => {
@@ -711,12 +838,17 @@
 
   if ($('btnSaveProds')) {
     $('btnSaveProds').onclick = async () => {
+      const pane = $('tab-products');
+      if (!datasetReady.products || pane.inert) return;
+      pane.inert = true;
+      pane.setAttribute('aria-busy', 'true');
       try {
         const res = await api('/api/admin/products', { method: 'PUT', body: JSON.stringify({ products: PRODUCTS }) });
         PRODUCTS = res.products;
         renderProdList(); pushPreview();
         toast(`Đã lưu ${PRODUCTS.length} sản phẩm lên máy chủ!`);
       } catch (err) { toast(err.message); }
+      finally { pane.inert = false; pane.removeAttribute('aria-busy'); }
     };
   }
 
@@ -769,7 +901,16 @@
     const el = $('newsListEditor');
     if (!el) return;
     if ($('newsCount')) $('newsCount').textContent = NEWS.length;
-    el.innerHTML = NEWS.map((a, idx) => `
+    const query = normalizeSearch($('newsSearch').value);
+    const state = $('newsStateFilter').value;
+    const filtered = NEWS.map((a, idx) => ({ a, idx })).filter(({ a }) => {
+      const published = a.published !== false;
+      return normalizeSearch([a.title, a.author, a.category].join(' ')).includes(query) &&
+        (state === 'all' || (state === 'draft' && !published) || (state === 'published' && published) ||
+          (state === 'featured' && published && a.featured !== false));
+    });
+    $('newsResults').textContent = datasetReady.news ? `${filtered.length} / ${NEWS.length} bài viết` : 'Không tải được tin tức. Tải lại trang trước khi lưu.';
+    el.innerHTML = filtered.map(({ a, idx }) => `
       <div class="list-item" style="flex-direction:column;align-items:stretch;gap:6px">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
           <img src="${escapeAttr(a.imageUrl || '/assets/prod-panel.jpg')}" alt="" style="width:42px;height:32px;border-radius:6px;object-fit:cover;border:1px solid #E2E8F0;flex:none">
@@ -782,6 +923,7 @@
           </label>
           <button type="button" class="del-btn" data-n-del="${idx}" title="Xóa bài">×</button>
         </div>
+        <span class="adm-tag ${a.published === false ? 'adm-tag-draft' : ''}">${a.published === false ? 'Chưa công khai' : 'Đã công khai'}</span>
         <input type="text" class="f-input" data-n-title="${idx}" value="${escapeAttr(a.title)}" placeholder="Tiêu đề bài viết">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
           <select class="f-input" data-n-cat="${idx}">
@@ -794,10 +936,13 @@
         <textarea class="f-input" rows="2" data-n-sum="${idx}" placeholder="Mô tả ngắn...">${escapeAttr(a.summary || '')}</textarea>
         <textarea class="f-input" rows="4" data-n-content="${idx}" placeholder="Nội dung bài viết đầy đủ...">${escapeAttr(a.content || '')}</textarea>
       </div>
-    `).join('') || '<p class="hint">Chưa có bài viết tin tức nào.</p>';
+    `).join('') || '<p class="hint adm-empty">Không có bài viết phù hợp với bộ lọc.</p>';
 
-    el.querySelectorAll('[data-n-pub]').forEach(cb => cb.onchange = () => { NEWS[+cb.dataset.nPub].published = cb.checked; });
-    el.querySelectorAll('[data-n-feat]').forEach(cb => cb.onchange = () => { NEWS[+cb.dataset.nFeat].featured = cb.checked; });
+    el.querySelectorAll('[data-n-pub]').forEach(cb => cb.onchange = () => { NEWS[+cb.dataset.nPub].published = cb.checked; renderNewsList(); });
+    el.querySelectorAll('[data-n-feat]').forEach(cb => cb.onchange = () => {
+      NEWS[+cb.dataset.nFeat].featured = cb.checked;
+      if (state === 'featured') renderNewsList();
+    });
     el.querySelectorAll('[data-n-title]').forEach(inp => inp.oninput = () => { NEWS[+inp.dataset.nTitle].title = inp.value; });
     el.querySelectorAll('[data-n-cat]').forEach(sel => sel.onchange = () => { NEWS[+sel.dataset.nCat].category = sel.value; });
     el.querySelectorAll('[data-n-date]').forEach(inp => inp.oninput = () => { NEWS[+inp.dataset.nDate].publishedAt = inp.value; });
@@ -823,6 +968,9 @@
       renderNewsList();
     });
   }
+
+  $('newsSearch').oninput = renderNewsList;
+  $('newsStateFilter').onchange = renderNewsList;
 
   if ($('nn_img_file')) {
     $('nn_img_file').addEventListener('change', e => {
@@ -852,24 +1000,31 @@
         imageUrl: newNewsImgUrl || '/assets/prod-panel.jpg',
         summary: $('nn_summary').value.trim(),
         content: $('nn_content').value.trim(),
-        published: true,
+        published: !$('nn_draft').checked,
         featured: $('nn_featured') ? $('nn_featured').checked : true
       });
       $('nn_title').value = ''; $('nn_summary').value = ''; $('nn_content').value = '';
       newNewsImgUrl = '';
+      $('newsSearch').value = '';
+      $('newsStateFilter').value = $('nn_draft').checked ? 'draft' : 'all';
       renderNewsList();
-      toast('Đã thêm bài viết. Bấm "Lưu danh sách tin tức" để xuất bản lên máy chủ.');
+      toast('Đã thêm bài viết. Bấm Lưu danh sách tin tức để ghi lại.');
     };
   }
 
   if ($('btnSaveNews')) {
     $('btnSaveNews').onclick = async () => {
+      const pane = $('tab-news');
+      if (!datasetReady.news || pane.inert) return;
+      pane.inert = true;
+      pane.setAttribute('aria-busy', 'true');
       try {
         const res = await api('/api/admin/news', { method: 'PUT', body: JSON.stringify({ articles: NEWS }) });
         NEWS = res.articles;
         renderNewsList();
         toast(`Đã lưu ${NEWS.length} bài viết tin tức lên máy chủ!`);
       } catch (err) { toast(err.message); }
+      finally { pane.inert = false; pane.removeAttribute('aria-busy'); }
     };
   }
 
@@ -896,6 +1051,33 @@
     } catch { return iso; }
   }
 
+  function getFilteredLeads() {
+    const q = normalizeSearch($('leadSearch').value);
+    const status = $('leadStatusFilter').value;
+    const assignee = $('leadAssigneeFilter').value;
+    const days = Number($('leadAgeFilter').value);
+    const cutoff = Date.now() - days * 86400000;
+    const phoneQuery = /^[+\d .()-]+$/.test(q) ? q.replace(/\D/g, '') : '';
+    return LEADS.filter(lead => {
+      if (leadRecordId && lead.id !== leadRecordId) return false;
+      if (status !== 'all' && (lead.status || 'new') !== status) return false;
+      if (assignee !== 'all' && (lead.assignedTo || 'admin') !== assignee) return false;
+      if (days && !(Date.parse(lead.createdAt || lead.updatedAt) >= cutoff)) return false;
+      if (!q) return true;
+      const text = normalizeSearch([lead.customerName, lead.customerPhone, lead.customerAddress, lead.selectedCombo?.title, lead.adminNote].join(' '));
+      return text.includes(q) || Boolean(phoneQuery && String(lead.customerPhone || '').replace(/\D/g, '').includes(phoneQuery));
+    });
+  }
+
+  function refreshLeadAssignees() {
+    const select = $('leadAssigneeFilter');
+    const selected = select.value;
+    const names = new Map(USERS.map(user => [user.username, user.displayName || user.username]));
+    const usernames = [...new Set(LEADS.map(lead => lead.assignedTo || 'admin'))].sort();
+    select.replaceChildren(new Option('Mọi người phụ trách', 'all'), ...usernames.map(username => new Option(names.get(username) || '@' + username, username)));
+    select.value = usernames.includes(selected) ? selected : 'all';
+  }
+
   function renderLeadsList() {
     const el = $('leadsListEditor');
     if (!el) return;
@@ -905,17 +1087,10 @@
     if ($('kpiLeadNew')) $('kpiLeadNew').textContent = LEADS.filter(x => (x.status || 'new') === 'new').length;
     if ($('kpiLeadClosed')) $('kpiLeadClosed').textContent = LEADS.filter(x => x.status === 'closed').length;
 
-    const q = leadSearchQ.trim().toLowerCase();
-    const list = LEADS.filter(l => {
-      const pDig = String(l.customerPhone || '').replace(/\D/g, '');
-      if (!l.customerName || String(l.customerName).trim().length < 2 || pDig.length < 9 || !l.customerAddress || String(l.customerAddress).trim().length < 2) return false;
-      if (leadStatusFilter !== 'all' && (l.status || 'new') !== leadStatusFilter) return false;
-      if (q) {
-        const hay = `${l.customerName || ''} ${l.customerPhone || ''} ${l.customerAddress || ''} ${(l.selectedCombo && l.selectedCombo.title) || ''} ${l.adminNote || ''}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
-    });
+    refreshLeadAssignees();
+    const list = getFilteredLeads();
+    $('leadResults').textContent = datasetReady.leads ? `${list.length} / ${LEADS.length} khách hàng` : 'Không tải được khách hàng. Bấm Tải lại để thử lại.';
+    $('btnExportLeads').disabled = !datasetReady.leads || !list.length;
 
     el.innerHTML = list.map(l => {
       const c = l.selectedCombo;
@@ -973,12 +1148,14 @@
     
     el.querySelectorAll('[data-l-assign]').forEach(sel => sel.onchange = async () => {
       const id = sel.dataset.lAssign, assignedTo = sel.value;
-      const item = LEADS.find(x => x.id === id);
-      if (item) item.assignedTo = assignedTo;
+      sel.disabled = true;
       try {
-        await api('/api/admin/leads', { method: 'PUT', body: JSON.stringify({ id, assignedTo }) });
+        const { lead } = await api('/api/admin/leads', { method: 'PUT', body: JSON.stringify({ id, assignedTo }) });
+        const item = LEADS.find(x => x.id === id);
+        if (item) item.assignedTo = lead.assignedTo;
         toast(`Đã chuyển khách cho tài khoản @${assignedTo}.`);
       } catch (err) { toast(err.message); }
+      renderLeadsList();
     });
     el.querySelectorAll('[data-l-push]').forEach(btn => btn.onclick = async () => {
       if (!confirm('Gửi thông tin khách hàng này tới nhóm Telegram đã cấu hình?')) return;
@@ -995,22 +1172,23 @@
     el.querySelectorAll('[data-l-status]').forEach(sel => sel.onchange = async () => {
       const id = sel.dataset.lStatus;
       const status = sel.value;
-      const item = LEADS.find(x => x.id === id);
-      if (item) item.status = status;
+      sel.disabled = true;
       try {
-        await api('/api/admin/leads', { method: 'PUT', body: JSON.stringify({ id, status }) });
-        renderLeadsList();
+        const { lead } = await api('/api/admin/leads', { method: 'PUT', body: JSON.stringify({ id, status }) });
+        const item = LEADS.find(x => x.id === id);
+        if (item) item.status = lead.status;
         toast('Đã cập nhật trạng thái khách hàng.');
       } catch (err) { toast(err.message); }
+      renderLeadsList();
     });
 
     el.querySelectorAll('[data-l-note]').forEach(inp => inp.onchange = async () => {
       const id = inp.dataset.lNote;
       const adminNote = inp.value;
-      const item = LEADS.find(x => x.id === id);
-      if (item) item.adminNote = adminNote;
       try {
-        await api('/api/admin/leads', { method: 'PUT', body: JSON.stringify({ id, adminNote }) });
+        const { lead } = await api('/api/admin/leads', { method: 'PUT', body: JSON.stringify({ id, adminNote }) });
+        const item = LEADS.find(x => x.id === id);
+        if (item) item.adminNote = lead.adminNote;
         toast('Đã lưu ghi chú khách hàng.');
       } catch (err) { toast(err.message); }
     });
@@ -1026,13 +1204,16 @@
     });
   }
 
-  if ($('leadSearch')) $('leadSearch').addEventListener('input', e => { leadSearchQ = e.target.value; renderLeadsList(); });
-  if ($('leadStatusFilter')) $('leadStatusFilter').addEventListener('change', e => { leadStatusFilter = e.target.value; renderLeadsList(); });
+  function changeLeadFilter() { leadRecordId = ''; renderLeadsList(); }
+  $('leadSearch').oninput = changeLeadFilter;
+  ['leadStatusFilter', 'leadAssigneeFilter', 'leadAgeFilter'].forEach(id => { $(id).onchange = changeLeadFilter; });
   if ($('btnRefreshLeads')) {
     $('btnRefreshLeads').onclick = async () => {
       try {
         const res = await api('/api/admin/leads');
-        LEADS = Array.isArray(res.leads) ? res.leads : [];
+        if (!Array.isArray(res.leads)) throw new Error('Danh sách khách hàng không hợp lệ.');
+        LEADS = res.leads;
+        datasetReady.leads = true;
         renderLeadsList();
         toast(`Đã làm mới (${LEADS.length} khách hàng).`);
       } catch (err) { toast(err.message); }
@@ -1041,7 +1222,11 @@
   if ($('btnExportLeads')) {
     $('btnExportLeads').onclick = async () => {
       try {
-        const resp = await fetch('/api/admin/leads/export.csv', { credentials: 'include', headers: authHeaders() });
+        const ids = getFilteredLeads().map(lead => lead.id);
+        if (!ids.length) return;
+        const resp = await fetch('/api/admin/leads/export.csv', {
+          method: 'POST', credentials: 'include', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ ids })
+        });
         if (!resp.ok) throw new Error('Không thể xuất CSV.');
         downloadFile(await resp.blob(), `khach-hang-tu-van-${new Date().toISOString().slice(0, 10)}.csv`);
       } catch (err) { toast(err.message); }
@@ -1063,7 +1248,8 @@
     $('gsheetHeaderBadge').hidden = !can('gsheet');
     tabs.forEach(btn => {
       const tab = btn.dataset.tab;
-      btn.hidden = !(tab === 'users' || tab === 'security' ? isSuper : tab === 'account' || can(tab));
+      if (tab === 'overview') btn.hidden = !['leads', 'products', 'news'].some(can);
+      else btn.hidden = !(tab === 'users' || tab === 'security' ? isSuper : tab === 'account' || can(tab));
     });
     document.querySelectorAll('.adm-nav-group').forEach(group => { group.hidden = !group.querySelector('[data-tab]:not([hidden])'); });
     const available = tabs.filter(btn => !btn.hidden);
@@ -1855,6 +2041,7 @@
       pane.classList.toggle('active', selected);
       pane.hidden = !selected;
     });
+    if (next === 'overview') renderOverview();
     renderPreview();
   }
 

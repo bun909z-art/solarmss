@@ -6,7 +6,7 @@
 <title>Quản trị website – Hoàng Quân</title>
 <link rel="icon" type="image/png" href="/assets/favicon.png">
 <link rel="stylesheet" href="/css/admin.css?v=32">
-<link rel="stylesheet" href="/css/admin-workspace.css?v=37">
+<link rel="stylesheet" href="/css/admin-workspace.css?v=38">
 </head>
 <body>
 
@@ -56,7 +56,8 @@
       <nav class="adm-tabs adm-navigation" role="tablist" aria-label="Mục quản trị">
         <div class="adm-nav-group" role="presentation">
           <p role="presentation">Vận hành</p>
-          <button type="button" class="tab-btn active" data-tab="leads">Khách hàng <span id="leadsTabCount">0</span></button>
+          <button type="button" class="tab-btn active" data-tab="overview">Tổng quan</button>
+          <button type="button" class="tab-btn" data-tab="leads">Khách hàng <span id="leadsTabCount">0</span></button>
           <button type="button" class="tab-btn" data-tab="products">Kho sản phẩm</button>
           <button type="button" class="tab-btn" data-tab="news">Tin tức</button>
         </div>
@@ -84,8 +85,8 @@
       <div class="adm-panel-scroll">
         <div class="adm-workspace-head">
           <div>
-            <h1 id="workspaceTitle">Khách hàng</h1>
-            <p id="workspaceDescription">Theo dõi yêu cầu tư vấn và trạng thái chăm sóc.</p>
+            <h1 id="workspaceTitle">Tổng quan</h1>
+            <p id="workspaceDescription">Mở nhanh khách hàng cần theo dõi, thiết bị hết hàng và bài chưa công khai.</p>
           </div>
           <div class="adm-workspace-actions" id="workspaceActions" hidden>
             <span class="dirty-pill" id="dirtyPill" role="status" hidden>Chưa lưu</span>
@@ -97,6 +98,17 @@
             </details>
           </div>
         </div>
+        <section class="tab-pane active adm-overview" id="tab-overview">
+          <div class="overview-hero">
+            <h2>Việc cần theo dõi</h2>
+            <p>Chọn một mục để mở danh sách đã lọc.</p>
+          </div>
+          <div class="overview-actions" id="overviewActions"></div>
+          <section class="overview-recent" id="overviewRecent" aria-labelledby="overviewRecentTitle" hidden>
+            <h3 id="overviewRecentTitle">Hồ sơ tư vấn gần đây</h3>
+            <div id="overviewRecentList"></div>
+          </section>
+        </section>
         <!-- TAB 1: BRANDING -->
         <section class="tab-pane" id="tab-branding">
           <h3>Nhận diện thương hiệu</h3>
@@ -415,6 +427,8 @@
 
         <!-- TAB PRODUCTS & CATALOG UPLOAD -->
         <section class="tab-pane" id="tab-products">
+          <details class="adm-disclosure">
+          <summary>Nhập danh mục hoặc thêm sản phẩm</summary>
           <h3>Tải lên danh mục sản phẩm bán</h3>
           <p class="hint" style="margin-bottom:10px">Tải lên trực tiếp tệp <b>Excel (.xlsx)</b>, <b>CSV</b> hoặc <b>JSON</b> chứa danh sách Inverter, Tấm pin mặt trời và Pin lưu trữ. <b>Tự động lấy luôn hình ảnh bạn chèn trong từng dòng file Excel!</b></p>
           <div class="two-col" style="margin-bottom:8px">
@@ -478,26 +492,51 @@
           <div class="field-row">
             <button type="button" class="btn-primary full" id="btnAddProd">+ Thêm vào kho</button>
           </div>
+          </details>
 
           <hr class="sep">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div class="adm-list-bar">
             <h3 style="margin:0">Kho sản phẩm (<span id="prodCount">0</span>)</h3>
-            <button type="button" class="btn-ghost small" id="btnResetProds">Khôi phục kho mẫu</button>
+            <div class="adm-action-group">
+              <button type="button" class="btn-ghost small" id="btnResetProds">Khôi phục kho mẫu</button>
+              <button type="button" class="btn-primary small" id="btnSaveProds">Lưu danh mục sản phẩm</button>
+            </div>
           </div>
-          <div class="adm-tabs" style="padding:6px;margin-bottom:8px;border-radius:8px" id="prodFilterTabs">
-            <button type="button" class="tab-btn active" data-pcat="all">Tất cả</button>
-            <button type="button" class="tab-btn" data-pcat="inverter">Inverter</button>
-            <button type="button" class="tab-btn" data-pcat="panel">Pin MT</button>
-            <button type="button" class="tab-btn" data-pcat="battery">Lưu trữ</button>
-            <button type="button" class="tab-btn" data-pcat="accessory">Phụ kiện</button>
+          <div class="adm-tabs" style="padding:6px;margin-bottom:8px;border-radius:8px" id="prodFilterTabs" role="group" aria-label="Nhóm sản phẩm">
+            <button type="button" class="tab-btn active" data-pcat="all" aria-pressed="true">Tất cả</button>
+            <button type="button" class="tab-btn" data-pcat="inverter" aria-pressed="false">Inverter</button>
+            <button type="button" class="tab-btn" data-pcat="panel" aria-pressed="false">Pin MT</button>
+            <button type="button" class="tab-btn" data-pcat="battery" aria-pressed="false">Lưu trữ</button>
+            <button type="button" class="tab-btn" data-pcat="accessory" aria-pressed="false">Phụ kiện</button>
+          </div>
+          <div class="adm-filter-grid">
+            <input type="search" class="f-input" id="prodSearch" aria-label="Tìm sản phẩm" placeholder="Tên, mã hoặc hãng">
+            <select class="f-input" id="prodStockFilter" aria-label="Tình trạng tồn kho"><option value="all">Mọi tình trạng kho</option><option value="in_stock">Còn hàng</option><option value="contact">Liên hệ</option><option value="out_of_stock">Hết hàng</option></select>
+            <select class="f-input" id="prodVisibility" aria-label="Hiển thị sản phẩm"><option value="all">Mọi trạng thái hiển thị</option><option value="visible">Đang hiển thị</option><option value="hidden">Đã ẩn</option></select>
+          </div>
+          <div class="adm-list-bar adm-bulk-tools">
+            <p id="prodResults" role="status"></p>
+            <div class="adm-action-group">
+              <button type="button" class="btn-ghost small" id="btnSelectProducts">Chọn kết quả</button>
+              <button type="button" class="btn-ghost small" id="btnClearProducts" disabled>Bỏ chọn</button>
+            </div>
+          </div>
+          <div class="adm-bulk-tools adm-bulk-update" id="productBulkBar" hidden>
+            <span id="productSelectionCount" role="status"></span>
+            <select class="f-input" id="productBulkAction" aria-label="Thao tác cho sản phẩm đã chọn">
+              <option value="">Chọn thao tác</option><option value="in_stock">Đánh dấu còn hàng</option><option value="contact">Chuyển sang liên hệ</option><option value="out_of_stock">Đánh dấu hết hàng</option><option value="hide">Ẩn khỏi website</option><option value="show">Hiển thị trên website</option>
+            </select>
+            <button type="button" class="btn-primary small" id="btnApplyProductBulk" disabled>Áp dụng</button>
+            <p class="hint">Bấm Lưu danh mục sản phẩm để cập nhật website.</p>
           </div>
           <div id="prodListEditor" class="list-editor"></div>
-          <button type="button" class="btn-primary full" id="btnSaveProds">Lưu danh mục sản phẩm</button>
         </section>
 
         
         <!-- TAB NEWS -->
         <section class="tab-pane" id="tab-news">
+          <details class="adm-disclosure">
+          <summary>Soạn bài viết mới</summary>
           <h3>Đăng bài viết tin tức mới</h3>
           <div class="field-row">
             <label class="f-lbl">Tiêu đề bài viết</label>
@@ -541,26 +580,35 @@
           </div>
           <div class="field-row">
             <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;margin-bottom:8px"><input type="checkbox" id="nn_featured" checked> ⭐ Hiển thị ở thanh trượt Nổi bật Trang chủ</label>
+            <label class="adm-check"><input type="checkbox" id="nn_draft"> Lưu dưới dạng bản nháp</label>
             <button type="button" class="btn-primary full" id="btnAddNews">+ Thêm bài viết</button>
           </div>
+          </details>
 
           <hr class="sep">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div class="adm-list-bar">
             <h3 style="margin:0">Danh sách bài viết (<span id="newsCount">0</span>)</h3>
-            <button type="button" class="btn-ghost small" id="btnResetNews">Bài mẫu</button>
+            <div class="adm-action-group">
+              <button type="button" class="btn-ghost small" id="btnResetNews">Bài mẫu</button>
+              <button type="button" class="btn-primary small" id="btnSaveNews">Lưu danh sách tin tức</button>
+            </div>
           </div>
+          <div class="adm-filter-grid">
+            <input type="search" class="f-input" id="newsSearch" aria-label="Tìm bài viết" placeholder="Tiêu đề, tác giả, chuyên mục">
+            <select class="f-input" id="newsStateFilter" aria-label="Trạng thái bài viết"><option value="all">Mọi trạng thái</option><option value="published">Đã công khai</option><option value="draft">Chưa công khai</option><option value="featured">Đang nổi bật</option></select>
+          </div>
+          <p class="adm-filter-results" id="newsResults" role="status"></p>
           <div id="newsListEditor" class="list-editor"></div>
-          <button type="button" class="btn-primary full" id="btnSaveNews">Lưu danh sách tin tức</button>
         </section>
 
         
         <!-- TAB LEADS (CUSTOMER CRM) -->
-        <section class="tab-pane active" id="tab-leads">
+        <section class="tab-pane" id="tab-leads">
           <div class="adm-list-bar">
             <h3 style="margin:0">Dữ liệu khách hàng (<span id="leadsCount">0</span>)</h3>
             <div style="display:flex;gap:5px">
               <button type="button" class="btn-ghost small" id="btnRefreshLeads">↻ Tải lại</button>
-              <button type="button" class="btn-ghost small" id="btnExportLeads">⬇ Xuất CSV</button>
+              <button type="button" class="btn-ghost small" id="btnExportLeads">Xuất CSV kết quả</button>
             </div>
           </div>
 
@@ -578,7 +626,7 @@
               <strong id="kpiLeadClosed">0</strong>
             </div>
           </div>
-          <div class="two-col" style="margin-bottom:10px">
+          <div class="adm-filter-grid">
             <input type="search" id="leadSearch" class="f-input" aria-label="Tìm khách hàng" placeholder="Tìm tên, SĐT, địa chỉ">
             <select id="leadStatusFilter" class="f-input" aria-label="Trạng thái khách hàng">
               <option value="all">Tất cả trạng thái</option>
@@ -588,7 +636,10 @@
               <option value="closed">✅ Đã chốt</option>
               <option value="cancelled">❌ Hủy</option>
             </select>
+            <select id="leadAssigneeFilter" class="f-input" aria-label="Người phụ trách"><option value="all">Mọi người phụ trách</option></select>
+            <select id="leadAgeFilter" class="f-input" aria-label="Thời gian hồ sơ"><option value="all">Mọi thời điểm</option><option value="7">7 ngày gần đây</option><option value="30">30 ngày gần đây</option><option value="90">90 ngày gần đây</option></select>
           </div>
+          <p class="adm-filter-results" id="leadResults" role="status"></p>
           <div id="leadsListEditor" class="list-editor"></div>
         </section>
 
@@ -910,6 +961,6 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="/js/admin.js?v=37"></script>
+<script src="/js/admin.js?v=38"></script>
 </body>
 </html>
