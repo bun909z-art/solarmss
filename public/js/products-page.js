@@ -187,7 +187,7 @@
     };
   }
 
-  function openStandaloneProduct(p, pushUrl = true) {
+  function openStandaloneProduct(p, pushUrl = true, keepPosition = false) {
     if (!p) return;
     $('prodListView').hidden = true;
     $('prodDetailView').hidden = false;
@@ -258,7 +258,7 @@
       window.history.pushState({ prodId: p.id }, '', `/products?id=${encodeURIComponent(p.id)}`);
     }
     if (pushUrl) $('pdTitle').focus({ preventScroll: true });
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    if (!keepPosition) window.scrollTo({ top: 0, behavior: 'instant' });
   }
 
   function showProductList(pushUrl = true) {
@@ -285,7 +285,7 @@
   window.addEventListener('popstate', () => {
     const id = new URLSearchParams(window.location.search).get('id');
     if (id) {
-      const found = PRODUCTS.find(p => p.id === id);
+      const found = PRODUCTS.find(p => p.id === id && p.active !== false);
       if (found) return openStandaloneProduct(found, false);
     }
     showProductList(false);
@@ -326,20 +326,20 @@
   });
   $('prodSearch').addEventListener('input', e => { searchQ = e.target.value; renderCatalog(); });
 
-  Promise.all([
-    fetch('/api/config').then(r => r.json()),
-    fetch('/api/products').then(r => r.json())
-  ]).then(([cfgData, prodData]) => {
-    applyTheme(cfgData.config);
-    PRODUCTS = Array.isArray(prodData.products) ? prodData.products : [];
+  HQLive.watch(['config', 'products'], ({ config, products }, changed) => {
+    if (changed.has('config')) applyTheme(config);
+    if (!products) return;
+    PRODUCTS = products;
     renderCatalog();
-    const initialId = new URLSearchParams(window.location.search).get('id');
-    if (initialId) {
-      const found = PRODUCTS.find(p => p.id === initialId);
-      if (found) openStandaloneProduct(found, false);
+    const id = new URLSearchParams(location.search).get('id');
+    if (!id) return;
+    const found = PRODUCTS.find(p => p.id === id && p.active !== false);
+    if (found) openStandaloneProduct(found, false, !$('prodDetailView').hidden);
+    else {
+      history.replaceState({}, '', '/products');
+      showProductList(false);
     }
-  }).catch(err => {
-    $('catalogCount').textContent = 'Không tải được danh mục. Vui lòng tải lại trang.';
-    console.error(err);
+  }, (failures, snapshot) => {
+    if (failures.includes('products') && !snapshot.products) $('catalogCount').textContent = 'Chưa tải được danh mục. Đang thử lại…';
   });
 })();

@@ -285,22 +285,22 @@
   $('slidePrev').onclick = () => { scrollToSlide(slideIdx - 1); startAutoSlide(); };
   $('slideNext').onclick = () => { scrollToSlide(slideIdx + 1); startAutoSlide(); };
 
-  Promise.all([
-    fetch('/api/config').then(r => r.json()),
-    fetch('/api/news').then(r => r.json()),
-    fetch('/api/products').then(r => r.json())
-  ]).then(([cfgData, newsData, prodData]) => {
-    ALL_ARTICLES = newsData.articles || [];
-    ALL_PRODUCTS = prodData.products || [];
-    applyTheme(cfgData.config);
-    renderSlider(ALL_ARTICLES);
-    renderFeaturedProducts(ALL_PRODUCTS);
-  }).catch(err => console.error(err));
+  let previewConfig = null;
+  HQLive.watch(['config', 'news', 'products'], ({ config, news, products }, changed) => {
+    if (changed.has('news')) ALL_ARTICLES = news;
+    if (changed.has('products')) ALL_PRODUCTS = products;
+    if (changed.has('config')) applyTheme(previewConfig || config);
+    if (changed.has('news')) renderSlider(ALL_ARTICLES);
+    else if (changed.has('config')) startAutoSlide();
+    if (changed.has('config') || changed.has('products')) renderFeaturedProducts(ALL_PRODUCTS);
+  });
 
   window.addEventListener('message', e => {
-    if (!e.data || e.data.type !== 'HQ_PREVIEW_CONFIG') return;
+    if (!new URLSearchParams(location.search).has('preview') || e.origin !== location.origin ||
+        e.source !== window.parent || e.data?.type !== 'HQ_PREVIEW_CONFIG') return;
     if (e.data.config) {
-      applyTheme(e.data.config);
+      previewConfig = e.data.config;
+      applyTheme(previewConfig);
       renderSlider(ALL_ARTICLES);
       renderFeaturedProducts(ALL_PRODUCTS);
     }

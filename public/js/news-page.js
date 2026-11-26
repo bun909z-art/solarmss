@@ -186,7 +186,7 @@
     };
   }
 
-  function openStandaloneArticle(a, pushUrl = true) {
+  function openStandaloneArticle(a, pushUrl = true, keepPosition = false) {
     if (!a) return;
     currentArticle = a;
     $('newsListView').hidden = true;
@@ -228,7 +228,7 @@
       window.history.pushState({ articleId: a.id }, '', `/news?id=${encodeURIComponent(a.id)}`);
     }
     if (pushUrl) $('artTitle').focus({ preventScroll: true });
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    if (!keepPosition) window.scrollTo({ top: 0, behavior: 'instant' });
     updateReadProgress();
   }
 
@@ -306,20 +306,20 @@
   });
   $('newsSearch').addEventListener('input', e => { searchQ = e.target.value; renderNews(); });
 
-  Promise.all([
-    fetch('/api/config').then(r => r.json()),
-    fetch('/api/news').then(r => r.json())
-  ]).then(([cfgData, newsData]) => {
-    applyTheme(cfgData.config);
-    ARTICLES = Array.isArray(newsData.articles) ? newsData.articles : [];
+  HQLive.watch(['config', 'news'], ({ config, news }, changed) => {
+    if (changed.has('config')) applyTheme(config);
+    if (!news) return;
+    ARTICLES = news;
     renderNews();
-    const initialId = new URLSearchParams(window.location.search).get('id');
-    if (initialId) {
-      const found = ARTICLES.find(a => a.id === initialId);
-      if (found) openStandaloneArticle(found, false);
+    const id = new URLSearchParams(location.search).get('id');
+    if (!id) return;
+    const found = ARTICLES.find(a => a.id === id);
+    if (found) openStandaloneArticle(found, false, !$('newsArticleView').hidden);
+    else {
+      history.replaceState({}, '', '/news');
+      showNewsList(false);
     }
-  }).catch(err => {
-    $('newsCount').textContent = 'Không tải được bài viết. Vui lòng tải lại trang.';
-    console.error(err);
+  }, (failures, snapshot) => {
+    if (failures.includes('news') && !snapshot.news) $('newsCount').textContent = 'Chưa tải được bài viết. Đang thử lại…';
   });
 })();

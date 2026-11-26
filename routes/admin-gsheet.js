@@ -18,9 +18,11 @@ function refreshGsheetAutoPull() {
   gsheetPullTimer = setInterval(async () => {
     const cur = store.loadConfig();
     if (!cur.gsheet || !cur.gsheet.enabled || !cur.gsheet.autoPullProducts) return;
-    const res = await gsheet.pullProductsFromSheet(cur.gsheet);
-    if (res.ok && Array.isArray(res.products) && res.products.length) {
-      productStore.saveProducts(res.products);
+    try {
+      const res = await gsheet.pullProductsFromSheet(cur.gsheet);
+      if (res.ok && Array.isArray(res.products) && res.products.length) productStore.saveProducts(res.products);
+    } catch (err) {
+      console.error('[Google Sheets] Không thể lưu sản phẩm đã đồng bộ:', err.message);
     }
   }, ms);
   if (gsheetPullTimer.unref) gsheetPullTimer.unref();

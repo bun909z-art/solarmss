@@ -6,10 +6,16 @@ const productStore = require('../lib/products');
 const newsStore = require('../lib/news');
 const leadStore = require('../lib/leads');
 const telegram = require('../lib/telegram');
+const liveUpdates = require('../lib/live-updates');
 const { triggerRealtimeSheetPush } = require('./admin-gsheet');
 const { sendJson, readJsonBody } = require('../lib/http-helpers');
 
 async function handlePublicApi(req, res, pathname, method) {
+  if (pathname === '/api/live' && method === 'GET') {
+    liveUpdates.subscribe(res);
+    return true;
+  }
+
   if (pathname === '/api/config' && method === 'GET') {
     return sendJson(res, 200, {
       config: store.getPublicConfig(),

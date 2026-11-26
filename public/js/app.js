@@ -62,7 +62,17 @@
     el._t = setTimeout(() => el.classList.remove('show'), 2600);
   }
 
+  function defaultInputs(def = {}) {
+    return {
+      mode: def.mode === 'kwh' ? 'kwh' : 'bill',
+      bill: Number(def.bill ?? 2000000), kwh: Number(def.kwh ?? 625),
+      eve: Number(def.eve ?? 70), dod: Number(def.dod ?? 90), eff: Number(def.eff ?? 95),
+      mod: Number(def.mod ?? 5.12), vat: Number(def.vat ?? 8), days: Number(def.days ?? 30)
+    };
+  }
+
   function applyConfig(cfg, resetStateToDefaults) {
+    const previous = CFG;
     CFG = cfg;
     const root = document.documentElement.style;
     const t = cfg.theme || {};
@@ -189,19 +199,16 @@
 
     // State initialization / sync
     if (resetStateToDefaults || isPreview) {
-      S = {
-        name: S.name || '',
-        mode: def.mode === 'kwh' ? 'kwh' : 'bill',
-        bill: Number(def.bill) || 2000000,
-        kwh: Number(def.kwh) || 625,
-        eve: Number(def.eve ?? 70),
-        dod: Number(def.dod ?? 90),
-        eff: Number(def.eff ?? 95),
-        mod: Number(def.mod ?? 5.12),
-        vat: Number(def.vat ?? 8),
-        days: Number(def.days ?? 30),
-        tiers: (Array.isArray(tar.tiers) && tar.tiers.length ? tar.tiers : HQCalc.DEFAULT_TIERS).map(x => ({ ...x }))
-      };
+      Object.assign(S, defaultInputs(def));
+    } else if (previous) {
+      const oldInputs = defaultInputs(previous.defaults);
+      for (const [key, value] of Object.entries(defaultInputs(def))) {
+        if (S[key] === oldInputs[key]) S[key] = value;
+      }
+    }
+    if (resetStateToDefaults || isPreview || (previous && JSON.stringify(tar.tiers) !== JSON.stringify(previous.tariffs?.tiers))) {
+      const tiers = Array.isArray(tar.tiers) && tar.tiers.length ? tar.tiers : HQCalc.DEFAULT_TIERS;
+      S.tiers = tiers.map(tier => ({ ...tier }));
     }
 
     buildPriceGrid();
@@ -615,39 +622,45 @@
   };
 
   // Live preview listener from Admin iframe
+  let receivedPreview = false;
   window.addEventListener('message', ev => {
-    if (ev.data && ev.data.type === 'HQ_PREVIEW_CONFIG' && ev.data.config) {
+    if (isPreview && ev.origin === location.origin && ev.source === window.parent && ev.data?.type === 'HQ_PREVIEW_CONFIG' && ev.data.config) {
+      receivedPreview = true;
       if (Array.isArray(ev.data.products)) PRODUCTS = ev.data.products;
       applyConfig(ev.data.config, true);
     }
   });
 
-  // Boot
-  Promise.all([fetch('/api/config').then(r => r.json()), fetch('/api/products').then(r => r.json()).catch(() => ({ products: [] }))])
-    .then(([data, prodData]) => {
-      PRODUCTS = Array.isArray(prodData.products) ? prodData.products : [];
-      const cfg = data.config;
+  HQLive.watch(['config', 'products'], ({ config, products }, changed) => {
+    if (receivedPreview) return;
+    if (changed.has('products')) PRODUCTS = products;
+    if (changed.has('config')) {
       let restored = false;
-      if (!isPreview) {
+      if (!CFG && !isPreview) {
         try {
           const raw = localStorage.getItem(LOCAL_KEY);
           if (raw) {
             const saved = JSON.parse(raw);
-            if (saved._cfgUpdatedAt === cfg.updatedAt) {
+            if (saved._cfgUpdatedAt === config.updatedAt) {
               S = Object.assign(S, saved);
               restored = true;
             }
           }
         } catch {}
       }
-      applyConfig(cfg, !restored);
-    })
-    .catch(err => {
-      console.error('Không tải được cấu hình:', err);
+      applyConfig(config, !CFG && !restored);
+    } else if (window._hqLastResult) {
+      const { kwhUsed, bat } = window._hqLastResult;
+      renderCombos(kwhUsed, bat);
+      scheduleLeadSave(false);
+    }
+  }, (failures, snapshot) => {
+    if (failures.includes('config') && !snapshot.config && !receivedPreview && !window._hqLastResult) {
       buildPriceGrid();
       syncInputs();
       update();
-    });
+    }
+  });
 
   // ---------- MANDATORY CUSTOMER INFO GATE ----------
   let isLeadUnlocked = IS_PREVIEW;

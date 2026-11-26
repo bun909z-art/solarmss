@@ -26,9 +26,8 @@ const server = http.createServer(async (req, res) => {
     const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
     const pathname = parsedUrl.pathname;
     const method = req.method.toUpperCase();
-    const authState = store.loadAuth();
-
     if (await handlePublicApi(req, res, pathname, method)) return;
+    const authState = store.loadAuth();
     if (await handleAdminAuth(req, res, pathname, method, authState)) return;
     if (await handleAdminConfig(req, res, pathname, method, authState)) return;
     if (await handleAdminCatalog(req, res, pathname, method, authState)) return;
