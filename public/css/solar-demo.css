@@ -53,6 +53,7 @@
 #demoCanvas:active { cursor: grabbing; }
 .demo-time { flex-wrap: wrap; border-bottom: 1px solid #526872; }
 .demo-time label { font-weight: 700; font-size: .875rem; }
+.demo-time #demoWeatherMotion { font-size: .82rem; }
 .demo-time output { color: #ffdb8a; font-variant-numeric: tabular-nums; }
 .demo-time input { min-height: 38px; width: 100%; margin: 0; accent-color: #ffdb8a; }
 .demo-hourly, .demo-totals { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; }

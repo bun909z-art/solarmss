@@ -6,6 +6,11 @@
   const canvas = $('demoCanvas');
   const hourInput = $('demoHour');
   const playButton = $('demoPlay');
+  const motionButton = $('demoWeatherMotion');
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const weatherEffects = {
+    sunny: [0, 0], variable: [0.48, 0], overcast: [0.88, 0], rain: [1, 1]
+  };
   const format = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 });
   const whole = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 });
   const number = id => $(id).valueAsNumber;
@@ -24,8 +29,12 @@
   let settings = null;
   let model = null;
   let angle = 3.85, elevation = 0.90;
+  let targetAngle = angle, targetElevation = elevation;
+  let sceneHour = Number(hourInput.value), clouds = 0, rain = 0;
+  let playing = false, animateWeather = !reducedMotion.matches;
+  let frameId = 0, previousFrame = 0, lastDraw = 0, weatherTime = 0;
+  let sceneVisible = true, dirty = true;
   let drag = null;
-  let timer = null;
 
   for (let month = 1; month <= 12; month++) $('demoMonth').add(new Option('Tháng ' + month, month));
   $('demoMonth').value = '3';
@@ -80,8 +89,65 @@
     return values.map(([label, value]) => '<div><dt>' + label + '</dt><dd>' + value + '</dd></div>').join('');
   }
 
-  function drawScene() {
-    if (model && enabled()) SolarScene.draw(canvas, settings, model.results[Number(hourInput.value)].sun, angle, elevation);
+  function queueFrame() {
+    if (!frameId && model && enabled() && (sceneVisible || playing) && !document.hidden) {
+      frameId = requestAnimationFrame(renderFrame);
+    }
+  }
+
+  function cancelFrame() {
+    cancelAnimationFrame(frameId);
+    frameId = 0;
+    previousFrame = 0;
+  }
+
+  function invalidateScene() {
+    dirty = true;
+    queueFrame();
+  }
+
+  function approach(value, target, amount, threshold) {
+    const next = value + (target - value) * amount;
+    return Math.abs(next - target) < threshold ? target : next;
+  }
+
+  function renderFrame(now) {
+    frameId = 0;
+    if (!model || !enabled() || (!sceneVisible && !playing) || document.hidden) return cancelFrame();
+    const elapsed = previousFrame ? Math.min(now - previousFrame, 50) : 16;
+    previousFrame = now;
+    const amount = reducedMotion.matches ? 1 : 1 - Math.exp(-elapsed / 78);
+    const [targetClouds, targetRain] = weatherEffects[settings.weather];
+    const wasInMotion = playing || sceneHour !== Number(hourInput.value) || angle !== targetAngle ||
+      elevation !== targetElevation || clouds !== targetClouds || rain !== targetRain;
+
+    if (playing) {
+      sceneHour = Math.min(23, sceneHour + elapsed / 520);
+      const hour = Math.floor(sceneHour);
+      if (hour !== Number(hourInput.value)) {
+        hourInput.value = String(hour);
+        renderHour();
+      }
+      if (sceneHour === 23) stop();
+    } else {
+      sceneHour = approach(sceneHour, Number(hourInput.value), amount, 0.012);
+    }
+    angle = approach(angle, targetAngle, amount, 0.001);
+    elevation = approach(elevation, targetElevation, amount, 0.001);
+    clouds = approach(clouds, targetClouds, amount, 0.004);
+    rain = approach(rain, targetRain, amount, 0.004);
+
+    const ambient = sceneVisible && animateWeather && (clouds > 0 || rain > 0);
+    if (ambient) weatherTime += elapsed / 1000;
+    if (sceneVisible && (dirty || wasInMotion || (ambient && now - lastDraw >= 1000 / 30 - 1))) {
+      const visualHour = reducedMotion.matches ? Number(hourInput.value) : sceneHour;
+      const sun = SolarModel.sunPosition(settings.latitude, settings.month, visualHour);
+      SolarScene.draw(canvas, settings, sun, angle, elevation, { clouds, rain, time: weatherTime });
+      dirty = false;
+      lastDraw = now;
+    }
+    if (playing || ambient || wasInMotion) queueFrame();
+    else previousFrame = 0;
   }
 
   function renderHour() {
@@ -96,7 +162,7 @@
     const chart = $('demoChart');
     chart.querySelector('.current')?.classList.remove('current');
     chart.children[hour]?.classList.add('current');
-    drawScene();
+    invalidateScene();
   }
 
   function renderReport() {
@@ -139,30 +205,41 @@
   }
 
   function stop() {
-    clearInterval(timer);
-    timer = null;
+    playing = false;
     playButton.textContent = 'Chạy 24 giờ';
     playButton.setAttribute('aria-pressed', 'false');
   }
 
   playButton.addEventListener('click', () => {
-    if (timer) return stop();
+    if (playing) {
+      stop();
+      invalidateScene();
+      return;
+    }
     if (!model || !enabled()) return;
+    playing = true;
+    sceneHour = 0;
     hourInput.value = '0';
     renderHour();
     playButton.textContent = 'Tạm dừng';
     playButton.setAttribute('aria-pressed', 'true');
-    timer = setInterval(() => {
-      hourInput.stepUp();
-      renderHour();
-      if (Number(hourInput.value) === 23) stop();
-    }, 520);
   });
+  function setWeatherMotion(value) {
+    animateWeather = value;
+    motionButton.setAttribute('aria-pressed', String(value));
+    invalidateScene();
+  }
+  setWeatherMotion(animateWeather);
+  motionButton.addEventListener('click', () => setWeatherMotion(!animateWeather));
+  reducedMotion.addEventListener('change', event => setWeatherMotion(!event.matches));
   hourInput.addEventListener('input', () => { stop(); renderHour(); });
   form.addEventListener('submit', event => { event.preventDefault(); simulate(); });
   form.addEventListener('input', simulate);
   document.querySelectorAll('[data-rotate]').forEach(button => {
-    button.addEventListener('click', () => { angle += Number(button.dataset.rotate) * 0.34; drawScene(); });
+    button.addEventListener('click', () => {
+      targetAngle += Number(button.dataset.rotate) * 0.34;
+      invalidateScene();
+    });
   });
   canvas.addEventListener('pointerdown', event => {
     if (!event.isPrimary || event.button !== 0) return;
@@ -171,14 +248,23 @@
   });
   canvas.addEventListener('pointermove', event => {
     if (event.pointerId !== drag?.id) return;
-    angle += (event.clientX - drag.x) * 0.015;
-    elevation = Math.max(0.80, Math.min(1.32, elevation + (event.clientY - drag.y) * 0.008));
+    targetAngle += (event.clientX - drag.x) * 0.015;
+    targetElevation = Math.max(0.80, Math.min(1.32, targetElevation + (event.clientY - drag.y) * 0.008));
     drag.x = event.clientX;
     drag.y = event.clientY;
-    drawScene();
+    invalidateScene();
   });
   canvas.addEventListener('lostpointercapture', () => { drag = null; });
-  new ResizeObserver(drawScene).observe(canvas);
+  new ResizeObserver(invalidateScene).observe(canvas);
+  new IntersectionObserver(([entry]) => {
+    sceneVisible = entry.isIntersecting;
+    if (sceneVisible) invalidateScene();
+    else if (!playing) cancelFrame();
+  }).observe(canvas);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) cancelFrame();
+    else invalidateScene();
+  });
 
   function applyBranding(config) {
     SiteTheme.apply(config);
@@ -210,6 +296,7 @@
       applyBranding(config);
       if (!enabled()) {
         stop();
+        cancelFrame();
         if (moveFocus) $('demoOffTitle').focus();
       }
     }

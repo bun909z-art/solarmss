@@ -73,5 +73,5 @@
   }
 
   if (typeof module !== 'undefined' && module.exports) module.exports = { simulate };
-  else window.SolarModel = { simulate };
+  else window.SolarModel = { simulate, sunPosition };
 })();
