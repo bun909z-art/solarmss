@@ -405,6 +405,7 @@
     setVal('h_subtitle', h.subtitle || '');
 
     [
+      'showSolarDemo',
       'showCustomerName', 'showCustomerPhone', 'showCustomerAddress', 'showQuickChips',
       'showSliders', 'showAdvancedSettings', 'showDayNightBar', 'showCalcSteps',
       'showTierTable', 'showScenarioTable', 'showComboSection', 'showComboPrices',
@@ -1884,6 +1885,7 @@
   bind('h_subtitle', el => { CONFIG.hero.subtitle = el.value; });
 
   [
+    'showSolarDemo',
     'showCustomerName', 'showCustomerPhone', 'showCustomerAddress', 'showQuickChips',
     'showSliders', 'showAdvancedSettings', 'showDayNightBar', 'showCalcSteps',
     'showTierTable', 'showScenarioTable', 'showComboSection', 'showComboPrices',

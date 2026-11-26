@@ -424,6 +424,15 @@ body.coordinated-theme .topbar { background: var(--theme-band); }
   .topbar-inner { gap: 6px; min-height: 0; }
   .main-nav { gap: 0; }
   .main-nav .nav-link { padding-inline: 5px; min-height: 44px; }
+  body:not(.solar-demo-off) .main-nav:has(a[href="/demo"]:not([hidden])) {
+    grid-auto-columns: minmax(0, 1fr);
+  }
+  body:not(.solar-demo-off) .main-nav:has(a[href="/demo"]:not([hidden])) .nav-link {
+    padding-inline: 3px;
+    font-size: .78rem;
+    line-height: 1.18;
+    white-space: normal;
+  }
   .home-hero-actions { gap: 8px; }
   .home-action { padding-inline: 12px; }
   .home-prods-grid { grid-template-columns: minmax(0, 1fr); }

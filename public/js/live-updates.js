@@ -4,7 +4,8 @@
   const fields = { config: 'config', products: 'products', news: 'articles' };
   const routes = ['/', '/tuvan', '/products', '/news'];
   const aliases = { '/home': '/', '/home.html': '/', '/index.html': '/tuvan', '/products.html': '/products', '/news.html': '/news' };
-  const preview = new URLSearchParams(location.search).has('preview');
+  const isDemo = /^\/demo(?:\/|\.html)?$/.test(location.pathname);
+  const preview = !isDemo && new URLSearchParams(location.search).has('preview');
 
   function maintenanceState(config) {
     const maintenance = config.maintenance;
@@ -29,6 +30,7 @@
       nav.querySelectorAll('a[href]').forEach(link => {
         const route = link.getAttribute('href');
         if (routes.includes(route)) link.hidden = Boolean(allowed && !allowed.includes(route));
+        if (route === '/demo') link.hidden = Boolean(allowed);
       });
       nav.hidden = Boolean(allowed && allowed.length === 1);
     }

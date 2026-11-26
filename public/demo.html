@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Demo mô phỏng điện mặt trời 3D – Công Ty TNHH Mai Sơn Solar</title>
+<meta name="theme-color" content="#0d1d1a" id="metaTheme">
+<link rel="icon" type="image/png" href="/assets/favicon.png?v=mss" id="docFavicon">
+<link rel="stylesheet" href="/css/app.css?v=36">
+<link rel="stylesheet" href="/css/solar-demo.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="brand" href="/" aria-label="Trang chủ"><img id="brandLogo" src="/assets/logo-default.jpg?v=mss" alt="Công Ty TNHH Mai Sơn Solar"></a>
+    <nav class="main-nav" aria-label="Điều hướng chính">
+      <a href="/" class="nav-link">Trang chủ</a>
+      <a href="/tuvan" class="nav-link">Tư vấn</a>
+      <a href="/products" class="nav-link">Sản phẩm</a>
+      <a href="/news" class="nav-link">Tin tức</a>
+      <a href="/demo" class="nav-link active" aria-current="page">Demo 3D</a>
+    </nav>
+    <div class="topbar-right">
+      <div class="hotline" id="hotlineWrap">
+        <span class="hotline-label" id="hotlineLabel">Hotline tư vấn kỹ thuật</span>
+        <div class="hotline-list" id="hotlineList"></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap demo-workspace" id="solarDemo">
+  <div class="demo-intro">
+    <div>
+      <h1>Mô phỏng điện mặt trời 3D</h1>
+      <p>Dựng mái nhà và xem hệ hybrid phát điện, cấp tải và sạc/xả pin trong một ngày giả lập.</p>
+    </div>
+    <a class="demo-button" href="/tuvan">Tư vấn hệ thống</a>
+  </div>
+
+  <div class="demo-layout">
+    <aside class="demo-config">
+      <details id="demoSettings" open>
+      <summary>Cấu hình hệ thống</summary>
+      <form id="demoConfig">
+        <fieldset>
+          <legend>Thiết bị</legend>
+          <label>Tấm pin mặt trời<select id="demoPanel"></select></label>
+          <label>Số tấm lắp đặt<input id="demoPanelCount" type="number" min="1" max="60" step="1" value="12" required></label>
+          <label>Biến tần<select id="demoInverter"></select></label>
+          <label>Pin lưu trữ<select id="demoBattery"><option value="">Không dùng pin</option></select></label>
+          <div class="demo-fields" id="demoBatteryFields">
+            <label>Số bộ pin<input id="demoBatteryCount" type="number" min="1" max="8" step="1" value="1" required></label>
+            <label>Mức pin đầu ngày (%)<input id="demoInitialSoc" type="number" min="10" max="100" step="1" value="20" required></label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Mái nhà và môi trường</legend>
+          <div class="demo-fields">
+            <label>Hướng mái lắp pin
+              <select id="demoAzimuth">
+                <option value="0">Bắc</option><option value="45">Đông Bắc</option>
+                <option value="90">Đông</option><option value="135">Đông Nam</option>
+                <option value="180" selected>Nam</option><option value="225">Tây Nam</option>
+                <option value="270">Tây</option><option value="315">Tây Bắc</option>
+              </select>
+            </label>
+            <label>Độ dốc mái (°)<input id="demoTilt" type="number" min="0" max="45" step="1" value="18" required></label>
+            <label>Khu vực
+              <select id="demoLatitude"><option value="21.03">Hà Nội</option><option value="16.05">Đà Nẵng</option><option value="10.95" selected>Biên Hòa</option><option value="10.03">Cần Thơ</option></select>
+            </label>
+            <label>Tháng<select id="demoMonth"></select></label>
+          </div>
+          <label>Thời tiết giả lập
+            <select id="demoWeather">
+              <option value="sunny">Trời quang</option><option value="variable">Nắng xen mây</option>
+              <option value="overcast">Nhiều mây</option><option value="rain">Mưa</option>
+            </select>
+          </label>
+          <label>Mức dùng điện (kWh/ngày)<input id="demoLoad" type="number" min="0" max="300" step="0.1" value="20" required></label>
+        </fieldset>
+        <p class="demo-muted demo-equipment" id="demoEquipmentNote"></p>
+      </form>
+      </details>
+    </aside>
+
+    <div class="demo-results">
+      <section class="demo-scene" aria-labelledby="demoSceneTitle">
+        <div class="demo-scene-head">
+          <div><h2 id="demoSceneTitle">Mái nhà và giàn pin</h2><p id="demoSceneMeta"></p></div>
+          <div class="demo-rotation" role="group" aria-label="Góc nhìn mô hình">
+            <button type="button" data-rotate="-1" aria-label="Xoay sang trái" title="Xoay sang trái">↶</button>
+            <button type="button" data-rotate="1" aria-label="Xoay sang phải" title="Xoay sang phải">↷</button>
+          </div>
+        </div>
+        <canvas id="demoCanvas" width="720" height="380" role="img" aria-label="Mô hình 3D mái nhà có các tấm pin mặt trời">Mô hình mái nhà được mô tả trong cấu hình thiết bị.</canvas>
+        <div class="demo-time">
+          <button type="button" id="demoPlay" aria-pressed="false">Chạy 24 giờ</button>
+          <label for="demoHour">Giờ mặt trời <output id="demoHourLabel" for="demoHour">12:00</output></label>
+          <input id="demoHour" type="range" min="0" max="23" step="1" value="12">
+        </div>
+        <dl class="demo-hourly" id="demoHourStats"></dl>
+      </section>
+
+      <section class="demo-report" aria-labelledby="demoReportTitle">
+        <h2 id="demoReportTitle">Kết quả mô phỏng trong ngày</h2>
+        <dl class="demo-totals" id="demoTotals"></dl>
+        <div class="demo-legend" aria-hidden="true">
+          <span class="demo-pv-key">Sản lượng PV</span><span class="demo-load-key">Tải tiêu thụ</span>
+          <span class="demo-grid-key">Điện từ lưới</span>
+        </div>
+        <p class="demo-chart-axis" id="demoChartAxis"></p>
+        <div id="demoChart" class="demo-chart" aria-hidden="true"></div>
+        <p class="demo-muted" id="demoBalance"></p>
+        <details class="demo-details">
+          <summary>Bảng kết quả từng giờ</summary>
+          <div class="demo-table-scroll" role="region" aria-label="Bảng dữ liệu mô phỏng" tabindex="0">
+            <table>
+              <caption>Dòng năng lượng mỗi giờ (kWh), dung lượng pin còn lại (%)</caption>
+              <thead><tr><th scope="col">Giờ</th><th scope="col">PV</th><th scope="col">Tải</th><th scope="col">Sạc</th><th scope="col">Xả</th><th scope="col">Lưới</th><th scope="col">Điện dư</th><th scope="col">Mức pin</th></tr></thead>
+              <tbody id="demoRows"></tbody>
+            </table>
+          </div>
+        </details>
+        <details class="demo-details">
+          <summary>Giả định mô phỏng</summary>
+          <p>Ngày đại diện giữa tháng, theo giờ mặt trời của khu vực đã chọn. Bức xạ và nhiệt độ lấy từ kịch bản giả lập. Tải dồn nhiều hơn vào buổi tối. Tổn hao hệ DC 6%, hiệu suất biến tần 97%, hiệu suất sạc và xả 95% mỗi chiều, dung lượng dự phòng 10%. Giới hạn sạc/xả lấy theo mức thấp hơn giữa công suất biến tần và 0,5 kW cho mỗi kWh dung lượng. Pin chỉ sạc bằng điện mặt trời dư.</p>
+          <p>Kết quả dùng để so sánh phương án sơ bộ. Mô hình bỏ qua che bóng tại công trình, kiểm tra chuỗi MPPT, khả năng tương thích thiết bị và dữ liệu thời tiết đo thực tế.</p>
+        </details>
+      </section>
+    </div>
+  </div>
+</main>
+<main class="wrap demo-unavailable" id="solarDemoOff" aria-labelledby="demoOffTitle">
+  <h1 id="demoOffTitle" tabindex="-1">Demo 3D đang tạm tắt</h1>
+  <p>Bạn có thể dùng công cụ tư vấn để ước tính nhu cầu lưu trữ.</p>
+  <a class="demo-button" href="/tuvan">Mở trang tư vấn</a>
+</main>
+
+<footer class="site-footer"><div class="wrap" id="demoCompany">Công Ty TNHH Mai Sơn Solar</div></footer>
+<script src="/js/site-theme.js"></script>
+<script src="/js/live-updates.js?v=1"></script>
+<script src="/js/solar-model.js"></script>
+<script src="/js/solar-scene.js"></script>
+<script src="/js/solar-demo.js"></script>
+</body>
+</html>

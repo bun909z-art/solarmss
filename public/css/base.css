@@ -1,4 +1,6 @@
 [hidden] { display: none !important; }
+.solar-demo-off :is(.main-nav a[href="/demo"], #solarDemo),
+body:not(.solar-demo-off) #solarDemoOff { display: none !important; }
 :root {
   --primary: #F26A1B;
   --primary-deep: #D9560B;

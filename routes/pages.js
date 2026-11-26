@@ -31,6 +31,11 @@ function handlePagesAndStatic(req, res, pathname, parsedUrl) {
     return serveThemedHtml(res, path.join(PUBLIC_DIR, 'news.html')), true;
   }
 
+  if (pathname === '/demo' || pathname === '/demo/' || pathname === '/demo.html') {
+    if (checkMaintenanceGate(req, res, '/demo', parsedUrl)) return true;
+    return serveThemedHtml(res, path.join(PUBLIC_DIR, 'demo.html')), true;
+  }
+
   if (pathname === '/admin' || pathname === '/admin/' || pathname === '/admin.html') {
     return serveFile(res, path.join(PUBLIC_DIR, 'admin.html')), true;
   }
