@@ -2,7 +2,6 @@
   'use strict';
 
   const $ = id => document.getElementById(id);
-  const demoToggles = [...document.querySelectorAll('[data-toggle-solar-demo]')];
   const TOKEN_KEY = 'hq_admin_token_v1';
   const EDITOR_KEYS = ['branding', 'home', 'theme', 'hero', 'sections', 'defaults', 'tariffs', 'footer'];
   const TAB_INFO = {
@@ -14,7 +13,6 @@
     home: ['Trang chủ', 'Sắp xếp các mục nổi bật trên trang chủ.', '/?preview=home'],
     theme: ['Màu sắc & banner', 'Tùy chỉnh bảng màu, kiểu chữ và banner tư vấn.', '/?preview=1'],
     layout: ['Bố cục & tiêu đề', 'Chọn thông tin hiển thị trên công cụ tính pin.', '/?preview=1'],
-    demo: ['Demo 3D', 'Quản lý quyền truy cập mô phỏng điện mặt trời trên trang khách.'],
     tariffs: ['Thông số & biểu giá', 'Thiết lập thông số tính pin và các bậc giá điện.', '/?preview=1'],
     footer: ['Chân trang', 'Sửa phần liên hệ và lưu ý cho khách hàng.', '/?preview=1'],
     gsheet: ['Google Sheets', 'Thiết lập đồng bộ và theo dõi các lần kết nối.'],
@@ -167,17 +165,13 @@
   function renderDemoStatus(updating = false) {
     if (!CONFIG) return;
     const enabled = CONFIG.sections.showSolarDemo !== false;
-    document.querySelectorAll('.adm-demo-status').forEach(status => {
-      status.textContent = enabled ? 'Đang bật' : 'Đang tắt';
-      status.dataset.enabled = String(enabled);
-    });
-    document.querySelectorAll('[data-solar-demo-link]').forEach(link => { link.hidden = !enabled; });
-    const action = enabled ? 'Tắt Demo 3D' : 'Bật Demo 3D';
-    const disabled = configSaving || !can('layout');
-    demoToggles.forEach(button => {
-      button.textContent = updating ? 'Đang cập nhật…' : action;
-      button.disabled = disabled;
-    });
+    const status = $('maintenanceDemoStatus');
+    status.textContent = enabled ? 'Đang bật' : 'Đang tắt';
+    status.dataset.enabled = String(enabled);
+    $('adminDemoLink').hidden = !enabled;
+    const button = $('btnToggleMaintenanceDemo');
+    button.textContent = updating ? 'Đang cập nhật…' : (enabled ? 'Tắt Demo 3D' : 'Bật Demo 3D');
+    button.disabled = configSaving || !can('layout');
   }
 
   function escapeAttr(str) {
@@ -1281,7 +1275,7 @@
     tabs.forEach(btn => {
       const tab = btn.dataset.tab;
       if (tab === 'overview') btn.hidden = !['leads', 'products', 'news'].some(can);
-      else btn.hidden = !(tab === 'users' || tab === 'security' ? isSuper : tab === 'account' || can(tab === 'demo' ? 'layout' : tab));
+      else btn.hidden = !(tab === 'users' || tab === 'security' ? isSuper : tab === 'account' || can(tab));
     });
     document.querySelectorAll('.adm-nav-group').forEach(group => { group.hidden = !group.querySelector('[data-tab]:not([hidden])'); });
     const available = tabs.filter(btn => !btn.hidden);
@@ -1599,8 +1593,9 @@
     if ($('mAllowedWrap')) $('mAllowedWrap').hidden = !isAllow;
     if ($('maintStatusBox')) {
       if (mt.enabled) {
-        const rMap = { '/': 'Trang chủ', '/tuvan': 'Tư vấn', '/products': 'Sản phẩm', '/news': 'Tin tức' };
-        const ar = Array.isArray(mt.allowedRoutes) && mt.allowedRoutes.length ? mt.allowedRoutes : (mt.allowedRoute ? [mt.allowedRoute] : []);
+        const rMap = { '/': 'Trang chủ', '/tuvan': 'Tư vấn', '/products': 'Sản phẩm', '/news': 'Tin tức', '/demo': 'Demo 3D' };
+        const configured = Array.isArray(mt.allowedRoutes) && mt.allowedRoutes.length ? mt.allowedRoutes : (mt.allowedRoute ? [mt.allowedRoute] : []);
+        const ar = configured.filter(route => route !== '/demo' || CONFIG.sections.showSolarDemo !== false);
         const names = ar.map(r => rMap[r] || r).join(', ');
         $('maintStatusBox').style.background = '#FEF2F2';
         $('maintStatusBox').style.color = '#B91C1C';
@@ -1974,6 +1969,7 @@
       });
       CONFIG.sections.showSolarDemo = config.sections.showSolarDemo;
       CONFIG.updatedAt = config.updatedAt;
+      updateMaintUI();
       pushPreview();
       toast(showSolarDemo ? 'Đã bật Demo 3D.' : 'Đã tắt Demo 3D.');
     } catch (err) { toast(err.message); }
@@ -1983,7 +1979,7 @@
       renderDemoStatus();
     }
   }
-  demoToggles.forEach(button => button.addEventListener('click', toggleDemo));
+  $('btnToggleMaintenanceDemo').addEventListener('click', toggleDemo);
 
   $('btnSave').onclick = async () => {
     if (!CONFIG || configSaving || !dirty) return;

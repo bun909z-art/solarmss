@@ -41,7 +41,7 @@ async function handleAdminConfig(req, res, pathname, method, authState) {
   if (pathname === '/api/admin/maintenance' && (method === 'PUT' || method === 'POST')) {
     if (!requireAdmin(req, res, authState, ['security'])) return true;
     const body = await readJsonBody(req, 32 * 1024);
-    const valid = ['/', '/tuvan', '/products', '/news'];
+    const valid = store.PUBLIC_SITE_ROUTES;
     const allowedRoutes = Array.isArray(body.allowedRoutes)
       ? body.allowedRoutes.filter(r => valid.includes(r))
       : (valid.includes(body.allowedRoute) ? [body.allowedRoute] : []);

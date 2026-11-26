@@ -2,38 +2,42 @@
   'use strict';
 
   const fields = { config: 'config', products: 'products', news: 'articles' };
-  const routes = ['/', '/tuvan', '/products', '/news'];
-  const aliases = { '/home': '/', '/home.html': '/', '/index.html': '/tuvan', '/products.html': '/products', '/news.html': '/news' };
+  const routes = ['/', '/tuvan', '/products', '/news', '/demo'];
+  const aliases = { '/home': '/', '/home.html': '/', '/index.html': '/tuvan', '/products.html': '/products', '/news.html': '/news', '/demo.html': '/demo' };
   const isDemo = /^\/demo(?:\/|\.html)?$/.test(location.pathname);
   const preview = !isDemo && new URLSearchParams(location.search).has('preview');
 
-  function maintenanceState(config) {
+  function maintenanceRoutes(config) {
     const maintenance = config.maintenance;
     if (!maintenance?.enabled) return null;
     if (maintenance.mode !== 'allow_page') return [];
-    const allowed = maintenance.allowedRoutes?.length ? maintenance.allowedRoutes : [maintenance.allowedRoute];
-    return allowed.filter(route => routes.includes(route));
+    const allowed = Array.isArray(maintenance.allowedRoutes) && maintenance.allowedRoutes.length
+      ? maintenance.allowedRoutes : [maintenance.allowedRoute];
+    return [...new Set(allowed.filter(route => routes.includes(route) &&
+      (route !== '/demo' || config.sections?.showSolarDemo !== false)))];
   }
 
   function shouldReload(config) {
     const path = location.pathname.replace(/\/$/, '') || '/';
-    const allowed = maintenanceState(config);
+    const allowed = maintenanceRoutes(config);
     const isMaintenancePage = document.body.hasAttribute('data-maintenance-page');
     return isMaintenancePage ? allowed === null || allowed.length > 0 : allowed && !allowed.includes(aliases[path] || path);
   }
 
   function updateNavigation(config) {
-    const allowed = maintenanceState(config);
+    const allowed = maintenanceRoutes(config);
     document.getElementById('hqMaintCss')?.remove();
     const nav = document.querySelector('.main-nav');
     if (nav) {
       nav.querySelectorAll('a[href]').forEach(link => {
         const route = link.getAttribute('href');
         if (routes.includes(route)) link.hidden = Boolean(allowed && !allowed.includes(route));
-        if (route === '/demo') link.hidden = Boolean(allowed);
       });
       nav.hidden = Boolean(allowed && allowed.length === 1);
     }
+    document.querySelectorAll('.demo-button[href]').forEach(link => {
+      link.hidden = Boolean(allowed && !allowed.includes(link.getAttribute('href')));
+    });
     document.body.classList.toggle('maint-single-page', Boolean(allowed && allowed.length === 1));
   }
 
@@ -109,6 +113,6 @@
     window.addEventListener('pageshow', event => { if (event.persisted) queue(resources); });
   }
 
-  window.HQLive = { watch };
+  window.HQLive = { watch, maintenanceRoutes };
   if (document.body.hasAttribute('data-maintenance-page')) watch(['config'], () => {});
 })();

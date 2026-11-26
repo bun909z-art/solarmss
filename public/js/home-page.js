@@ -35,11 +35,8 @@
 
   
   function applyMaintenanceNav(cfg) {
-    const mt = cfg && cfg.maintenance;
-    const isRestrict = Boolean(mt && mt.enabled && mt.mode === 'allow_page');
-    const allowed = (mt && Array.isArray(mt.allowedRoutes) && mt.allowedRoutes.length)
-      ? mt.allowedRoutes
-      : (mt && mt.allowedRoute ? [mt.allowedRoute] : ['/tuvan']);
+    const allowed = HQLive.maintenanceRoutes(cfg);
+    const isRestrict = Boolean(allowed?.length);
     const nav = document.querySelector('.main-nav');
     if (nav) {
       let visibleCount = 0;
@@ -54,7 +51,7 @@
     document.body.classList.toggle('maint-single-page', isRestrict && allowed.length <= 1);
     document.querySelectorAll('.home-hero-actions a, a.home-quick-card, a.home-more-link').forEach(el => {
       const href = el.getAttribute('href');
-      if (href && ['/', '/tuvan', '/products', '/news'].includes(href)) {
+      if (href && ['/', '/tuvan', '/products', '/news', '/demo'].includes(href)) {
         el.hidden = isRestrict && !allowed.includes(href);
       }
     });

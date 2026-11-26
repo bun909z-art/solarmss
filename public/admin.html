@@ -57,7 +57,6 @@
         <div class="adm-nav-group" role="presentation">
           <p role="presentation">Vận hành</p>
           <button type="button" class="tab-btn active" data-tab="overview">Tổng quan</button>
-          <button type="button" class="tab-btn" data-tab="demo">Demo 3D</button>
           <button type="button" class="tab-btn" data-tab="leads">Khách hàng <span id="leadsTabCount">0</span></button>
           <button type="button" class="tab-btn" data-tab="products">Kho sản phẩm</button>
           <button type="button" class="tab-btn" data-tab="news">Tin tức</button>
@@ -358,18 +357,6 @@
           <div class="field-row"><label class="f-lbl" for="s_comboTitle">Tiêu đề mục gợi ý combo</label><input type="text" id="s_comboTitle" class="f-input"></div>
           <div class="field-row"><label class="f-lbl">Tiêu đề Phiếu in PDF</label><input type="text" id="s_printTitle" class="f-input"></div>
           <div class="field-row"><label class="f-lbl">Nhãn nút In PDF</label><input type="text" id="s_printButtonText" class="f-input"></div>
-        </section>
-
-        <section class="tab-pane" id="tab-demo">
-          <div class="adm-demo-header">
-            <h3>Hiển thị trên website</h3>
-            <span class="adm-demo-status" id="demoStatus" role="status">Đang tải</span>
-          </div>
-          <p class="hint">Khi bật, khách có thể mở mô phỏng từ menu Demo 3D. Thay đổi áp dụng ngay cả với khách đang mở website.</p>
-          <div class="adm-demo-actions">
-            <button type="button" class="btn-primary" id="btnToggleDemo" data-toggle-solar-demo disabled>Bật / Tắt Demo 3D</button>
-            <a class="btn-ghost" id="adminDemoLink" data-solar-demo-link href="/demo" hidden>Mở trang Demo</a>
-          </div>
         </section>
 
         <!-- TAB 4: DEFAULTS & EVN TARIFFS -->
@@ -776,7 +763,9 @@
               <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;cursor:pointer"><input type="checkbox" data-m-route="/tuvan" checked><span>Tư vấn</span></label>
               <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;cursor:pointer"><input type="checkbox" data-m-route="/products"><span>Sản phẩm</span></label>
               <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;cursor:pointer"><input type="checkbox" data-m-route="/news"><span>Tin tức</span></label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;cursor:pointer"><input type="checkbox" data-m-route="/demo"><span>Demo 3D</span></label>
             </div>
+            <p class="hint">Để mở Demo 3D trong lúc bảo trì, chọn ô Demo 3D và bật tính năng ở bên dưới.</p>
           </div>
           <div class="two-col" style="margin-bottom:12px">
             <button type="button" class="btn-primary full" id="btnToggleMaint">🔧 Bật bảo trì ngay</button>
@@ -791,8 +780,8 @@
           </div>
           <p class="hint">Bật hoặc tắt riêng trang mô phỏng điện mặt trời. Thay đổi áp dụng ngay cho khách đang mở website.</p>
           <div class="adm-demo-actions">
-            <button type="button" class="btn-primary" id="btnToggleMaintenanceDemo" data-toggle-solar-demo disabled>Bật / Tắt Demo 3D</button>
-            <a class="btn-ghost" data-solar-demo-link href="/demo" hidden>Mở trang Demo</a>
+            <button type="button" class="btn-primary" id="btnToggleMaintenanceDemo" disabled>Bật / Tắt Demo 3D</button>
+            <a class="btn-ghost" id="adminDemoLink" href="/demo" hidden>Mở trang Demo</a>
           </div>
 
           <hr class="sep">
