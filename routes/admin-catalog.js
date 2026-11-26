@@ -61,6 +61,23 @@ async function handleAdminCatalog(req, res, pathname, method, authState) {
     const body = await readJsonBody(req, 16 * 1024);
     return sendJson(res, 200, { ok: true, leads: leadStore.deleteLead(String(body.id || '')) }), true;
   }
+  if (pathname === '/api/admin/leads/push' && method === 'POST') {
+    if (!requireAdmin(req, res, authState, 'SUPER_ADMIN')) return true;
+    const body = await readJsonBody(req, 16 * 1024);
+    const lead = leadStore.loadLeads().find(item => item.id === body?.id);
+    if (!lead) return sendJson(res, 404, { error: 'Không tìm thấy khách hàng.' }), true;
+    const { enabled, botToken, chatId } = authState.telegram || {};
+    if (!enabled || !botToken || !chatId) {
+      return sendJson(res, 400, { error: 'Hãy bật và lưu kết nối Telegram trong mục Phân quyền & dữ liệu.' }), true;
+    }
+    try {
+      await telegram.sendTelegramMessage(botToken, chatId, telegram.formatLeadMessage(lead));
+    } catch (err) {
+      return sendJson(res, 502, { error: 'Không gửi được Telegram. ' + err.message }), true;
+    }
+    const updated = leadStore.updateLead(lead.id, { botSentAt: new Date().toISOString() });
+    return sendJson(res, 200, { ok: true, lead: updated }), true;
+  }
   if (pathname === '/api/admin/leads/export.csv' && method === 'GET') {
     if (!requireAdmin(req, res, authState, ['leads'])) return true;
     const csv = leadStore.toLeadsCsv(leadStore.loadLeads());

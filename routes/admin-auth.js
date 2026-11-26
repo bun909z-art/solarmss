@@ -39,6 +39,7 @@ async function handleAdminAuth(req, res, pathname, method, authState) {
   }
 
   if (pathname === '/api/admin/logout' && method === 'POST') {
+    auth.revokeSession(req);
     auth.clearSessionCookie(res, req);
     return sendJson(res, 200, { ok: true }), true;
   }

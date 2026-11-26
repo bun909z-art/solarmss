@@ -29,13 +29,13 @@ async function handleAdminConfig(req, res, pathname, method, authState) {
       if (perms.includes('footer') && body.footer) patch.footer = body.footer;
     }
     const updated = store.saveConfig(patch);
-    return sendJson(res, 200, { ok: true, config: updated }), true;
+    return sendJson(res, 200, { ok: true, config: store.getPublicConfig(updated) }), true;
   }
 
   if (pathname === '/api/admin/reset' && method === 'POST') {
     if (!requireAdmin(req, res, authState, 'SUPER_ADMIN')) return true;
     const updated = store.resetConfig();
-    return sendJson(res, 200, { ok: true, config: updated }), true;
+    return sendJson(res, 200, { ok: true, config: store.getPublicConfig(updated) }), true;
   }
 
   if (pathname === '/api/admin/maintenance' && (method === 'PUT' || method === 'POST')) {
@@ -56,7 +56,7 @@ async function handleAdminConfig(req, res, pathname, method, authState) {
         message: 'Website đang được nâng cấp và bảo trì định kỳ. Quý khách vui lòng quay lại sau ít phút hoặc liên hệ hotline bên dưới để được hỗ trợ ngay.'
       }
     });
-    return sendJson(res, 200, { ok: true, config: updated }), true;
+    return sendJson(res, 200, { ok: true, config: store.getPublicConfig(updated) }), true;
   }
 
   if (pathname === '/api/admin/backup-full' && method === 'GET') {
@@ -122,8 +122,8 @@ async function handleAdminConfig(req, res, pathname, method, authState) {
         updatedSections.push(`Tin tức (${body.news.length})`);
       }
       if (Array.isArray(body.leads)) {
-        for (const l of body.leads) leadStore.upsertLead(l);
-        updatedSections.push(`Khách hàng (${body.leads.length})`);
+        const restored = body.leads.filter(lead => leadStore.upsertLead(lead, { restoring: true })).length;
+        updatedSections.push(`Khách hàng (${restored})`);
       }
     }
     if (!updatedSections.length) {

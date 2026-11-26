@@ -40,6 +40,11 @@ function triggerRealtimeSheetPush(type, data) {
 }
 
 async function handleAdminGsheet(req, res, pathname, method, authState) {
+  if (pathname === '/api/admin/gsheet/config' && method === 'GET') {
+    if (!requireAdmin(req, res, authState, ['gsheet'])) return true;
+    return sendJson(res, 200, { settings: store.loadConfig().gsheet }), true;
+  }
+
   if (pathname === '/api/admin/gsheet/status' && method === 'GET') {
     if (!requireAdmin(req, res, authState, ['gsheet'])) return true;
     const cfg = store.loadConfig();
@@ -65,7 +70,7 @@ async function handleAdminGsheet(req, res, pathname, method, authState) {
       }
     });
     refreshGsheetAutoPull();
-    return sendJson(res, 200, { ok: true, config: updated, status: gsheet.getStatus(updated) }), true;
+    return sendJson(res, 200, { ok: true, config: store.getPublicConfig(updated), settings: updated.gsheet, status: gsheet.getStatus(updated) }), true;
   }
 
   if (pathname === '/api/admin/gsheet/test' && method === 'POST') {

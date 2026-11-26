@@ -11,11 +11,8 @@ const { sendJson, readJsonBody } = require('../lib/http-helpers');
 
 async function handlePublicApi(req, res, pathname, method) {
   if (pathname === '/api/config' && method === 'GET') {
-    const pubCfg = { ...store.loadConfig() };
-    delete pubCfg.telegram;
-    delete pubCfg.gsheet;
     return sendJson(res, 200, {
-      config: pubCfg,
+      config: store.getPublicConfig(),
       presets: store.THEME_PRESETS
     }), true;
   }

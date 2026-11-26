@@ -3,6 +3,22 @@
 
   const $ = id => document.getElementById(id);
   const TOKEN_KEY = 'hq_admin_token_v1';
+  const EDITOR_KEYS = ['branding', 'home', 'theme', 'hero', 'sections', 'defaults', 'tariffs', 'footer'];
+  const TAB_INFO = {
+    leads: ['Khách hàng', 'Theo dõi yêu cầu tư vấn và trạng thái chăm sóc.'],
+    products: ['Kho sản phẩm', 'Quản lý thiết bị, tồn kho và tài liệu kỹ thuật.'],
+    news: ['Tin tức', 'Soạn bài, cập nhật nội dung và chọn bài nổi bật.'],
+    branding: ['Thương hiệu', 'Cập nhật logo, tên doanh nghiệp và thông tin liên hệ.', '/?preview=1'],
+    home: ['Trang chủ', 'Sắp xếp các mục nổi bật trên trang chủ.', '/?preview=home'],
+    theme: ['Màu sắc & banner', 'Tùy chỉnh bảng màu, kiểu chữ và banner tư vấn.', '/?preview=1'],
+    layout: ['Bố cục & tiêu đề', 'Chọn thông tin hiển thị trên công cụ tính pin.', '/?preview=1'],
+    tariffs: ['Thông số & biểu giá', 'Thiết lập thông số tính pin và các bậc giá điện.', '/?preview=1'],
+    footer: ['Chân trang', 'Sửa phần liên hệ và lưu ý cho khách hàng.', '/?preview=1'],
+    gsheet: ['Google Sheets', 'Thiết lập đồng bộ và theo dõi các lần kết nối.'],
+    security: ['Sao lưu & bảo trì', 'Quản lý chế độ bảo trì, cập nhật và sao lưu.'],
+    users: ['Phân quyền & dữ liệu', 'Cấp quyền cho nhân viên và quản lý kết nối hệ thống.'],
+    account: ['Tài khoản của tôi', 'Xem thông tin và đổi mật khẩu.']
+  };
 
   let CONFIG = null;
   let PRESETS = {};
@@ -29,6 +45,32 @@
   let newNewsImgUrl = '';
   let prodFilter = 'all';
   let dirty = false;
+  let editRevision = 0;
+  let configSaving = false;
+  let activeTab = '';
+  let previewOpen = !window.matchMedia('(max-width: 980px)').matches;
+
+  function can(permission) {
+    return Boolean(CURRENT_USER && (CURRENT_USER.role === 'admin' || CURRENT_USER.permissions?.includes(permission)));
+  }
+
+  function editorConfig() {
+    return Object.fromEntries(EDITOR_KEYS.map(key => [key, CONFIG[key]]));
+  }
+
+  function authHeaders(headers = {}) {
+    const token = getStoredToken();
+    return token ? { ...headers, Authorization: `Bearer ${token}` } : headers;
+  }
+
+  function downloadFile(blob, filename) {
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = href;
+    link.download = filename;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(href), 1000);
+  }
 
   function getStoredToken() {
     try { return sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY) || ''; } catch { return ''; }
@@ -51,7 +93,9 @@
 
   function setDirty(val) {
     dirty = val;
-    if ($('dirtyPill')) $('dirtyPill').hidden = !val;
+    if (val) editRevision++;
+    $('dirtyPill').hidden = !val;
+    $('btnSave').disabled = !dirty || configSaving;
   }
 
   function escapeAttr(str) {
@@ -60,15 +104,14 @@
 
   function pushPreview() {
     const frame = $('previewFrame');
-    if (frame && frame.contentWindow && CONFIG) {
-      frame.contentWindow.postMessage({ type: 'HQ_PREVIEW_CONFIG', config: CONFIG, products: PRODUCTS }, '*');
+    if (frame.contentWindow && CONFIG && !$('adminPreview').hidden) {
+      const config = { ...editorConfig(), maintenance: CONFIG.maintenance, updatedAt: CONFIG.updatedAt };
+      frame.contentWindow.postMessage({ type: 'HQ_PREVIEW_CONFIG', config, products: PRODUCTS }, window.location.origin);
     }
   }
 
   async function api(url, opts = {}) {
-    const token = getStoredToken();
-    const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const headers = authHeaders({ 'Content-Type': 'application/json', ...opts.headers });
     const res = await fetch(url, {
       credentials: 'include',
       cache: 'no-store',
@@ -82,9 +125,8 @@
 
   // ---------- AUTH ----------
   function setAuthView(authed) {
-    const ls = $('loginScreen'), app = $('adminApp');
-    if (ls) { ls.hidden = authed; ls.style.display = authed ? 'none' : 'grid'; }
-    if (app) { app.hidden = !authed; app.style.display = authed ? 'flex' : 'none'; }
+    $('loginScreen').hidden = authed;
+    $('adminApp').hidden = !authed;
   }
 
   async function checkSession() {
@@ -108,14 +150,17 @@
   $('loginForm').addEventListener('submit', async e => {
     e.preventDefault();
     $('loginErr').textContent = '';
+    if ($('btnLogin').disabled) return;
     setStoredToken('');
     CURRENT_USER = null;
     const unameVal = $('loginUser') ? $('loginUser').value.trim() : '';
     if (!unameVal) { $('loginErr').textContent = 'Vui lòng nhập tên đăng nhập.'; return; }
+    $('btnLogin').disabled = true;
+    $('btnLogin').textContent = 'Đang đăng nhập…';
     try {
       const res = await api('/api/admin/login', {
         method: 'POST',
-        body: JSON.stringify({ username: ($('loginUser') ? $('loginUser').value.trim() : ''), password: $('loginPass').value })
+        body: JSON.stringify({ username: unameVal, password: $('loginPass').value })
       });
       if (res.token) setStoredToken(res.token);
       CURRENT_USER = res.user || null;
@@ -124,18 +169,24 @@
       await loadAdminData();
     } catch (err) {
       $('loginErr').textContent = err.message || 'Đăng nhập thất bại.';
+    } finally {
+      $('btnLogin').disabled = false;
+      $('btnLogin').textContent = 'Đăng nhập';
     }
   });
 
   $('btnLogout').onclick = async () => {
+    $('btnLogout').disabled = true;
+    try {
+      await api('/api/admin/logout', { method: 'POST' });
+    } catch (err) {
+      toast('Không thể đăng xuất. ' + err.message);
+      $('btnLogout').disabled = false;
+      return;
+    }
     CURRENT_USER = null;
     USERS = [];
     setStoredToken('');
-    try { sessionStorage.removeItem(TOKEN_KEY); } catch {}
-    try { localStorage.removeItem(TOKEN_KEY); } catch {}
-    try {
-      await fetch('/api/admin/logout', { method: 'POST', credentials: 'include', cache: 'no-store' });
-    } catch {}
     if ($('loginErr')) $('loginErr').textContent = '';
     if ($('loginUser')) $('loginUser').value = '';
     if ($('loginPass')) $('loginPass').value = '';
@@ -151,8 +202,6 @@
         if (me && me.user) CURRENT_USER = me.user;
       }
       const isSuper = Boolean(CURRENT_USER && CURRENT_USER.role === 'admin');
-      const perms = isSuper ? PERM_LABELS.map(x => x[0]) : ((CURRENT_USER && CURRENT_USER.permissions) || []);
-      const can = (p) => isSuper || perms.includes(p);
 
       const [data, prodData, newsData, leadsData, usersData, tgData] = await Promise.all([
         api('/api/config'),
@@ -177,10 +226,17 @@
       if ($('nn_date') && !$('nn_date').value) $('nn_date').value = new Date().toISOString().slice(0, 10);
       renderPresets();
       populateForm();
+      populateMaintForm();
       setDirty(false);
       pushPreview();
+      if (can('gsheet')) {
+        loadGsheetSettings();
+        fetchGsheetStatus();
+      }
+      return true;
     } catch (err) {
       toast('Lỗi tải dữ liệu cấu hình: ' + (err.message || err));
+      return false;
     }
   }
 
@@ -328,42 +384,6 @@
     setVal('hm_productsCount', String(hm.productsCount || 4));
     setChk('hm_showContactCta', hm.showContactCta !== false);
     renderHomeQuickEditor();
-    const mt = CONFIG.maintenance || (CONFIG.maintenance = {
-      enabled: false, mode: 'error404', allowedRoute: '/tuvan',
-      title: '404 — Hệ thống đang bảo trì',
-      message: 'Website đang được nâng cấp và bảo trì định kỳ. Quý khách vui lòng quay lại sau ít phút hoặc liên hệ hotline bên dưới để được hỗ trợ ngay.'
-    });
-    setVal('m_mode', mt.mode || 'error404');
-    const ar = Array.isArray(mt.allowedRoutes) && mt.allowedRoutes.length ? mt.allowedRoutes : (mt.allowedRoute ? [mt.allowedRoute] : ['/tuvan']);
-    document.querySelectorAll('[data-m-route]').forEach(cb => { cb.checked = ar.includes(cb.dataset.mRoute); });
-    updateMaintUI();
-    const ig = CONFIG.integrations || (CONFIG.integrations = { defaultAssignee: 'admin', autoPushOnSubmit: true, telegramEnabled: false, telegramBotToken: '', telegramChatId: '', webhookEnabled: false, webhookUrl: '', webhookSecret: '' });
-    if ($('int_defaultAssignee')) {
-      const opts = (USERS && USERS.length ? USERS : [{ username: 'admin', displayName: 'Quản trị viên' }])
-        .map(u => `<option value="${escapeAttr(u.username)}">${escapeAttr(u.displayName || u.username)} (@${escapeAttr(u.username)})</option>`).join('');
-      $('int_defaultAssignee').innerHTML = opts;
-      $('int_defaultAssignee').value = ig.defaultAssignee || 'admin';
-    }
-    setChk('int_autoPushOnSubmit', ig.autoPushOnSubmit !== false);
-    setChk('int_telegramEnabled', Boolean(ig.telegramEnabled));
-    setVal('int_telegramBotToken', ig.telegramBotToken || '');
-    setVal('int_telegramChatId', ig.telegramChatId || '');
-    setChk('int_webhookEnabled', Boolean(ig.webhookEnabled));
-    setVal('int_webhookUrl', ig.webhookUrl || '');
-    setVal('int_webhookSecret', ig.webhookSecret || '');
-    const gsc = CONFIG.gsheet || (CONFIG.gsheet = {
-      enabled: false, webhookUrl: '', secretKey: '', syncLeads: true, syncProducts: true, syncNews: true, autoPullProducts: false, pullIntervalSec: 60
-    });
-    setChk('gs_enabled', gsc.enabled);
-    setVal('gs_webhookUrl', gsc.webhookUrl || '');
-    setVal('gs_secretKey', gsc.secretKey || '');
-    setChk('gs_syncLeads', gsc.syncLeads !== false);
-    setChk('gs_syncProducts', gsc.syncProducts !== false);
-    setChk('gs_syncNews', gsc.syncNews !== false);
-    setChk('gs_autoPullProducts', Boolean(gsc.autoPullProducts));
-    setVal('gs_pullIntervalSec', gsc.pullIntervalSec || 60);
-    fetchGsheetStatus();
-
     const gs = CONFIG.sheetSync || {};
     setVal('gs_url', gs.url || '');
     if ($('gs_status') && gs.lastSummary) {
@@ -702,6 +722,7 @@
 
   if ($('btnResetProds')) {
     $('btnResetProds').onclick = async () => {
+      if (!confirm('Thay thế kho sản phẩm hiện tại bằng kho mẫu?')) return;
       try {
         const res = await api('/api/admin/products/reset', { method: 'POST' });
         PRODUCTS = res.products;
@@ -854,6 +875,7 @@
 
   if ($('btnResetNews')) {
     $('btnResetNews').onclick = async () => {
+      if (!confirm('Thay thế các bài viết hiện tại bằng nội dung mẫu?')) return;
       try {
         const res = await api('/api/admin/news/reset', { method: 'POST' });
         NEWS = res.articles;
@@ -901,19 +923,19 @@
       const zaloClean = phoneClean.replace(/[^\d]/g, '');
       const st = l.status || 'new';
       const stColor = st === 'closed' ? '#047857' : st === 'cancelled' ? '#B91C1C' : st === 'new' ? '#EA580C' : '#1D4ED8';
-      return `<div class="list-item" style="flex-direction:column;align-items:stretch;gap:7px;padding:10px">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">
+      return `<article class="list-item lead-record">
+        <div class="lead-record-head">
           <div style="min-width:0">
-            <div style="font-weight:800;font-size:13.5px;color:#0F172A">${escapeAttr(l.customerName)}</div>
-            <div style="font-size:11.5px;color:#64748B">🕒 ${escapeAttr(fmtLeadTime(l.updatedAt || l.createdAt))}</div>
+            <h4>${escapeAttr(l.customerName)}</h4>
+            <span class="lead-record-date">${escapeAttr(fmtLeadTime(l.updatedAt || l.createdAt))}</span>
           </div>
-          <button type="button" class="del-btn" data-l-del="${escapeAttr(l.id)}" title="Xóa khách hàng">×</button>
+          <button type="button" class="del-btn" data-l-del="${escapeAttr(l.id)}" aria-label="Xóa khách hàng">×</button>
         </div>
         ${(l.customerPhone || l.customerAddress) ? `<div style="font-size:12px;color:#334155;display:flex;flex-direction:column;gap:3px">
           ${l.customerPhone ? `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span>📞 <b>${escapeAttr(l.customerPhone)}</b></span>${phoneClean ? `<a href="tel:${phoneClean}" style="font-size:11px;font-weight:700;color:#047857;text-decoration:none;background:#ECFDF5;padding:2px 7px;border-radius:99px">Gọi</a>` : ''}${zaloClean ? `<a href="https://zalo.me/${zaloClean}" target="_blank" rel="noopener" style="font-size:11px;font-weight:700;color:#0369A1;text-decoration:none;background:#E0F2FE;padding:2px 7px;border-radius:99px">Zalo</a>` : ''}</div>` : ''}
           ${l.customerAddress ? `<div>📍 ${escapeAttr(l.customerAddress)}</div>` : ''}
         </div>` : ''}
-        <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:7px 9px;font-size:12px;color:#334155">
+        <div class="lead-record-energy">
           <div>⚡ Hóa đơn: <b>${nfLead.format(l.billTotal || 0)} đ/tháng</b> (${nfLead.format(l.kwhUsed || 0)} kWh)</div>
           <div>🔋 Pin lưu trữ cần: <b>${Number(l.batNeededKwh || 0).toFixed(1)} kWh</b> (${l.modulesCount || 0} × ${l.moduleKwh || 5.12} kWh · tối ${l.evePct || 70}%)</div>
         </div>
@@ -933,20 +955,20 @@
             ${l.botSentAt ? '<span style="background:#DCFCE7;color:#166534;padding:2px 6px;border-radius:99px;font-weight:700">🤖 Bot OK</span>' : ''}
             ${l.webhookSentAt ? '<span style="background:#DBEAFE;color:#1E40AF;padding:2px 6px;border-radius:99px;font-weight:700">🗄 CSDL OK</span>' : ''}
           </div>
-          <button type="button" class="btn-ghost small" data-l-push="${escapeAttr(l.id)}" style="padding:3px 8px;font-size:11px">📤 Đẩy Bot/CSDL</button>
+          <button type="button" class="btn-ghost small" data-l-push="${escapeAttr(l.id)}">Gửi Telegram</button>
         </div>` : ''}
-        <div style="display:grid;grid-template-columns:130px 1fr;gap:6px;align-items:center">
-          <select class="f-input" data-l-status="${escapeAttr(l.id)}" style="font-weight:700;color:${stColor}">
+        <div class="lead-record-edit">
+          <select class="f-input" aria-label="Trạng thái chăm sóc" data-l-status="${escapeAttr(l.id)}" style="font-weight:700;color:${stColor}">
             <option value="new" ${st === 'new' ? 'selected' : ''}>🆕 Mới</option>
             <option value="contacted" ${st === 'contacted' ? 'selected' : ''}>📞 Đã liên hệ</option>
             <option value="quoted" ${st === 'quoted' ? 'selected' : ''}>📋 Đã báo giá</option>
             <option value="closed" ${st === 'closed' ? 'selected' : ''}>✅ Đã chốt</option>
             <option value="cancelled" ${st === 'cancelled' ? 'selected' : ''}>❌ Hủy</option>
           </select>
-          <input type="text" class="f-input" data-l-note="${escapeAttr(l.id)}" value="${escapeAttr(l.adminNote || '')}" placeholder="Ghi chú chăm sóc khách...">
+          <input type="text" class="f-input" aria-label="Ghi chú chăm sóc" data-l-note="${escapeAttr(l.id)}" value="${escapeAttr(l.adminNote || '')}" placeholder="Ghi chú chăm sóc khách">
         </div>
-      </div>`;
-    }).join('') || '<p class="hint">Chưa có dữ liệu khách hàng nào. Khi khách nhập thông tin hoặc chọn Combo ngoài trang chủ, hệ thống sẽ tự lưu tại đây.</p>';
+      </article>`;
+    }).join('') || `<p class="hint adm-empty">${LEADS.length ? 'Không tìm thấy khách hàng phù hợp.' : 'Chưa có yêu cầu tư vấn nào.'}</p>`;
 
     
     el.querySelectorAll('[data-l-assign]').forEach(sel => sel.onchange = async () => {
@@ -959,15 +981,15 @@
       } catch (err) { toast(err.message); }
     });
     el.querySelectorAll('[data-l-push]').forEach(btn => btn.onclick = async () => {
+      if (!confirm('Gửi thông tin khách hàng này tới nhóm Telegram đã cấu hình?')) return;
+      btn.disabled = true;
       try {
         const res = await api('/api/admin/leads/push', { method: 'POST', body: JSON.stringify({ id: btn.dataset.lPush }) });
-        LEADS = res.leads || LEADS;
+        if (res.lead) LEADS = LEADS.map(lead => lead.id === res.lead.id ? res.lead : lead);
         renderLeadsList();
-        const s = res.sync || {};
-        if (s.errors && s.errors.length) toast('Lỗi đẩy: ' + s.errors.join(' | '));
-        else if (s.telegramOk || s.webhookOk) toast('Đã đẩy dữ liệu khách sang Bot / CSDL thành công!');
-        else toast('Chưa bật Telegram Bot hoặc Webhook CSDL ở khung cài đặt phía trên.');
+        toast('Đã gửi thông tin khách hàng qua Telegram.');
       } catch (err) { toast(err.message); }
+      finally { btn.disabled = false; }
     });
 
     el.querySelectorAll('[data-l-status]').forEach(sel => sel.onchange = async () => {
@@ -1019,15 +1041,9 @@
   if ($('btnExportLeads')) {
     $('btnExportLeads').onclick = async () => {
       try {
-        const headers = {};
-        if (AUTH_TOKEN) headers['Authorization'] = 'Bearer ' + AUTH_TOKEN;
-        const resp = await fetch('/api/admin/leads/export.csv', { credentials: 'include', headers });
+        const resp = await fetch('/api/admin/leads/export.csv', { credentials: 'include', headers: authHeaders() });
         if (!resp.ok) throw new Error('Không thể xuất CSV.');
-        const blob = await resp.blob();
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `khach-hang-tu-van-${new Date().toISOString().slice(0, 10)}.csv`;
-        a.click();
+        downloadFile(await resp.blob(), `khach-hang-tu-van-${new Date().toISOString().slice(0, 10)}.csv`);
       } catch (err) { toast(err.message); }
     };
   }
@@ -1036,44 +1052,22 @@
   // ---------- RBAC PERMISSIONS & USER MANAGEMENT ----------
   function applyPermissionsUI() {
     const isSuper = Boolean(CURRENT_USER && CURRENT_USER.role === 'admin');
-    const perms = isSuper ? PERM_LABELS.map(x => x[0]) : (CURRENT_USER.permissions || []);
     if ($('currentUserBadge')) {
-      const label = CURRENT_USER ? `${CURRENT_USER.displayName || CURRENT_USER.username} (${isSuper ? 'Admin' : 'Nhân viên'})` : 'Admin';
-      $('currentUserBadge').textContent = '👤 ' + label;
+      $('currentUserBadge').textContent = CURRENT_USER?.displayName || CURRENT_USER?.username || 'Quản trị viên';
+      $('currentUserBadge').title = isSuper ? 'Quản trị viên' : 'Nhân viên';
     }
     if ($('myAccUser')) $('myAccUser').textContent = CURRENT_USER ? '@' + CURRENT_USER.username : '@admin';
     if ($('myAccName')) $('myAccName').textContent = CURRENT_USER ? (CURRENT_USER.displayName || CURRENT_USER.username) : 'Quản trị viên';
     if ($('myAccRole')) $('myAccRole').textContent = isSuper ? 'Admin (Full tính năng)' : 'Nhân viên phân quyền';
-    if ($('tabBtnSecurity')) $('tabBtnSecurity').hidden = !isSuper;
-    if (false) {
-    }
-    if ($('tabBtnUsers')) $('tabBtnUsers').hidden = !isSuper;
-    if ($('adminOnlyMaintBackup')) $('adminOnlyMaintBackup').hidden = !isSuper;
-    if ($('adminOnlyJsonBackup')) $('adminOnlyJsonBackup').hidden = !isSuper;
-    if ($('tabBtnSecurity')) $('tabBtnSecurity').textContent = isSuper ? 'Sao lưu & Bảo trì' : 'Đổi mật khẩu';
-    if ($('siteUpdateSection')) $('siteUpdateSection').hidden = !isSuper;
-    const canSaveConfig = isSuper || ['branding', 'home', 'theme', 'layout', 'tariffs', 'footer'].some(p => perms.includes(p));
-    if ($('btnSave')) $('btnSave').hidden = !canSaveConfig;
-    if ($('btnReset')) $('btnReset').hidden = !isSuper;
-    const canSec = isSuper || perms.includes('security');
-    if ($('securityPrivilegedWrap')) $('securityPrivilegedWrap').hidden = !canSec;
-    if ($('jsonBackupPrivilegedWrap')) $('jsonBackupPrivilegedWrap').hidden = !canSec;
-    if ($('tgConfigBox')) $('tgConfigBox').hidden = !isSuper;
-
-    let firstVisible = null;
-    document.querySelectorAll('.adm-tabs .tab-btn[data-tab]').forEach(btn => {
+    $('adminMore').hidden = !isSuper;
+    $('gsheetHeaderBadge').hidden = !can('gsheet');
+    tabs.forEach(btn => {
       const tab = btn.dataset.tab;
-      const allowed = (tab === 'users' || tab === 'security') ? isSuper : (tab === 'account' ? true : (isSuper || perms.includes(tab)));
-      btn.hidden = !allowed;
-      const pane = $('tab-' + tab);
-      if (pane) {
-        pane.hidden = !allowed;
-        if (!allowed) pane.classList.remove('active');
-      }
-      if (allowed && !firstVisible) firstVisible = btn;
+      btn.hidden = !(tab === 'users' || tab === 'security' ? isSuper : tab === 'account' || can(tab));
     });
-    const activeBtn = document.querySelector('.adm-tabs .tab-btn[data-tab].active');
-    if ((!activeBtn || activeBtn.hidden) && firstVisible) firstVisible.click();
+    document.querySelectorAll('.adm-nav-group').forEach(group => { group.hidden = !group.querySelector('[data-tab]:not([hidden])'); });
+    const available = tabs.filter(btn => !btn.hidden);
+    selectTab(available.find(btn => btn.dataset.tab === activeTab) || available[0]);
 
     renderNewUserPerms();
     if (isSuper) renderUsersList();
@@ -1176,7 +1170,7 @@
       try {
         const res = await api('/api/admin/products/sync-sheet', { method: 'POST', body: JSON.stringify({ url }) });
         PRODUCTS = res.products || PRODUCTS;
-        if (res.config) CONFIG = res.config;
+        if (res.config) CONFIG.sheetSync = res.config.sheetSync;
         renderProdList(); pushPreview();
         if ($('gs_status')) $('gs_status').innerHTML = `✅ Đồng bộ xong (${escapeAttr(fmtLeadTime(res.lastSyncedAt))}): <b>${escapeAttr(res.summary)}</b>`;
         toast('Đồng bộ Google Sheet thành công: ' + res.summary);
@@ -1211,6 +1205,24 @@
   // ---------- GOOGLE SHEETS REAL-TIME SYNC UI ----------
   let GS_SCRIPT_TEMPLATE = '';
   let gsPollTimer = null;
+
+  async function loadGsheetSettings() {
+    $('btnSaveGsheet').disabled = true;
+    try {
+      const { settings } = await api('/api/admin/gsheet/config');
+      setChk('gs_enabled', settings.enabled);
+      setVal('gs_webhookUrl', settings.webhookUrl || '');
+      setVal('gs_secretKey', settings.secretKey || '');
+      setChk('gs_syncLeads', settings.syncLeads !== false);
+      setChk('gs_syncProducts', settings.syncProducts !== false);
+      setChk('gs_syncNews', settings.syncNews !== false);
+      setChk('gs_autoPullProducts', settings.autoPullProducts);
+      setVal('gs_pullIntervalSec', settings.pullIntervalSec || 60);
+      $('btnSaveGsheet').disabled = false;
+    } catch (err) {
+      toast('Không tải được cài đặt Google Sheets. ' + err.message);
+    }
+  }
 
   function renderGsheetStatus(st) {
     if (!st) return;
@@ -1262,15 +1274,16 @@
   }
 
   async function fetchGsheetStatus() {
+    if (!can('gsheet')) return;
     try {
-      const res = await (can('gsheet') ? api('/api/admin/gsheet/status') : Promise.resolve(null));
+      const res = await api('/api/admin/gsheet/status');
       if (res.scriptTemplate) GS_SCRIPT_TEMPLATE = res.scriptTemplate;
       if (res.status) renderGsheetStatus(res.status);
     } catch {}
     if (!gsPollTimer) {
       gsPollTimer = setInterval(() => {
-        if ($('adminApp') && !$('adminApp').hidden) {
-          (can('gsheet') ? api('/api/admin/gsheet/status') : Promise.resolve(null)).then(r => { if (r && r.status) renderGsheetStatus(r.status); }).catch(() => {});
+        if (!$('adminApp').hidden && can('gsheet')) {
+          api('/api/admin/gsheet/status').then(r => renderGsheetStatus(r.status)).catch(() => {});
         }
       }, 10000);
     }
@@ -1299,7 +1312,6 @@
             pullIntervalSec: Number($('gs_pullIntervalSec').value) || 60
           })
         });
-        CONFIG = res.config;
         renderGsheetStatus(res.status);
         toast('Đã lưu cấu hình đồng bộ Google Sheets!');
       } catch (err) { toast(err.message); }
@@ -1391,6 +1403,15 @@
     }
   }
 
+  function populateMaintForm() {
+    const maintenance = CONFIG.maintenance || {};
+    const routes = Array.isArray(maintenance.allowedRoutes) && maintenance.allowedRoutes.length
+      ? maintenance.allowedRoutes : [maintenance.allowedRoute || '/tuvan'];
+    setVal('m_mode', maintenance.mode || 'error404');
+    document.querySelectorAll('[data-m-route]').forEach(box => { box.checked = routes.includes(box.dataset.mRoute); });
+    updateMaintUI();
+  }
+
   async function saveMaintState(enabledVal) {
     const payload = {
       enabled: enabledVal,
@@ -1399,63 +1420,20 @@
       title: '404 — Hệ thống đang bảo trì',
       message: 'Website đang được nâng cấp và bảo trì định kỳ. Quý khách vui lòng quay lại sau ít phút hoặc liên hệ hotline bên dưới để được hỗ trợ ngay.'
     };
+    if (payload.mode === 'allow_page' && !payload.allowedRoutes.length) {
+      toast('Chọn ít nhất một trang được mở trong thời gian bảo trì.');
+      return;
+    }
     try {
       const res = await api('/api/admin/maintenance', { method: 'PUT', body: JSON.stringify(payload) });
-      CONFIG = res.config;
+      CONFIG.maintenance = res.config.maintenance;
       updateMaintUI();
-    const ig = CONFIG.integrations || (CONFIG.integrations = { defaultAssignee: 'admin', autoPushOnSubmit: true, telegramEnabled: false, telegramBotToken: '', telegramChatId: '', webhookEnabled: false, webhookUrl: '', webhookSecret: '' });
-    if ($('int_defaultAssignee')) {
-      const opts = (USERS && USERS.length ? USERS : [{ username: 'admin', displayName: 'Quản trị viên' }])
-        .map(u => `<option value="${escapeAttr(u.username)}">${escapeAttr(u.displayName || u.username)} (@${escapeAttr(u.username)})</option>`).join('');
-      $('int_defaultAssignee').innerHTML = opts;
-      $('int_defaultAssignee').value = ig.defaultAssignee || 'admin';
-    }
-    setChk('int_autoPushOnSubmit', ig.autoPushOnSubmit !== false);
-    setChk('int_telegramEnabled', Boolean(ig.telegramEnabled));
-    setVal('int_telegramBotToken', ig.telegramBotToken || '');
-    setVal('int_telegramChatId', ig.telegramChatId || '');
-    setChk('int_webhookEnabled', Boolean(ig.webhookEnabled));
-    setVal('int_webhookUrl', ig.webhookUrl || '');
-    setVal('int_webhookSecret', ig.webhookSecret || '');
       pushPreview();
-      if ($('previewFrame')) {
-        const targetUrl = (payload.enabled && payload.mode === 'allow_page') ? payload.allowedRoute : '/';
-        $('previewFrame').src = targetUrl + (targetUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
-      }
       toast(payload.enabled ? 'Đã BẬT chế độ bảo trì ngay lập tức!' : 'Đã TẮT chế độ bảo trì — website hoạt động lại bình thường!');
     } catch (err) { toast(err.message); }
   }
 
-  if ($('m_mode')) $('m_mode').onchange = () => { updateMaintUI();
-    const ig = CONFIG.integrations || (CONFIG.integrations = { defaultAssignee: 'admin', autoPushOnSubmit: true, telegramEnabled: false, telegramBotToken: '', telegramChatId: '', webhookEnabled: false, webhookUrl: '', webhookSecret: '' });
-    if ($('int_defaultAssignee')) {
-      const opts = (USERS && USERS.length ? USERS : [{ username: 'admin', displayName: 'Quản trị viên' }])
-        .map(u => `<option value="${escapeAttr(u.username)}">${escapeAttr(u.displayName || u.username)} (@${escapeAttr(u.username)})</option>`).join('');
-      $('int_defaultAssignee').innerHTML = opts;
-      $('int_defaultAssignee').value = ig.defaultAssignee || 'admin';
-    }
-    setChk('int_autoPushOnSubmit', ig.autoPushOnSubmit !== false);
-    setChk('int_telegramEnabled', Boolean(ig.telegramEnabled));
-    setVal('int_telegramBotToken', ig.telegramBotToken || '');
-    setVal('int_telegramChatId', ig.telegramChatId || '');
-    setChk('int_webhookEnabled', Boolean(ig.webhookEnabled));
-    setVal('int_webhookUrl', ig.webhookUrl || '');
-    setVal('int_webhookSecret', ig.webhookSecret || ''); if (CONFIG && CONFIG.maintenance && CONFIG.maintenance.enabled) saveMaintState(true); };
-  if ($('m_allowedRoute')) $('m_allowedRoute').onchange = () => { updateMaintUI();
-    const ig = CONFIG.integrations || (CONFIG.integrations = { defaultAssignee: 'admin', autoPushOnSubmit: true, telegramEnabled: false, telegramBotToken: '', telegramChatId: '', webhookEnabled: false, webhookUrl: '', webhookSecret: '' });
-    if ($('int_defaultAssignee')) {
-      const opts = (USERS && USERS.length ? USERS : [{ username: 'admin', displayName: 'Quản trị viên' }])
-        .map(u => `<option value="${escapeAttr(u.username)}">${escapeAttr(u.displayName || u.username)} (@${escapeAttr(u.username)})</option>`).join('');
-      $('int_defaultAssignee').innerHTML = opts;
-      $('int_defaultAssignee').value = ig.defaultAssignee || 'admin';
-    }
-    setChk('int_autoPushOnSubmit', ig.autoPushOnSubmit !== false);
-    setChk('int_telegramEnabled', Boolean(ig.telegramEnabled));
-    setVal('int_telegramBotToken', ig.telegramBotToken || '');
-    setVal('int_telegramChatId', ig.telegramChatId || '');
-    setChk('int_webhookEnabled', Boolean(ig.webhookEnabled));
-    setVal('int_webhookUrl', ig.webhookUrl || '');
-    setVal('int_webhookSecret', ig.webhookSecret || ''); if (CONFIG && CONFIG.maintenance && CONFIG.maintenance.enabled) saveMaintState(true); };
+  $('m_mode').onchange = updateMaintUI;
   if ($('btnToggleMaint')) {
     $('btnToggleMaint').onclick = () => {
       const cur = Boolean(CONFIG && CONFIG.maintenance && CONFIG.maintenance.enabled);
@@ -1471,15 +1449,9 @@
   if ($('btnFullBackup')) {
     $('btnFullBackup').onclick = async () => {
       try {
-        const headers = {};
-        if (AUTH_TOKEN) headers['Authorization'] = 'Bearer ' + AUTH_TOKEN;
-        const resp = await fetch('/api/admin/backup-full', { credentials: 'include', headers });
+        const resp = await fetch('/api/admin/backup-full', { credentials: 'include', headers: authHeaders() });
         if (!resp.ok) throw new Error('Không thể tải bản sao lưu toàn bộ.');
-        const blob = await resp.blob();
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `hoangquan-full-backup-${new Date().toISOString().slice(0, 10)}.json`;
-        a.click();
+        downloadFile(await resp.blob(), `hoangquan-full-backup-${new Date().toISOString().slice(0, 10)}.json`);
         toast('Đã tải xuống bản sao lưu toàn bộ dữ liệu!');
       } catch (err) { toast(err.message); }
     };
@@ -1511,7 +1483,8 @@
       xhr.open('POST', url, true);
       xhr.withCredentials = true;
       xhr.setRequestHeader('Content-Type', 'application/json');
-      if (AUTH_TOKEN) xhr.setRequestHeader('Authorization', 'Bearer ' + AUTH_TOKEN);
+      const token = getStoredToken();
+      if (token) xhr.setRequestHeader('Authorization', 'Bearer ' + token);
       xhr.upload.onprogress = ev => {
         if (ev.lengthComputable && onUploadPct) onUploadPct(ev.loaded / ev.total);
       };
@@ -1591,7 +1564,7 @@
     $('fullRestoreFile').addEventListener('change', async e => {
       const f = e.target.files[0];
       e.target.value = '';
-      if (!f) return;
+      if (!f || !confirm('Khôi phục dữ liệu từ tệp này có thể thay thế dữ liệu hiện tại. Tiếp tục?')) return;
       const kb = Math.max(1, Math.round(f.size / 1024));
       setUpdateProgress(12, 'Đang đọc tệp sao lưu JSON...', 'working', `📄 ${f.name} (${kb} KB)`);
       try {
@@ -1606,9 +1579,9 @@
           ratio => setUpdateProgress(48 + ratio * 36, `Đang tải dữ liệu (${Math.round(ratio * 100)}%)...`, 'working')
         );
         setUpdateProgress(92, 'Đang đồng bộ lại giao diện quản trị...', 'working');
-        await initAdmin();
+        const refreshed = await loadAdminData();
         const sec = Array.isArray(res.updatedSections) ? res.updatedSections.join(', ') : 'toàn bộ dữ liệu';
-        const msg = `✅ Đã khôi phục thành công: ${sec}!`;
+        const msg = `Đã khôi phục: ${sec}.${refreshed ? '' : ' Tải lại trang để xem dữ liệu mới.'}`;
         setUpdateProgress(100, msg, 'done');
         toast(msg);
       } catch (err) {
@@ -1648,49 +1621,6 @@
   }
 
   
-  if ($('btnToggleMobilePreview')) {
-    $('btnToggleMobilePreview').onclick = () => {
-      const prev = document.querySelector('.adm-preview');
-      if (!prev) return;
-      const open = prev.classList.toggle('mobile-open');
-      $('btnToggleMobilePreview').textContent = open ? '✕ Đóng xem trước' : '👁 Xem trước';
-      if (open) prev.scrollIntoView({ behavior: 'smooth' });
-    };
-  }
-  if ($('btnSaveInteg')) {
-    $('btnSaveInteg').onclick = async () => {
-      try {
-        const res = await api('/api/admin/integrations', {
-          method: 'PUT',
-          body: JSON.stringify({
-            defaultAssignee: $('int_defaultAssignee') ? $('int_defaultAssignee').value : 'admin',
-            autoPushOnSubmit: $('int_autoPushOnSubmit') ? $('int_autoPushOnSubmit').checked : true,
-            telegramEnabled: $('int_telegramEnabled') ? $('int_telegramEnabled').checked : false,
-            telegramBotToken: $('int_telegramBotToken') ? $('int_telegramBotToken').value.trim() : '',
-            telegramChatId: $('int_telegramChatId') ? $('int_telegramChatId').value.trim() : '',
-            webhookEnabled: $('int_webhookEnabled') ? $('int_webhookEnabled').checked : false,
-            webhookUrl: $('int_webhookUrl') ? $('int_webhookUrl').value.trim() : '',
-            webhookSecret: $('int_webhookSecret') ? $('int_webhookSecret').value.trim() : ''
-          })
-        });
-        CONFIG = res.config;
-        toast('Đã lưu cài đặt Bot, CSDL và tài khoản nhận khách!');
-      } catch (err) { toast(err.message); }
-    };
-  }
-  if ($('btnTestInteg')) {
-    $('btnTestInteg').onclick = async () => {
-      try {
-        const res = await api('/api/admin/integrations/test', { method: 'POST' });
-        const s = res.sync || {};
-        if (s.errors && s.errors.length) toast('Lỗi kết nối: ' + s.errors.join(' | '));
-        else if (s.telegramOk || s.webhookOk) toast('Gửi thử thành công sang Bot / CSDL!');
-        else toast('Hãy bật ít nhất 1 kênh (Telegram Bot hoặc Webhook CSDL) rồi bấm Lưu trước khi thử.');
-      } catch (err) { toast(err.message); }
-    };
-  }
-
-  // ---------- BIND INPUTS ----------
   function bind(id, setter) {
     const el = $(id);
     if (!el) return;
@@ -1742,14 +1672,6 @@
   bind('hm_productsTitle', el => { CONFIG.home.productsTitle = el.value; });
   bind('hm_productsCount', el => { CONFIG.home.productsCount = Number(el.value) || 4; });
   bind('hm_showContactCta', el => { CONFIG.home.showContactCta = el.checked; });
-
-  document.querySelectorAll('[data-preview-page]').forEach(btn => {
-    btn.onclick = () => {
-      document.querySelectorAll('[data-preview-page]').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      if ($('previewFrame')) $('previewFrame').src = btn.dataset.previewPage;
-    };
-  });
 
   bind('h_show', el => { CONFIG.hero.show = el.checked; });
   bind('h_style', el => { CONFIG.hero.style = el.value; });
@@ -1818,20 +1740,35 @@
 
   // ---------- SAVE / RESET / PASSWORD / BACKUP ----------
   $('btnSave').onclick = async () => {
+    if (!CONFIG || configSaving || !dirty) return;
+    const revision = editRevision;
+    configSaving = true;
+    $('btnSave').disabled = true;
+    $('btnSave').textContent = 'Đang lưu…';
     try {
-      const res = await api('/api/admin/config', { method: 'PUT', body: JSON.stringify(CONFIG) });
-      CONFIG = res.config;
-      setDirty(false);
+      const res = await api('/api/admin/config', { method: 'PUT', body: JSON.stringify(editorConfig()) });
+      if (editRevision === revision) {
+        CONFIG = res.config;
+        setDirty(false);
+      } else {
+        CONFIG.updatedAt = res.config.updatedAt;
+      }
       pushPreview();
-      toast('Đã lưu cấu hình giao diện thành công!');
+      toast(dirty ? 'Đã lưu bản trước. Bạn vẫn có thay đổi chưa lưu.' : 'Đã lưu cấu hình giao diện.');
     } catch (err) { toast(err.message); }
+    finally {
+      configSaving = false;
+      $('btnSave').disabled = !dirty;
+      $('btnSave').textContent = 'Lưu giao diện';
+    }
   };
 
   $('btnReset').onclick = async () => {
-    if (!confirm('Khôi phục toàn bộ giao diện và biểu giá về mặc định ban đầu?')) return;
+    if (configSaving || !confirm('Khôi phục toàn bộ giao diện và biểu giá về mặc định ban đầu?')) return;
     try {
       const res = await api('/api/admin/reset', { method: 'POST' });
       CONFIG = res.config;
+      $('adminMore').open = false;
       renderPresets(); populateForm(); setDirty(false); pushPreview();
       toast('Đã khôi phục cấu hình mặc định.');
     } catch (err) { toast(err.message); }
@@ -1856,11 +1793,8 @@
   });
 
   $('btnExport').onclick = () => {
-    const blob = new Blob([JSON.stringify(CONFIG, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `hoangquan-config-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
+    const blob = new Blob([JSON.stringify(editorConfig(), null, 2)], { type: 'application/json' });
+    downloadFile(blob, `hoangquan-config-${new Date().toISOString().slice(0, 10)}.json`);
   };
 
   $('importFile').addEventListener('change', e => {
@@ -1877,20 +1811,90 @@
   });
 
   // ---------- TABS & VIEWPORT ----------
-  document.querySelectorAll('.adm-tabs .tab-btn').forEach(btn => {
-    if (!btn.dataset.tab) return;
-    btn.onclick = () => {
-      document.querySelectorAll('.adm-tabs .tab-btn[data-tab]').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-      btn.classList.add('active');
-      if ($('tab-' + btn.dataset.tab)) $('tab-' + btn.dataset.tab).classList.add('active');
+  const tabs = [...document.querySelectorAll('.adm-navigation [data-tab]')];
+  const previewPages = [...document.querySelectorAll('[data-preview-page]')];
+  const previewSizes = [...document.querySelectorAll('[data-vp]')];
+
+  function highlightButton(buttons, selected) {
+    buttons.forEach(button => {
+      button.classList.toggle('active', button === selected);
+      button.setAttribute('aria-pressed', button === selected);
+    });
+  }
+
+  function renderPreview() {
+    const open = Boolean(previewOpen && TAB_INFO[activeTab]?.[2]);
+    $('adminPreview').hidden = !open;
+    $('btnToggleMobilePreview').textContent = open ? 'Đóng xem trước' : 'Xem trước';
+    $('btnToggleMobilePreview').setAttribute('aria-expanded', open);
+    if (!open) return;
+    const source = previewPages.find(btn => btn.classList.contains('active')).dataset.previewPage;
+    if ($('previewFrame').getAttribute('src') !== source) $('previewFrame').src = source;
+    else pushPreview();
+  }
+
+  function selectTab(button) {
+    if (!button || button.hidden) return;
+    const next = button.dataset.tab;
+    const [title, description, page] = TAB_INFO[next];
+    if (activeTab !== next) {
+      document.querySelector('.adm-panel-scroll').scrollTop = 0;
+      $('adminMore').open = false;
+      if (page) highlightButton(previewPages, previewPages.find(btn => btn.dataset.previewPage === page));
+    }
+    activeTab = next;
+    $('workspaceTitle').textContent = title;
+    $('workspaceDescription').textContent = description;
+    $('workspaceActions').hidden = !page;
+    tabs.forEach(btn => {
+      const selected = btn === button;
+      const pane = $('tab-' + btn.dataset.tab);
+      btn.classList.toggle('active', selected);
+      btn.setAttribute('aria-selected', selected);
+      btn.tabIndex = selected ? 0 : -1;
+      pane.classList.toggle('active', selected);
+      pane.hidden = !selected;
+    });
+    renderPreview();
+  }
+
+  tabs.forEach(button => {
+    const pane = $('tab-' + button.dataset.tab);
+    button.id ||= 'admin-nav-' + button.dataset.tab;
+    button.setAttribute('role', 'tab');
+    button.setAttribute('aria-controls', pane.id);
+    pane.setAttribute('role', 'tabpanel');
+    pane.setAttribute('aria-labelledby', button.id);
+    button.onclick = () => selectTab(button);
+    button.onkeydown = e => {
+      const visibleTabs = tabs.filter(tab => !tab.hidden);
+      const index = visibleTabs.indexOf(button);
+      const next = e.key === 'Home' ? 0 : e.key === 'End' ? visibleTabs.length - 1
+        : ['ArrowDown', 'ArrowRight'].includes(e.key) ? (index + 1) % visibleTabs.length
+          : ['ArrowUp', 'ArrowLeft'].includes(e.key) ? (index - 1 + visibleTabs.length) % visibleTabs.length : null;
+      if (next === null) return;
+      e.preventDefault();
+      selectTab(visibleTabs[next]);
+      visibleTabs[next].focus();
     };
   });
 
-  document.querySelectorAll('.vp-btn').forEach(btn => {
+  $('btnToggleMobilePreview').onclick = () => {
+    previewOpen = !previewOpen;
+    renderPreview();
+    if (previewOpen && window.matchMedia('(max-width: 980px)').matches) $('adminPreview').scrollIntoView({ block: 'start' });
+  };
+  $('btnClosePreview').onclick = () => {
+    previewOpen = false;
+    renderPreview();
+    $('btnToggleMobilePreview').focus();
+  };
+  previewPages.forEach(btn => {
+    btn.onclick = () => { highlightButton(previewPages, btn); renderPreview(); };
+  });
+  previewSizes.forEach(btn => {
     btn.onclick = () => {
-      document.querySelectorAll('.vp-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
+      highlightButton(previewSizes, btn);
       $('previewFrame').style.width = btn.dataset.vp;
     };
   });
