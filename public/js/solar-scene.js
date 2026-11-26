@@ -131,15 +131,14 @@
     const direct = 1 - effects.clouds * 0.76;
     drawSky(ctx, width, height, sun, camera, daylight, effects);
 
-    const columns = Math.min(7, Math.max(2, Math.ceil(Math.sqrt(config.panelCount * 1.6))));
-    const rows = Math.ceil(config.panelCount / columns);
-    const halfX = (columns * 0.88 + 1.0) / 2;
-    const halfZ = Math.max(3.5, rows * 1.34 + 1.05) / 2;
-    const tilt = radians(config.tilt);
-    const roof = z => 1.75 + (halfZ - z) * Math.tan(tilt);
+    const geometry = config.roof;
+    const halfX = geometry.width / 2, halfZ = geometry.depth / 2;
+    const gable = geometry.type === 'gable';
+    const roof = z => 2.45 + SolarRoof.elevation(geometry, z);
+    const peak = roof(gable ? 0 : -halfZ);
     const footprint = Math.hypot(halfX + 0.72, halfZ + 0.95);
-    const scale = Math.min(width * 0.44 / footprint, height * 0.89 / (footprint * pitch.sin * 2 + roof(-halfZ) * pitch.cos));
-    const anchorY = height * 0.58 + scale * roof(-halfZ) * pitch.cos * 0.27;
+    const scale = Math.min(width * 0.44 / footprint, height * 0.89 / (footprint * pitch.sin * 2 + peak * pitch.cos));
+    const anchorY = height * 0.58 + scale * peak * pitch.cos * 0.27;
 
     const cameraX = camera.sin * facing.cos - camera.cos * facing.sin;
     const cameraZ = camera.sin * facing.sin + camera.cos * facing.cos;
@@ -226,11 +225,14 @@
       function wallRect(a, b, low, high, fill, stroke) {
         shape([wallPoint(a, low, 0.012), wallPoint(b, low, 0.012), wallPoint(b, high, 0.012), wallPoint(a, high, 0.012)], fill, stroke);
       }
-      const top1 = wallPoint(0, roof(z)), top2 = wallPoint(1, roof(z2));
-      const plaster = ctx.createLinearGradient(0, Math.min(project(top1).y, project(top2).y), 0, Math.max(project(corners[i]).y, project(corners[(i + 1) % 4]).y));
+      const wallTop = [wallPoint(1, roof(z2))];
+      if (gable && z !== z2) wallTop.push(wallPoint(0.5, roof(0)));
+      wallTop.push(wallPoint(0, roof(z)));
+      const plaster = ctx.createLinearGradient(0, Math.min(...wallTop.map(point => project(point).y)), 0,
+        Math.max(project(corners[i]).y, project(corners[(i + 1) % 4]).y));
       plaster.addColorStop(0, rgb([239, 231, 213], light));
       plaster.addColorStop(1, rgb([176, 180, 164], light));
-      shape([wallPoint(0, 0.04), wallPoint(1, 0.04), top2, top1], plaster, '#17232a90');
+      shape([wallPoint(0, 0.04), wallPoint(1, 0.04), ...wallTop], plaster, '#17232a90');
       wallRect(0, 1, 0.045, 0.16, rgb([76, 88, 90], light));
       if (nz === 1) {
         wallRect(0.04, 0.34, 0.16, 1.60, rgb([153, 115, 77], light));
@@ -260,39 +262,43 @@
       return groundRect(x1, z1, x2, z2, 0).map(([x, , z]) => [x, roof(z) + offset, z]);
     }
     const edgeX = halfX + 0.18, edgeZ = halfZ + 0.19;
-    const roofTop = roofTile(-edgeX, -edgeZ, edgeX, edgeZ, 0.08);
-    const roofBottom = roofTile(-edgeX, -edgeZ, edgeX, edgeZ, -0.12);
-    normals.forEach(([x, z], i) => {
-      if (cameraX * x + cameraZ * z <= 0) return;
-      const j = (i + 1) % 4;
-      shape([roofBottom[i], roofBottom[j], roofTop[j], roofTop[i]], tint('#202d3a', '#36434b'), '#b5bbc450');
-    });
-    const roofTone = ctx.createLinearGradient(0, project(roofTop[0]).y, 0, project(roofTop[2]).y + 1);
-    roofTone.addColorStop(0, tint('#2d3c4d', '#677579'));
-    roofTone.addColorStop(1, tint('#253040', '#465055'));
-    shape(roofTop, roofTone, tint('#718297', '#adb8b7'));
-    for (let seam = 1; seam < columns * 3; seam++) {
-      const x = -edgeX + seam * 2 * edgeX / (columns * 3);
-      shape([[x, roof(-edgeZ) + 0.082, -edgeZ], [x, roof(edgeZ) + 0.082, edgeZ]], null, '#0d1b2770');
+    const roofFaces = gable ? [[-edgeZ, 0], [0, edgeZ]] : [[-edgeZ, edgeZ]];
+    const seams = Math.ceil(geometry.width * 1.9);
+    for (const [from, to] of roofFaces) {
+      const roofTop = roofTile(-edgeX, from, edgeX, to, 0.08);
+      const roofBottom = roofTile(-edgeX, from, edgeX, to, -0.12);
+      normals.forEach(([x, z], i) => {
+        if (cameraX * x + cameraZ * z <= 0 || (gable && ((i === 0 && from === 0) || (i === 2 && to === 0)))) return;
+        const j = (i + 1) % 4;
+        shape([roofBottom[i], roofBottom[j], roofTop[j], roofTop[i]], tint('#202d3a', '#36434b'), '#b5bbc450');
+      });
+      const roofTone = ctx.createLinearGradient(0, project(roofTop[0]).y, 0, project(roofTop[2]).y + 1);
+      roofTone.addColorStop(0, tint('#2d3c4d', '#677579'));
+      roofTone.addColorStop(1, tint('#253040', '#465055'));
+      shape(roofTop, roofTone, tint('#718297', '#adb8b7'));
+      for (let seam = 1; seam < seams; seam++) {
+        const x = -edgeX + seam * 2 * edgeX / seams;
+        shape([[x, roof(from) + 0.082, from], [x, roof(to) + 0.082, to]], null, '#0d1b2770');
+      }
     }
+    if (gable) shape([[-edgeX, peak + 0.106, 0], [edgeX, peak + 0.106, 0]], null, '#c3c6b4');
 
-    const sunOnPlane = sun.up * Math.cos(tilt) + sunZ * Math.sin(tilt);
-    const reflection = smooth(0.10, 0.55, sunOnPlane) * (1 - effects.clouds);
-    const glassStart = tint('#293b60', mix('#2d5068', '#417087', reflection));
+    const tilt = radians(geometry.tilt);
+    const glassStarts = [-1, 1].map(direction => {
+      const sunOnPlane = sun.up * Math.cos(tilt) + direction * sunZ * Math.sin(tilt);
+      const reflection = smooth(0.10, 0.55, sunOnPlane) * (1 - effects.clouds);
+      return tint('#293b60', mix('#2d5068', '#417087', reflection));
+    });
     const glassCenter = tint('#152741', '#163249');
     const frameColor = tint('#596e8d', '#b4cbd1');
-    for (let i = 0; i < config.panelCount; i++) {
-      const column = i % columns;
-      const row = Math.floor(i / columns);
-      const rowCount = Math.min(columns, config.panelCount - row * columns);
-      const x = (column - rowCount / 2) * 0.88 + 0.045;
-      const z = -rows * 1.34 / 2 + row * 1.34 + 0.06;
-      const w = 0.79, h = 1.22;
+    for (const panel of config.panels) {
+      const x = panel.x - halfX, z = panel.z - halfZ;
+      const { width: w, depth: h } = SolarRoof.dimensions(panel, config.panelSize, geometry);
       shape(roofTile(x - 0.014, z + 0.035, x + w + 0.036, z + h + 0.055, 0.091), '#081321b3');
       const tile = roofTile(x, z, x + w, z + h, 0.135);
       const highlight = project(tile[0]), dark = project(tile[2]);
       const glass = ctx.createLinearGradient(highlight.x, highlight.y, dark.x, dark.y);
-      glass.addColorStop(0, glassStart);
+      glass.addColorStop(0, glassStarts[gable && z < 0 ? 0 : 1]);
       glass.addColorStop(0.48, glassCenter);
       glass.addColorStop(1, '#0e1d32');
       shape(tile, glass, frameColor);

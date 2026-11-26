@@ -40,16 +40,23 @@
     const reserve = capacity * 0.1;
     const storagePower = Math.min(config.inverterKw, capacity * 0.5);
     const storageEfficiency = 0.95;
-    const azimuth = rad(config.azimuth), tilt = rad(config.tilt);
+    const arrays = (config.arrays || [{ count: config.panelCount, azimuth: config.azimuth, tilt: config.tilt }]).map(array => ({
+      dcKw: config.panelWp * array.count / 1000, tilt: rad(array.tilt), azimuth: rad(array.azimuth)
+    }));
     const conditions = weather[config.weather];
     const hours = Array.from({ length: hourCount }, (_, hour) => {
       const sun = sunPosition(config.latitude, config.month, hour);
-      const irradiance = planeIrradiance(sun, tilt, azimuth, conditions, hour);
-      const cellTemp = conditions.temperature + 24 * irradiance;
-      const thermalFactor = 1 - 0.0035 * Math.max(0, cellTemp - 25);
-      const available = dcKw * irradiance * thermalFactor * 0.94 * 0.97;
+      let available = 0;
+      let weightedIrradiance = 0;
+      for (const array of arrays) {
+        const irradiance = planeIrradiance(sun, array.tilt, array.azimuth, conditions, hour);
+        const cellTemp = conditions.temperature + 24 * irradiance;
+        const thermalFactor = 1 - 0.0035 * Math.max(0, cellTemp - 25);
+        weightedIrradiance += array.dcKw * irradiance;
+        available += array.dcKw * irradiance * thermalFactor * 0.94 * 0.97;
+      }
       const weight = hour >= 18 && hour <= 22 ? 2.45 : hour >= 6 && hour <= 8 ? 1.35 : hour <= 5 ? 0.42 : 0.86;
-      return { hour, sun, irradiance, pv: Math.min(available, config.inverterKw),
+      return { hour, sun, irradiance: dcKw ? weightedIrradiance / dcKw : 0, pv: Math.min(available, config.inverterKw),
         clipping: Math.max(0, available - config.inverterKw), weight };
     });
     const totalWeight = hours.reduce((sum, row) => sum + row.weight, 0);

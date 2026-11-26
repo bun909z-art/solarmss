@@ -31,6 +31,52 @@
 .demo-equipment { margin: 0; }
 .demo-equipment:empty { display: none; }
 
+.demo-roof-editor > summary { cursor: pointer; font-size: 1.14rem; font-weight: 750; }
+.demo-roof-settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 115px), 1fr)); gap: 9px; margin-top: 14px; }
+.demo-roof-settings label { display: grid; gap: 4px; min-width: 0; align-content: start; font-size: .83rem; font-weight: 650; }
+.demo-roof-settings :is(select, input) { width: 100%; min-width: 0; min-height: 44px; border: 1px solid var(--line); border-radius: 7px; padding: 6px 8px; color: var(--ink); background: var(--surface-2); font: inherit; font-size: 1rem; }
+.demo-roof-summary { margin-top: 13px; font-size: .88rem; font-weight: 690; }
+.demo-roof-toolbar { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.demo-roof-toolbar button { min-height: 44px; border: 1px solid var(--line); border-radius: 7px; padding: 5px 10px; color: var(--ink); background: var(--surface-2); cursor: pointer; font-size: .84rem; font-weight: 700; }
+.demo-roof-toolbar button:disabled { opacity: .52; cursor: default; }
+.demo-roof-toolbar .demo-plan-add { color: #f5f9f7; background: #173933; touch-action: none; }
+.demo-roof-toolbar .demo-plan-add[aria-pressed="true"] { color: #241a0b; background: #ffd88c; }
+.demo-roof-hint { margin: 9px 0; }
+.demo-roof-stage { display: grid; justify-items: center; gap: 6px; padding: 12px 10px 8px; border: 1px solid #39505d; border-radius: 10px; background: #0f202c; }
+#demoRoofBoard {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 8 / 7.5;
+  overflow: hidden;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px #9ab0b8;
+  background-color: #304653;
+  background-image: linear-gradient(to right, #a5bdc424 1px, transparent 1px), linear-gradient(to bottom, #a5bdc424 1px, transparent 1px);
+}
+#demoRoofBoard[data-placing="true"] { cursor: crosshair; }
+.demo-roof-ridge { position: absolute; inset: 50% 0 auto; z-index: 1; border-top: 2px dashed #ffd88c; pointer-events: none; }
+.demo-roof-front { color: #c7dce4; font-size: .79rem; font-weight: 650; text-align: center; }
+.demo-roof-panel, .demo-panel-ghost {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  appearance: none;
+  border: 1px solid #8bb4c9;
+  border-radius: 2px;
+  padding: 0;
+  background: repeating-linear-gradient(0deg, transparent 0 6px, #91bfd43a 7px 8px), linear-gradient(145deg, #275a78, #132b46);
+  color: #f4f7fb;
+  font: 720 clamp(.6rem, 1.2vw, .8rem) system-ui, sans-serif;
+  overflow: hidden;
+}
+.demo-roof-panel { cursor: grab; touch-action: none; }
+.demo-roof-panel[aria-pressed="true"], .demo-roof-panel:focus-visible { outline: 2px solid #ffd88c; outline-offset: -2px; z-index: 2; }
+.demo-panel-ghost { z-index: 3; opacity: .79; pointer-events: none; }
+.demo-panel-ghost[data-valid="false"] { border-color: #ffc1b6; background: #872f37; }
+#demoRoofMessage { min-height: 1.35em; margin: 7px 0; }
+.demo-plan-view { display: inline-flex; min-height: 44px; align-items: center; color: var(--ink); font-weight: 700; }
+#demoSceneTitle { scroll-margin-top: 142px; }
+
 .demo-scene { overflow: hidden; border: 1px solid #354e5a; border-radius: var(--radius); background: #112633; color: #f4f8f8; }
 .demo-scene-head, .demo-time { display: flex; align-items: center; justify-content: space-between; gap: 8px 13px; padding: 12px 15px; }
 .demo-scene-head p { margin: 4px 0 0; color: #c4d8df; font-size: .875rem; }

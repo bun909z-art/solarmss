@@ -3,6 +3,7 @@
 
   const $ = id => document.getElementById(id);
   const form = $('demoConfig');
+  const roofForm = $('demoRoofGeometry');
   const canvas = $('demoCanvas');
   const hourInput = $('demoHour');
   const playButton = $('demoPlay');
@@ -35,10 +36,12 @@
   let frameId = 0, previousFrame = 0, lastDraw = 0, weatherTime = 0;
   let sceneVisible = true, dirty = true;
   let drag = null;
+  const roofPlanner = SolarRoofPlanner.create(simulate);
 
   for (let month = 1; month <= 12; month++) $('demoMonth').add(new Option('Tháng ' + month, month));
   $('demoMonth').value = '3';
   $('demoSettings').open = !matchMedia('(max-width: 820px)').matches;
+  $('demoRoofEditor').open = !matchMedia('(max-width: 700px)').matches;
 
   function populateSelect(id, items, field, unit, allowNone, firstLoad) {
     const select = $(id), previous = select.value;
@@ -67,20 +70,37 @@
     populateSelect('demoBattery', equipment.battery, 'capacityKwh', 'kWh', true, firstLoad);
   }
 
+  function panelDimensions(panel) {
+    const match = String(panel?.specs || '').match(/\b(\d{3,4})\s*[×x]\s*(\d{3,4})(?:\s*[×x]\s*\d{1,3})?\s*mm\b/i);
+    if (match) {
+      const [width, length] = match.slice(1).map(value => Number(value) / 1000).sort((a, b) => a - b);
+      if (width >= 0.4 && length <= 4) return { width, length, estimated: false };
+    }
+    return { width: 1.134, length: 2.278, estimated: true };
+  }
+
   function readSettings() {
     const batteryOn = Boolean($('demoBattery').value);
     $('demoBatteryFields').hidden = !batteryOn;
     $('demoBatteryCount').disabled = !batteryOn;
     $('demoInitialSoc').disabled = !batteryOn;
-    if (!form.checkValidity()) return null;
+    const type = $('demoRoofType').value;
+    $('demoTilt').disabled = type === 'flat';
+    if (!form.checkValidity() || !roofForm.checkValidity()) return null;
     const rating = (category, id, key) => Number(equipment[category].find(item => item.id === $(id).value)?.[key]) || 0;
+    const panel = equipment.panel.find(item => item.id === $('demoPanel').value);
+    const roof = { type, width: number('demoRoofWidth'), depth: number('demoRoofDepth'),
+      azimuth: Number($('demoAzimuth').value), tilt: type === 'flat' ? 0 : number('demoTilt') };
+    const size = panelDimensions(panel);
+    const layout = roofPlanner.sync(roof, size, number('demoPanelCount'));
     return {
-      panelWp: rating('panel', 'demoPanel', 'wattWp'), panelCount: number('demoPanelCount'),
+      panelWp: Number(panel?.wattWp) || 0, panelCount: layout.panels.length, roof, panelSize: size,
+      panels: layout.panels, arrays: layout.arrays,
       inverterKw: rating('inverter', 'demoInverter', 'powerKw'),
       batteryKwh: rating('battery', 'demoBattery', 'capacityKwh'),
       batteryCount: batteryOn ? number('demoBatteryCount') : 0,
       initialSoc: batteryOn ? number('demoInitialSoc') : 0,
-      azimuth: Number($('demoAzimuth').value), tilt: number('demoTilt'), latitude: Number($('demoLatitude').value),
+      azimuth: roof.azimuth, tilt: roof.tilt, latitude: Number($('demoLatitude').value),
       month: Number($('demoMonth').value), weather: $('demoWeather').value, dailyLoad: number('demoLoad')
     };
   }
@@ -194,9 +214,12 @@
     if (!enabled()) return;
     const next = readSettings();
     if (!next) {
-      $('demoEquipmentNote').textContent = 'Kiểm tra các ô số. Kết quả đang hiển thị theo cấu hình hợp lệ gần nhất.';
+      const note = roofForm.matches(':invalid') ? $('demoRoofMessage') : $('demoEquipmentNote');
+      note.textContent = 'Kiểm tra các ô số. Kết quả đang hiển thị theo cấu hình hợp lệ gần nhất.';
       return;
     }
+    const roofMessage = $('demoRoofMessage');
+    if (roofMessage.textContent.startsWith('Kiểm tra các ô số.')) roofMessage.textContent = '';
     settings = next;
     $('demoEquipmentNote').textContent = usingSamples ? 'Dùng cấu hình mẫu cho nhóm thiết bị chưa có dữ liệu trong danh mục.' : '';
     model = SolarModel.simulate(settings);
@@ -235,6 +258,8 @@
   hourInput.addEventListener('input', () => { stop(); renderHour(); });
   form.addEventListener('submit', event => { event.preventDefault(); simulate(); });
   form.addEventListener('input', simulate);
+  roofForm.addEventListener('submit', event => { event.preventDefault(); simulate(); });
+  roofForm.addEventListener('input', simulate);
   document.querySelectorAll('[data-rotate]').forEach(button => {
     button.addEventListener('click', () => {
       targetAngle += Number(button.dataset.rotate) * 0.34;

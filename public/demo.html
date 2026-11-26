@@ -33,7 +33,7 @@
   <div class="demo-intro">
     <div>
       <h1>Mô phỏng điện mặt trời 3D</h1>
-      <p>Dựng mái nhà và xem hệ hybrid phát điện, cấp tải và sạc/xả pin trong một ngày giả lập.</p>
+      <p>Tự thiết kế mái, bố trí tấm pin và xem hệ hybrid vận hành trong một ngày giả lập.</p>
     </div>
     <a class="demo-button" href="/tuvan">Tư vấn hệ thống</a>
   </div>
@@ -46,7 +46,6 @@
         <fieldset>
           <legend>Thiết bị</legend>
           <label>Tấm pin mặt trời<select id="demoPanel"></select></label>
-          <label>Số tấm lắp đặt<input id="demoPanelCount" type="number" min="1" max="60" step="1" value="12" required></label>
           <label>Biến tần<select id="demoInverter"></select></label>
           <label>Pin lưu trữ<select id="demoBattery"><option value="">Không dùng pin</option></select></label>
           <div class="demo-fields" id="demoBatteryFields">
@@ -56,17 +55,8 @@
         </fieldset>
 
         <fieldset>
-          <legend>Mái nhà và môi trường</legend>
+          <legend>Môi trường và tải điện</legend>
           <div class="demo-fields">
-            <label>Hướng mái lắp pin
-              <select id="demoAzimuth">
-                <option value="0">Bắc</option><option value="45">Đông Bắc</option>
-                <option value="90">Đông</option><option value="135">Đông Nam</option>
-                <option value="180" selected>Nam</option><option value="225">Tây Nam</option>
-                <option value="270">Tây</option><option value="315">Tây Bắc</option>
-              </select>
-            </label>
-            <label>Độ dốc mái (°)<input id="demoTilt" type="number" min="0" max="45" step="1" value="18" required></label>
             <label>Khu vực
               <select id="demoLatitude"><option value="21.03">Hà Nội</option><option value="16.05">Đà Nẵng</option><option value="10.95" selected>Biên Hòa</option><option value="10.03">Cần Thơ</option></select>
             </label>
@@ -86,6 +76,49 @@
     </aside>
 
     <div class="demo-results">
+      <details class="demo-report demo-roof-editor" id="demoRoofEditor" open>
+        <summary>Thiết kế mái &amp; bố trí tấm pin</summary>
+        <form class="demo-roof-settings" id="demoRoofGeometry">
+          <label>Kiểu mái
+            <select id="demoRoofType">
+              <option value="mono">Mái một dốc</option>
+              <option value="gable">Mái hai dốc</option>
+              <option value="flat">Mái bằng</option>
+            </select>
+          </label>
+          <label>Rộng mái (m)<input id="demoRoofWidth" type="number" min="3" max="24" step="0.1" value="8" required></label>
+          <label>Chiều sâu mái (m)<input id="demoRoofDepth" type="number" min="3" max="24" step="0.1" value="7.5" required></label>
+          <label>Hướng mặt trước
+            <select id="demoAzimuth">
+              <option value="0">Bắc</option><option value="45">Đông Bắc</option>
+              <option value="90">Đông</option><option value="135">Đông Nam</option>
+              <option value="180" selected>Nam</option><option value="225">Tây Nam</option>
+              <option value="270">Tây</option><option value="315">Tây Bắc</option>
+            </select>
+          </label>
+          <label>Độ dốc mái (°)<input id="demoTilt" type="number" min="0" max="45" step="1" value="18" required></label>
+          <label>Số tấm muốn lắp<input id="demoPanelCount" type="number" min="0" max="60" step="1" value="12" required></label>
+        </form>
+        <div class="demo-roof-summary" id="demoRoofSummary"></div>
+        <div class="demo-roof-toolbar">
+          <button class="demo-plan-add" type="button" id="demoAddPanel" aria-pressed="false">＋ Tấm pin mới</button>
+          <button type="button" id="demoAutoPanels">Xếp tự động</button>
+          <button type="button" id="demoRotatePanel" disabled>Xoay tấm</button>
+          <button type="button" id="demoRemovePanel" disabled>Gỡ tấm</button>
+          <button type="button" id="demoClearRoof" disabled>Dọn mái</button>
+        </div>
+        <p class="demo-muted demo-roof-hint" id="demoRoofHint">Kéo tấm pin trên bản vẽ để đổi vị trí. Bạn cũng có thể bấm <b>Tấm pin mới</b> rồi chạm vào mái để đặt.</p>
+        <div class="demo-roof-stage">
+          <div id="demoRoofBoard" role="group" aria-label="Bản vẽ mái nhìn từ trên" aria-describedby="demoRoofHint">
+            <div class="demo-roof-ridge" id="demoRoofRidge" hidden></div>
+            <div class="demo-panel-ghost" id="demoPanelGhost" hidden></div>
+          </div>
+          <span class="demo-roof-front" id="demoRoofFront"></span>
+        </div>
+        <p id="demoRoofMessage" class="demo-muted" role="status"></p>
+        <a class="demo-plan-view" href="#demoSceneTitle">Xem mô hình 3D ↓</a>
+      </details>
+
       <section class="demo-scene" aria-labelledby="demoSceneTitle">
         <div class="demo-scene-head">
           <div><h2 id="demoSceneTitle">Mái nhà và giàn pin</h2><p id="demoSceneMeta"></p></div>
@@ -127,7 +160,7 @@
         <details class="demo-details">
           <summary>Giả định mô phỏng</summary>
           <p>Ngày đại diện giữa tháng, theo giờ mặt trời của khu vực đã chọn. Bức xạ và nhiệt độ lấy từ kịch bản giả lập. Tải dồn nhiều hơn vào buổi tối. Tổn hao hệ DC 6%, hiệu suất biến tần 97%, hiệu suất sạc và xả 95% mỗi chiều, dung lượng dự phòng 10%. Giới hạn sạc/xả lấy theo mức thấp hơn giữa công suất biến tần và 0,5 kW cho mỗi kWh dung lượng. Pin chỉ sạc bằng điện mặt trời dư.</p>
-          <p>Kết quả dùng để so sánh phương án sơ bộ. Mô hình bỏ qua che bóng tại công trình, kiểm tra chuỗi MPPT, khả năng tương thích thiết bị và dữ liệu thời tiết đo thực tế.</p>
+          <p>Kết quả dùng để so sánh phương án sơ bộ. Sản lượng được tính theo số tấm đã đặt và hướng từng mặt mái. Mô hình bỏ qua che bóng, khả năng chịu tải của mái, kiểm tra chuỗi MPPT, khả năng tương thích thiết bị và dữ liệu thời tiết đo thực tế.</p>
         </details>
       </section>
     </div>
@@ -143,6 +176,8 @@
 <script src="/js/site-theme.js"></script>
 <script src="/js/live-updates.js?v=1"></script>
 <script src="/js/solar-model.js"></script>
+<script src="/js/solar-roof.js"></script>
+<script src="/js/solar-roof-planner.js"></script>
 <script src="/js/solar-scene.js"></script>
 <script src="/js/solar-demo.js"></script>
 </body>
