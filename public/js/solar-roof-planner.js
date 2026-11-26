@@ -249,7 +249,7 @@
       reportPacking();
       custom = false;
     });
-    return { sync };
+    return { sync, reflow() { roof = null; custom = false; } };
   }
 
   window.SolarRoofPlanner = { create };

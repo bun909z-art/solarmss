@@ -23,6 +23,8 @@
   };
   const format = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 });
   const whole = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 });
+  const directions = ['Bắc', 'Đông Bắc', 'Đông', 'Đông Nam', 'Nam', 'Tây Nam', 'Tây', 'Tây Bắc'];
+  const flowLinks = Object.fromEntries([...document.querySelectorAll('[data-flow]')].map(link => [link.dataset.flow, link]));
   const number = id => $(id).valueAsNumber;
   const enabled = () => !document.body.classList.contains('solar-demo-off');
   const clock = hour => String(hour).padStart(2, '0') + ':00';
@@ -57,9 +59,9 @@
   $('demoSettings').open = !matchMedia('(max-width: 820px)').matches;
   $('demoRoofEditor').open = !matchMedia('(max-width: 700px)').matches;
 
-  function populateSelect(id, items, field, unit, allowNone, firstLoad) {
+  function populateSelect(id, items, field, unit, allowNone, firstLoad, emptyLabel = 'Không dùng pin') {
     const select = $(id), previous = select.value;
-    const options = allowNone ? [new Option('Không dùng pin', '')] : [];
+    const options = allowNone ? [new Option(emptyLabel, '')] : [];
     for (const item of items) options.push(new Option(item.name + ' · ' + format.format(item[field]) + ' ' + unit, item.id));
     select.replaceChildren(...options);
     if ((!firstLoad || !allowNone) && options.some(option => option.value === previous)) select.value = previous;
@@ -81,7 +83,9 @@
     };
     populateSelect('demoPanel', equipment.panel, 'wattWp', 'Wp', false, firstLoad);
     populateSelect('demoInverter', equipment.inverter, 'powerKw', 'kW', false, firstLoad);
+    populateSelect('demoInverterAux', equipment.inverter, 'powerKw', 'kW', true, false, 'Không dùng nhóm 2');
     populateSelect('demoBattery', equipment.battery, 'capacityKwh', 'kWh', true, firstLoad);
+    populateSelect('demoBatteryAux', equipment.battery, 'capacityKwh', 'kWh', true, false, 'Không dùng nhóm 2');
   }
 
   function readRoof(suffix = '') {
@@ -123,16 +127,23 @@
 
   function readSettings() {
     const batteryOn = Boolean($('demoBattery').value);
+    const batteryAuxOn = Boolean($('demoBatteryAux').value);
+    const inverterAuxOn = Boolean($('demoInverterAux').value);
     $('demoBatteryFields').hidden = !batteryOn;
     $('demoBatteryCount').disabled = !batteryOn;
-    $('demoInitialSoc').disabled = !batteryOn;
+    $('demoBatteryAuxFields').hidden = !batteryAuxOn;
+    $('demoBatteryCountAux').disabled = !batteryAuxOn;
+    $('demoInitialSocField').hidden = !(batteryOn || batteryAuxOn);
+    $('demoInitialSoc').disabled = !(batteryOn || batteryAuxOn);
+    $('demoInverterAuxFields').hidden = !inverterAuxOn;
+    $('demoInverterCountAux').disabled = !inverterAuxOn;
     const main = readRoof();
     const aux = enableAnnex.checked ? readRoof('Aux') : null;
     const roofErrors = [main.error[0], aux?.error[0]].filter(Boolean);
     $('demoRoofInputStatus').textContent = roofErrors.length
       ? roofErrors.join(' ') + ' Các ô chưa hợp lệ tạm dùng giá trị hợp lệ gần nhất.' : '';
-    const rating = (category, id, key) => Number(equipment[category].find(item => item.id === $(id).value)?.[key]) || 0;
-    const panel = equipment.panel.find(item => item.id === $('demoPanel').value);
+    const selected = (category, id) => equipment[category].find(item => item.id === $(id).value);
+    const panel = selected('panel', 'demoPanel');
     const size = SolarRoof.moduleSize(panel?.specs);
     const layout = roofPlanner.sync(main.roof, size, main.count);
     const auxLayout = aux && annexPlanner.sync(aux.roof, size, aux.count);
@@ -144,22 +155,97 @@
       lastNumericValues.set(input, value);
       return value;
     };
+    const inverterGroup = (id, countId) => {
+      const unit = selected('inverter', id);
+      return { name: unit.name, kw: Number(unit.powerKw), count: equipmentValue(countId) };
+    };
+    const batteryGroup = (id, countId) => {
+      const unit = selected('battery', id);
+      return { name: unit.name, kwh: Number(unit.capacityKwh), count: equipmentValue(countId) };
+    };
+    const inverterGroups = [inverterGroup('demoInverter', 'demoInverterCount')];
+    if (inverterAuxOn) inverterGroups.push(inverterGroup('demoInverterAux', 'demoInverterCountAux'));
+    const batteryGroups = [];
+    if (batteryOn) batteryGroups.push(batteryGroup('demoBattery', 'demoBatteryCount'));
+    if (batteryAuxOn) batteryGroups.push(batteryGroup('demoBatteryAux', 'demoBatteryCountAux'));
+    const arrays = [
+      ...layout.arrays.map(array => ({ ...array, roof: 'Mái chính' })),
+      ...(auxLayout?.arrays || []).map(array => ({ ...array, roof: 'Mái phụ' }))
+    ];
+    const requestedStrings = equipmentValue('demoStringCount');
     return {
       panelWp: Number(panel?.wattWp) || 0, panelCount: layout.panels.length + (annex?.panels.length || 0),
       roof: main.roof, panelSize: size, panels: layout.panels, annex,
-      arrays: auxLayout ? [...layout.arrays, ...auxLayout.arrays] : layout.arrays,
-      inverterKw: rating('inverter', 'demoInverter', 'powerKw'),
-      batteryKwh: rating('battery', 'demoBattery', 'capacityKwh'),
-      batteryCount: batteryOn ? equipmentValue('demoBatteryCount') : 0,
-      initialSoc: batteryOn ? equipmentValue('demoInitialSoc') : 0,
-      azimuth: main.roof.azimuth, tilt: main.roof.tilt, latitude: Number($('demoLatitude').value),
+      inverterGroups, batteryGroups, requestedStrings,
+      topology: SolarModel.planStrings(arrays, requestedStrings, inverterGroups),
+      initialSoc: batteryGroups.length ? equipmentValue('demoInitialSoc') : 0,
+      latitude: Number($('demoLatitude').value),
       month: Number($('demoMonth').value), weather: $('demoWeather').value,
-      dailyLoad: equipmentValue('demoLoad')
+      dailyLoad: equipmentValue('demoLoad'), exportSurplus: $('demoExportSurplus').checked
     };
   }
 
   function definitionList(values) {
     return values.map(([label, value]) => '<div><dt>' + label + '</dt><dd>' + value + '</dd></div>').join('');
+  }
+
+  function renderFlow(row) {
+    const toAc = row.pv + row.discharge - row.charge;
+    const unused = row.surplus - row.export;
+    $('demoFlowHour').textContent = clock(row.hour);
+    $('demoFlowHub').textContent = energy(toAc + row.grid);
+    $('demoFlowGrid').textContent = row.grid > 0 ? 'Mua ' + energy(row.grid)
+      : row.export > 0 ? 'Nhận ' + energy(row.export) : '0 kWh';
+    $('demoFlowLoad').textContent = energy(row.load);
+    $('demoFlowUnused').textContent = energy(unused);
+    $('demoFlowStats').innerHTML = definitionList([
+      ['PV → biến tần', energy(row.pv + row.clipping)], ['Biến tần → AC', energy(toAc)],
+      ['Sạc pin', energy(row.charge)], ['Xả pin', energy(row.discharge)],
+      ['Điện từ lưới', energy(row.grid)], ['Phát lên lưới', energy(row.export)]
+    ]);
+    const paths = {
+      pv: row.pv + row.clipping, ac: toAc, battery: row.charge - row.discharge,
+      grid: row.export - row.grid, load: row.load, unused: -unused
+    };
+    for (const [name, value] of Object.entries(paths)) {
+      const link = flowLinks[name];
+      if (Math.abs(value) < 0.001) delete link.dataset.direction;
+      else link.dataset.direction = value > 0 ? 'forward' : 'reverse';
+    }
+    $('demoInverterHourly').textContent = 'PV qua từng biến tần trong giờ này · ' +
+      row.inverterProduction.map((value, index) => 'BT ' + (index + 1) + ': ' + energy(value)).join(' · ');
+  }
+
+  function renderSystem() {
+    const { banks, strings } = settings.topology;
+    const batteryUnits = settings.batteryGroups.reduce((sum, group) => sum + group.count, 0);
+    $('demoFlowPv').textContent = settings.panelCount + ' tấm · ' + strings.length + ' string';
+    $('demoFlowInverter').textContent = banks.length + ' máy · ' + format.format(model.inverterKw) + ' kW';
+    $('demoFlowBattery').textContent = batteryUnits + ' bộ · ' + energy(model.capacity);
+    const exact = strings.length === settings.requestedStrings;
+    $('demoStringNote').textContent = strings.length
+      ? (exact ? strings.length + ' string.' : 'Yêu cầu ' + settings.requestedStrings + ' string, đang dùng ' +
+        strings.length + ' string theo số tấm và số mặt mái có pin.') +
+        ' Các tấm cùng mặt mái được chia đều nhất có thể trước khi phân sang biến tần.'
+      : 'Đặt tấm pin lên mái để chia string.';
+    const rows = strings.map((string, index) => {
+      const row = document.createElement('tr');
+      const cells = ['S' + (index + 1), string.roof + ' · ' + directions[string.azimuth / 45], string.count,
+        'BT ' + (string.inverter + 1) + ' · ' + format.format(banks[string.inverter].kw) + ' kW'];
+      cells.forEach((value, index) => {
+        const cell = document.createElement(index ? 'td' : 'th');
+        if (!index) cell.scope = 'row';
+        cell.textContent = value;
+        row.append(cell);
+      });
+      return row;
+    });
+    $('demoStringRows').replaceChildren(...rows);
+    const equipment = [
+      ...settings.inverterGroups.map(group => group.count + ' × ' + group.name),
+      ...settings.batteryGroups.map(group => group.count + ' × ' + group.name)
+    ];
+    $('demoBankNote').textContent = equipment.join(' · ');
   }
 
   function queueFrame() {
@@ -235,6 +321,7 @@
     const chart = $('demoChart');
     chart.querySelector('.current')?.classList.remove('current');
     chart.children[hour]?.classList.add('current');
+    renderFlow(row);
     invalidateScene();
   }
 
@@ -246,7 +333,8 @@
       ['Điện từ lưới', energy(totals.grid)], ['Tự đáp ứng tải', autonomy === null ? '—' : percent(autonomy)]
     ]);
     $('demoBalance').textContent = 'Dùng trực tiếp ' + energy(totals.direct) + ' · Sạc ' + energy(totals.charge) +
-      ' · Xả ' + energy(totals.discharge) + ' · Điện dư ' + energy(totals.surplus) + ' · Cắt đỉnh ' + energy(totals.clipping);
+      ' · Xả ' + energy(totals.discharge) + ' · Điện dư ' + energy(totals.surplus) +
+      (settings.exportSurplus ? ' · Phát lên lưới ' + energy(totals.export) : '') + ' · Cắt đỉnh ' + energy(totals.clipping);
     const scale = Math.max(1, Math.ceil(Math.max(...results.flatMap(row => [row.pv, row.load, row.grid]))));
     $('demoChartAxis').textContent = 'Thang đo 0–' + format.format(scale) + ' kWh mỗi giờ';
     $('demoChart').innerHTML = results.map(row => {
@@ -255,7 +343,7 @@
         '</div><figcaption>' + (row.hour % 6 === 0 ? clock(row.hour).slice(0, 2) + 'h' : '') + '</figcaption></figure>';
     }).join('');
     $('demoRows').innerHTML = results.map(row => {
-      const cells = [row.pv, row.load, row.charge, row.discharge, row.grid, row.surplus].map(format.format);
+      const cells = [row.pv, row.load, row.charge, row.discharge, row.grid, row.surplus, row.export].map(format.format);
       cells.push(capacity ? percent(row.soc) : '—');
       return '<tr><th scope="row">' + clock(row.hour) + '</th>' + cells.map(cell => '<td>' + cell + '</td>').join('') + '</tr>';
     }).join('');
@@ -272,6 +360,7 @@
       : usingSamples ? 'Dùng cấu hình mẫu cho nhóm thiết bị chưa có dữ liệu trong danh mục.' : '';
     model = SolarModel.simulate(settings);
     renderReport();
+    renderSystem();
     renderHour();
   }
 
@@ -304,11 +393,27 @@
   motionButton.addEventListener('click', () => setWeatherMotion(!animateWeather));
   reducedMotion.addEventListener('change', event => setWeatherMotion(!event.matches));
   hourInput.addEventListener('input', () => { stop(); renderHour(); });
-  for (const editor of [form, $('demoRoofGeometry'), $('demoRoofGeometryAux')]) {
-    editor.addEventListener('submit', event => { event.preventDefault(); simulate(); });
-    editor.addEventListener('input', simulate);
-    editor.addEventListener('change', simulate);
+  function updateDesign() {
+    $('demoBalanceRoofsStatus').textContent = '';
+    simulate();
   }
+  for (const editor of [form, $('demoRoofGeometry'), $('demoRoofGeometryAux')]) {
+    editor.addEventListener('submit', event => { event.preventDefault(); updateDesign(); });
+    editor.addEventListener('input', updateDesign);
+    editor.addEventListener('change', updateDesign);
+  }
+  $('demoBalanceRoofs').addEventListener('click', () => {
+    if (!settings?.annex) return;
+    const total = readRoof().count + readRoof('Aux').count;
+    const result = SolarRoof.balance(total, settings.roof, settings.annex.roof, settings.panelSize);
+    $('demoPanelCount').value = result.main;
+    $('demoPanelCountAux').value = result.annex;
+    roofPlanner.reflow();
+    annexPlanner.reflow();
+    simulate();
+    $('demoBalanceRoofsStatus').textContent = 'Mái chính ' + result.main + ' tấm · Mái phụ ' + result.annex + ' tấm.' +
+      (result.remainder ? ' Còn ' + result.remainder + ' tấm chưa có chỗ theo kích thước mái hiện tại.' : '');
+  });
   function selectRoof(useAnnex) {
     mainRoof.hidden = useAnnex;
     annexRoof.hidden = !useAnnex;
@@ -323,6 +428,7 @@
       annexInitialized = true;
     }
     $('demoRoofZoneSwitch').hidden = !enabled;
+    $('demoBalanceRoofsStatus').textContent = '';
     selectRoof(enabled);
     simulate();
   });

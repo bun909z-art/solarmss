@@ -46,12 +46,16 @@
         <fieldset>
           <legend>Thiết bị</legend>
           <label>Tấm pin mặt trời<select id="demoPanel"></select></label>
-          <label>Biến tần<select id="demoInverter"></select></label>
-          <label>Pin lưu trữ<select id="demoBattery"><option value="">Không dùng pin</option></select></label>
-          <div class="demo-fields" id="demoBatteryFields">
-            <label>Số bộ pin<input id="demoBatteryCount" type="number" min="1" max="8" step="1" value="1" required></label>
-            <label>Mức pin đầu ngày (%)<input id="demoInitialSoc" type="number" min="10" max="100" step="1" value="20" required></label>
-          </div>
+          <label>Số string muốn chia<input id="demoStringCount" type="number" min="1" max="120" step="1" value="2" required></label>
+          <label>Biến tần nhóm 1<select id="demoInverter"></select></label>
+          <label>Số biến tần nhóm 1<input id="demoInverterCount" type="number" min="1" max="8" step="1" value="1" required></label>
+          <label>Biến tần nhóm 2 (song song)<select id="demoInverterAux"></select></label>
+          <label id="demoInverterAuxFields" hidden>Số biến tần nhóm 2<input id="demoInverterCountAux" type="number" min="1" max="8" step="1" value="1" required disabled></label>
+          <label>Pin lưu trữ nhóm 1<select id="demoBattery"><option value="">Không dùng pin</option></select></label>
+          <label id="demoBatteryFields">Số bộ pin nhóm 1<input id="demoBatteryCount" type="number" min="1" max="8" step="1" value="1" required></label>
+          <label>Pin lưu trữ nhóm 2 (song song)<select id="demoBatteryAux"></select></label>
+          <label id="demoBatteryAuxFields" hidden>Số bộ pin nhóm 2<input id="demoBatteryCountAux" type="number" min="1" max="8" step="1" value="1" required disabled></label>
+          <label id="demoInitialSocField">Mức pin đầu ngày (%)<input id="demoInitialSoc" type="number" min="10" max="100" step="1" value="20" required></label>
         </fieldset>
 
         <fieldset>
@@ -69,6 +73,7 @@
             </select>
           </label>
           <label>Mức dùng điện (kWh/ngày)<input id="demoLoad" type="number" min="0" max="300" step="0.1" value="20" required></label>
+          <label class="demo-inline-check"><input id="demoExportSurplus" type="checkbox"> Mô phỏng phát điện dư lên lưới</label>
         </fieldset>
         <p class="demo-muted demo-equipment" id="demoEquipmentNote"></p>
       </form>
@@ -83,8 +88,10 @@
           <div class="demo-roof-toolbar" id="demoRoofZoneSwitch" role="group" aria-label="Mái đang chỉnh" hidden>
             <button type="button" id="demoEditMainRoof" aria-controls="demoMainRoof" aria-pressed="true">Mái chính</button>
             <button type="button" id="demoEditAnnexRoof" aria-controls="demoAnnexRoof" aria-pressed="false">Mái phụ</button>
+            <button type="button" id="demoBalanceRoofs">Cân số tấm giữa hai mái</button>
           </div>
         </div>
+        <p id="demoBalanceRoofsStatus" class="demo-muted demo-roof-input-status" role="status"></p>
         <p id="demoRoofInputStatus" class="demo-muted demo-roof-input-status" role="status"></p>
         <div id="demoMainRoof">
         <form class="demo-roof-settings" id="demoRoofGeometry">
@@ -152,6 +159,42 @@
         <dl class="demo-hourly" id="demoHourStats"></dl>
       </section>
 
+      <section class="demo-report demo-system" aria-labelledby="demoSystemTitle">
+        <div class="demo-system-head">
+          <h2 id="demoSystemTitle">Dòng điện trong hệ thống</h2>
+          <span id="demoFlowHour" class="demo-roof-result"></span>
+        </div>
+        <div class="demo-flow-diagram" aria-label="Sơ đồ mô phỏng dòng năng lượng">
+          <div class="demo-flow-node" data-area="pv"><strong>Tấm pin</strong><span id="demoFlowPv"></span></div>
+          <div class="demo-flow-link" data-flow="pv"></div>
+          <div class="demo-flow-node" data-area="inverter"><strong>Cụm biến tần</strong><span id="demoFlowInverter"></span></div>
+          <div class="demo-flow-link" data-flow="ac"></div>
+          <div class="demo-flow-node" data-area="battery"><strong>Pin lưu trữ</strong><span id="demoFlowBattery"></span></div>
+          <div class="demo-flow-link" data-flow="battery"></div>
+          <div class="demo-flow-node" data-area="unused"><strong>Điện dư chưa dùng</strong><span id="demoFlowUnused"></span></div>
+          <div class="demo-flow-link" data-flow="unused"></div>
+          <div class="demo-flow-node demo-flow-hub" data-area="hub"><strong>Điều phối AC</strong><span id="demoFlowHub"></span></div>
+          <div class="demo-flow-link" data-flow="grid"></div>
+          <div class="demo-flow-node" data-area="grid"><strong>Lưới điện</strong><span id="demoFlowGrid"></span></div>
+          <div class="demo-flow-link" data-flow="load"></div>
+          <div class="demo-flow-node" data-area="load"><strong>Tải tiêu thụ</strong><span id="demoFlowLoad"></span></div>
+        </div>
+        <dl id="demoFlowStats" class="demo-flow-stats"></dl>
+        <p id="demoInverterHourly" class="demo-muted"></p>
+        <details class="demo-details" open>
+          <summary>Phân string và biến tần</summary>
+          <p id="demoStringNote" class="demo-muted"></p>
+          <div class="demo-table-scroll" role="region" aria-label="Bảng phân string" tabindex="0">
+            <table>
+              <thead><tr><th scope="col">String</th><th scope="col">Mặt mái</th><th scope="col">Số tấm</th><th scope="col">Biến tần mô phỏng</th></tr></thead>
+              <tbody id="demoStringRows"></tbody>
+            </table>
+          </div>
+          <p id="demoBankNote" class="demo-muted"></p>
+        </details>
+        <p class="demo-muted">Sơ đồ dùng để so sánh mô phỏng. Khi thiết kế thực tế cần kiểm tra thông số MPPT, điện áp và khả năng ghép song song của từng thiết bị.</p>
+      </section>
+
       <section class="demo-report" aria-labelledby="demoReportTitle">
         <h2 id="demoReportTitle">Kết quả mô phỏng trong ngày</h2>
         <dl class="demo-totals" id="demoTotals"></dl>
@@ -167,7 +210,7 @@
           <div class="demo-table-scroll" role="region" aria-label="Bảng dữ liệu mô phỏng" tabindex="0">
             <table>
               <caption>Dòng năng lượng mỗi giờ (kWh), dung lượng pin còn lại (%)</caption>
-              <thead><tr><th scope="col">Giờ</th><th scope="col">PV</th><th scope="col">Tải</th><th scope="col">Sạc</th><th scope="col">Xả</th><th scope="col">Lưới</th><th scope="col">Điện dư</th><th scope="col">Mức pin</th></tr></thead>
+              <thead><tr><th scope="col">Giờ</th><th scope="col">PV</th><th scope="col">Tải</th><th scope="col">Sạc</th><th scope="col">Xả</th><th scope="col">Lấy từ lưới</th><th scope="col">Điện dư</th><th scope="col">Phát lên lưới</th><th scope="col">Mức pin</th></tr></thead>
               <tbody id="demoRows"></tbody>
             </table>
           </div>

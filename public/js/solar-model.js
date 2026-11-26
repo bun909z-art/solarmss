@@ -33,31 +33,68 @@
     return direct * Math.max(0, incidence) + diffuse * (1 + Math.cos(tilt)) / 2 + reflected;
   }
 
+  function planStrings(arrays, requested, inverterGroups) {
+    const banks = inverterGroups.flatMap(group => Array.from({ length: group.count }, () => ({
+      name: group.name, kw: group.kw, panels: 0
+    })));
+    const groups = arrays.filter(array => array.count > 0).map(array => ({ ...array, strings: 1 }));
+    const panels = groups.reduce((sum, array) => sum + array.count, 0);
+    const target = Math.min(panels, Math.max(requested, groups.length));
+    for (let total = groups.length; total < target; total++) {
+      const open = groups.filter(group => group.strings < group.count);
+      const next = open.reduce((best, group) => group.count / group.strings > best.count / best.strings ? group : best);
+      next.strings++;
+    }
+    const strings = groups.flatMap(group => {
+      const each = Math.floor(group.count / group.strings);
+      const extra = group.count % group.strings;
+      return Array.from({ length: group.strings }, (_, index) => ({
+        roof: group.roof, azimuth: group.azimuth, tilt: group.tilt, count: each + (index < extra ? 1 : 0)
+      }));
+    });
+    for (const string of [...strings].sort((a, b) => b.count - a.count)) {
+      const inverter = banks.reduce((best, unit, index) =>
+        (unit.panels + string.count) / unit.kw < (banks[best].panels + string.count) / banks[best].kw ? index : best, 0);
+      banks[inverter].panels += string.count;
+      string.inverter = inverter;
+    }
+    return { strings, banks };
+  }
+
   // Each row covers one hour. Inverter and storage power caps are therefore also one-hour energy caps.
   function simulate(config) {
     const dcKw = config.panelWp * config.panelCount / 1000;
-    const capacity = config.batteryKwh * config.batteryCount;
+    const inverterCaps = config.topology?.banks.map(unit => unit.kw) || [config.inverterKw];
+    const inverterKw = inverterCaps.reduce((sum, kw) => sum + kw, 0);
+    const capacity = config.batteryGroups
+      ? config.batteryGroups.reduce((sum, group) => sum + group.kwh * group.count, 0)
+      : config.batteryKwh * config.batteryCount;
     const reserve = capacity * 0.1;
-    const storagePower = Math.min(config.inverterKw, capacity * 0.5);
+    const storagePower = Math.min(inverterKw, capacity * 0.5);
     const storageEfficiency = 0.95;
-    const arrays = (config.arrays || [{ count: config.panelCount, azimuth: config.azimuth, tilt: config.tilt }]).map(array => ({
-      dcKw: config.panelWp * array.count / 1000, tilt: rad(array.tilt), azimuth: rad(array.azimuth)
+    const pvGroups = config.topology?.strings || config.arrays ||
+      [{ count: config.panelCount, azimuth: config.azimuth, tilt: config.tilt }];
+    const arrays = pvGroups.map(array => ({
+      dcKw: config.panelWp * array.count / 1000, tilt: rad(array.tilt), azimuth: rad(array.azimuth),
+      inverter: array.inverter ?? 0
     }));
     const conditions = weather[config.weather];
     const hours = Array.from({ length: hourCount }, (_, hour) => {
       const sun = sunPosition(config.latitude, config.month, hour);
-      let available = 0;
+      const available = inverterCaps.map(() => 0);
       let weightedIrradiance = 0;
       for (const array of arrays) {
         const irradiance = planeIrradiance(sun, array.tilt, array.azimuth, conditions, hour);
         const cellTemp = conditions.temperature + 24 * irradiance;
         const thermalFactor = 1 - 0.0035 * Math.max(0, cellTemp - 25);
         weightedIrradiance += array.dcKw * irradiance;
-        available += array.dcKw * irradiance * thermalFactor * 0.94 * 0.97;
+        available[array.inverter] += array.dcKw * irradiance * thermalFactor * 0.94 * 0.97;
       }
+      const inverterProduction = available.map((power, index) => Math.min(power, inverterCaps[index]));
+      const pv = inverterProduction.reduce((sum, power) => sum + power, 0);
+      const clipping = available.reduce((sum, power, index) => sum + Math.max(0, power - inverterCaps[index]), 0);
       const weight = hour >= 18 && hour <= 22 ? 2.45 : hour >= 6 && hour <= 8 ? 1.35 : hour <= 5 ? 0.42 : 0.86;
-      return { hour, sun, irradiance: dcKw ? weightedIrradiance / dcKw : 0, pv: Math.min(available, config.inverterKw),
-        clipping: Math.max(0, available - config.inverterKw), weight };
+      return { hour, sun, irradiance: dcKw ? weightedIrradiance / dcKw : 0, pv, clipping, inverterProduction, weight };
     });
     const totalWeight = hours.reduce((sum, row) => sum + row.weight, 0);
     let stored = capacity * Math.max(10, config.initialSoc) / 100;
@@ -67,18 +104,20 @@
       const surplus = row.pv - direct;
       const deficit = load - direct;
       const charge = Math.min(surplus, storagePower, Math.max(0, capacity - stored) / storageEfficiency);
-      const discharge = Math.min(deficit, storagePower, Math.max(0, stored - reserve) * storageEfficiency);
+      const discharge = Math.min(deficit, storagePower, Math.max(0, inverterKw - row.pv),
+        Math.max(0, stored - reserve) * storageEfficiency);
       stored += charge * storageEfficiency - discharge / storageEfficiency;
+      const remaining = surplus - charge;
       return { ...row, load, direct, charge, discharge, grid: deficit - discharge,
-        surplus: surplus - charge, soc: capacity > 0 ? stored / capacity * 100 : 0 };
+        surplus: remaining, export: config.exportSurplus ? remaining : 0, soc: capacity > 0 ? stored / capacity * 100 : 0 };
     });
     const totals = {};
-    for (const key of ['pv', 'load', 'direct', 'charge', 'discharge', 'grid', 'surplus', 'clipping']) {
+    for (const key of ['pv', 'load', 'direct', 'charge', 'discharge', 'grid', 'surplus', 'export', 'clipping']) {
       totals[key] = results.reduce((sum, row) => sum + row[key], 0);
     }
-    return { results, totals, dcKw, capacity };
+    return { results, totals, dcKw, capacity, inverterKw };
   }
 
-  if (typeof module !== 'undefined' && module.exports) module.exports = { simulate };
-  else window.SolarModel = { simulate, sunPosition };
+  if (typeof module !== 'undefined' && module.exports) module.exports = { simulate, planStrings };
+  else window.SolarModel = { simulate, sunPosition, planStrings };
 })();

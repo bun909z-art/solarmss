@@ -97,6 +97,14 @@
     return layout.map(panel => panel.id === undefined ? { ...panel, id: createId() } : panel);
   }
 
+  function balance(count, main, annex, size) {
+    const capacity = roof => fill([], limit, size, roof, () => 0).length;
+    const mainLimit = capacity(main), annexLimit = capacity(annex);
+    const placed = Math.min(count, mainLimit + annexLimit);
+    const onMain = Math.min(mainLimit, Math.max(Math.ceil(placed / 2), placed - annexLimit));
+    return { main: onMain, annex: placed - onMain, remainder: count - placed };
+  }
+
   function arrays(panels, size, roof) {
     const groups = faces(roof).map(face => ({ azimuth: face.azimuth, tilt: face.tilt, count: 0 }));
     for (const panel of panels) {
@@ -106,7 +114,7 @@
     return groups.filter(group => group.count > 0);
   }
 
-  const api = { limit, snap, parseMeasure, moduleSize, faces, elevation, dimensions, fits, fill, arrays };
+  const api = { limit, snap, parseMeasure, moduleSize, faces, elevation, dimensions, fits, fill, arrays, balance };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else window.SolarRoof = api;
 })();
