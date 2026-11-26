@@ -49,7 +49,7 @@
 .demo-scene button:hover, .demo-scene button[aria-pressed="true"] { color: #132632; background: #ffdb8a; }
 .demo-scene :focus-visible { outline-color: #ffdb8a; }
 .demo-rotation button { font-size: 1.25rem; }
-#demoCanvas { display: block; width: 100%; height: clamp(218px, 37vw, 420px); cursor: grab; touch-action: pan-y; }
+#demoCanvas { display: block; width: 100%; height: clamp(252px, 40vw, 460px); cursor: grab; touch-action: pan-y; }
 #demoCanvas:active { cursor: grabbing; }
 .demo-time { flex-wrap: wrap; border-bottom: 1px solid #526872; }
 .demo-time label { font-weight: 700; font-size: .875rem; }

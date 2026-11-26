@@ -2,6 +2,80 @@
   'use strict';
 
   const radians = degrees => degrees * Math.PI / 180;
+  const rgb = (base, light) => 'rgb(' + base.map(channel => Math.min(255, Math.round(channel * light))).join(',') + ')';
+
+  function polygon(ctx, points, fill, stroke) {
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (const point of points.slice(1)) ctx.lineTo(point.x, point.y);
+    if (fill) {
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+    }
+    if (stroke) {
+      ctx.strokeStyle = stroke;
+      ctx.stroke();
+    }
+  }
+
+  function drawSky(ctx, width, height, sun, camera, weather) {
+    const day = sun.up > 0;
+    const clear = weather === 'sunny';
+    const low = day && sun.up < 0.30;
+    const sky = ctx.createLinearGradient(0, 0, 0, height);
+    const colors = !day ? ['#071121', '#172b42', '#0d1929'] :
+      low ? ['#233758', '#7e6b70', '#273b4e'] :
+      clear ? ['#13374d', '#627e87', '#233e49'] : ['#233047', '#63727b', '#283a47'];
+    colors.forEach((color, i) => sky.addColorStop([0, 0.57, 1][i], color));
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, width, height);
+
+    const lightX = width * (0.5 + 0.40 * (sun.east * camera.cos - sun.north * camera.sin));
+    const lightY = height * (0.31 - Math.max(0, sun.up) * 0.20);
+    if (day && (clear || weather === 'variable')) {
+      const halo = ctx.createRadialGradient(lightX, lightY, 1, lightX, lightY, height * 0.34);
+      halo.addColorStop(0, low ? '#ffc283bc' : '#fff0c599');
+      halo.addColorStop(0.2, low ? '#fba37854' : '#ffd7974a');
+      halo.addColorStop(1, '#ffd79700');
+      ctx.fillStyle = halo;
+      ctx.fillRect(0, 0, width, height);
+      ctx.fillStyle = low ? '#ffdcaa' : '#fff3ce';
+      ctx.beginPath();
+      ctx.arc(lightX, lightY, Math.max(4, height * 0.016), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    if (weather === 'sunny' && !day) {
+      for (let i = 0; i < 48; i++) {
+        ctx.fillStyle = i % 7 === 0 ? '#d3e5ffbd' : '#bad6f060';
+        const size = i % 7 === 0 ? 1.6 : 0.8;
+        ctx.fillRect((i * 113 % 353) / 353 * width, (i * 37 % 97) / 97 * height * 0.64, size, size);
+      }
+    } else if (!clear) {
+      const count = weather === 'variable' ? 4 : 8;
+      for (let i = 0; i < count; i++) {
+        const x = width * (0.08 + i * 0.84 / (count - 1));
+        const y = height * (0.08 + ((i * 7) % 5) * 0.049);
+        const cloud = ctx.createRadialGradient(x, y, 1, x, y, 1.5 * width / count);
+        cloud.addColorStop(0, day ? '#d6e2e74a' : '#9bafd12e');
+        cloud.addColorStop(1, '#98adbf00');
+        ctx.save();
+        ctx.translate(0, y * 0.75);
+        ctx.scale(1, 0.25);
+        ctx.fillStyle = cloud;
+        ctx.beginPath();
+        ctx.arc(x, y, 1.5 * width / count, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    const vignette = ctx.createRadialGradient(width / 2, height * 0.48, Math.min(width, height) * 0.25, width / 2, height * 0.48, Math.hypot(width, height) * 0.56);
+    vignette.addColorStop(0, '#07142200');
+    vignette.addColorStop(1, '#05111f89');
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, width, height);
+  }
 
   function draw(canvas, config, sun, angle, elevation) {
     const width = canvas.clientWidth, height = canvas.clientHeight;
@@ -16,141 +90,210 @@
     if (!ctx) return;
     ctx.setTransform(density, 0, 0, density, 0, 0);
 
-    const daylight = sun.up > 0;
-    const clear = config.weather === 'sunny';
-    const sky = ctx.createLinearGradient(0, 0, 0, height);
-    sky.addColorStop(0, daylight ? (clear ? '#163f57' : '#26374d') : '#0a1121');
-    sky.addColorStop(1, daylight ? (clear ? '#5a8190' : '#516773') : '#1b2d45');
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, width, height);
     const camera = { cos: Math.cos(angle), sin: Math.sin(angle) };
     const pitch = { cos: Math.cos(elevation), sin: Math.sin(elevation) };
     const heading = radians(config.azimuth);
     const facing = { cos: Math.cos(heading), sin: Math.sin(heading) };
-
-    if (daylight) {
-      const x = width * (0.5 + 0.36 * (sun.east * camera.cos - sun.north * camera.sin));
-      const y = height * (0.28 - 0.19 * sun.up);
-      const glow = ctx.createRadialGradient(x, y, 3, x, y, 31);
-      glow.addColorStop(0, clear ? '#ffd876e8' : '#d3e4e49c');
-      glow.addColorStop(1, '#fff3bc00');
-      ctx.fillStyle = glow;
-      ctx.fillRect(x - 31, y - 31, 62, 62);
-      ctx.fillStyle = clear ? '#fff0b2' : '#dbe5e4';
-      ctx.beginPath();
-      ctx.arc(x, y, 8, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (clear) {
-      ctx.fillStyle = '#aac2e4';
-      for (let i = 0; i < 30; i++) ctx.fillRect((i * 113 % 353) / 353 * width, (i * 37 % 97) / 97 * height * 0.48, 1.4, 1.4);
-    }
-    if (!clear) {
-      const count = config.weather === 'variable' ? 3 : 6;
-      ctx.fillStyle = daylight ? '#d9e4e639' : '#a9bfdb1c';
-      for (let i = 0; i < count; i++) {
-        const x = width * (0.07 + i * (0.86 / (count - 1)));
-        const y = height * (0.12 + (i * 7 % 4) * 0.048);
-        ctx.beginPath();
-        ctx.ellipse(x, y, width * 0.13, height * 0.040, -0.06, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
+    const day = sun.up > 0;
+    const clear = config.weather === 'sunny';
+    const direct = clear ? 1 : config.weather === 'variable' ? 0.58 : 0.24;
+    drawSky(ctx, width, height, sun, camera, config.weather);
 
     const columns = Math.min(7, Math.max(2, Math.ceil(Math.sqrt(config.panelCount * 1.6))));
     const rows = Math.ceil(config.panelCount / columns);
-    const roofLength = Math.max(3.5, rows * 1.34 + 0.9);
-    const halfX = (columns * 0.88 + 0.9) / 2;
-    const halfZ = roofLength / 2;
-    const roofSlope = Math.tan(radians(config.tilt));
-    const roof = z => 1.55 + (halfZ - z) * roofSlope;
-    const radius = Math.hypot(halfX, halfZ);
-    const rooftop = roof(-halfZ);
-    const scale = Math.min(width / (radius * 2.58), height * 0.82 / (radius * 2 * pitch.sin + rooftop * pitch.cos));
-    const anchorY = height * 0.56 + scale * rooftop * pitch.cos * 0.45;
+    const halfX = (columns * 0.88 + 1.0) / 2;
+    const halfZ = Math.max(3.5, rows * 1.34 + 1.05) / 2;
+    const tilt = radians(config.tilt);
+    const roof = z => 1.75 + (halfZ - z) * Math.tan(tilt);
+    const footprint = Math.hypot(halfX + 0.72, halfZ + 0.95);
+    const scale = Math.min(width * 0.44 / footprint, height * 0.89 / (footprint * pitch.sin * 2 + roof(-halfZ) * pitch.cos));
+    const anchorY = height * 0.58 + scale * roof(-halfZ) * pitch.cos * 0.27;
 
-    function project([x, y, z], local = true) {
-      const east = local ? x * facing.cos + z * facing.sin : x;
-      const north = local ? -x * facing.sin + z * facing.cos : z;
-      const depth = east * camera.sin + north * camera.cos;
+    const cameraX = camera.sin * facing.cos - camera.cos * facing.sin;
+    const cameraZ = camera.sin * facing.sin + camera.cos * facing.cos;
+    const sunX = sun.east * facing.cos - sun.north * facing.sin;
+    const sunZ = sun.east * facing.sin + sun.north * facing.cos;
+    const wallLight = (x, z) => day ? 0.76 + 0.24 * direct * Math.max(0, sunX * x + sunZ * z) +
+      0.10 * Math.max(0, cameraX * x + cameraZ * z) : 0.32 + 0.12 * Math.max(0, cameraX * x + cameraZ * z);
+
+    function project([x, y, z]) {
       return {
-        x: width / 2 + (east * camera.cos - north * camera.sin) * scale,
-        y: anchorY + (depth * pitch.sin - y * pitch.cos) * scale,
-        depth: depth * pitch.cos + y * pitch.sin
+        x: width / 2 + (x * cameraZ - z * cameraX) * scale,
+        y: anchorY + ((x * cameraX + z * cameraZ) * pitch.sin - y * pitch.cos) * scale
       };
     }
 
-    function path(points, fill, stroke) {
-      ctx.beginPath();
-      ctx.moveTo(points[0].x, points[0].y);
-      for (const point of points.slice(1)) ctx.lineTo(point.x, point.y);
-      if (fill) {
-        ctx.closePath();
-        ctx.fillStyle = fill;
-        ctx.fill();
-      }
-      if (stroke) {
-        ctx.strokeStyle = stroke;
-        ctx.stroke();
-      }
+    function shape(points, fill, stroke) {
+      polygon(ctx, points.map(project), fill, stroke);
     }
 
-    const ground = radius * 1.35;
-    const floor = [[-ground, 0, -ground], [ground, 0, -ground], [ground, 0, ground], [-ground, 0, ground]];
-    path(floor.map(point => project(point, false)), daylight ? '#254941' : '#152c37', '#a2c1cc60');
-    for (let i = -5; i <= 5; i++) {
-      const tick = ground * i / 5;
-      path([[-ground, 0, tick], [ground, 0, tick]].map(point => project(point, false)), null, '#aac6cc25');
-      path([[tick, 0, -ground], [tick, 0, ground]].map(point => project(point, false)), null, '#aac6cc25');
+    function groundRect(x1, z1, x2, z2, y) {
+      return [[x1, y, z1], [x2, y, z1], [x2, y, z2], [x1, y, z2]];
     }
 
-    const faces = [];
-    function face(coords, color, border = '#14222e') {
-      const points = coords.map(point => project(point));
-      faces.push({ points, color, border, depth: points.reduce((sum, point) => sum + point.depth, 0) / points.length });
-    }
-    const corners = [[-halfX, -halfZ], [halfX, -halfZ], [halfX, halfZ], [-halfX, halfZ]];
-    const wallColors = daylight ? ['#839998', '#a7b8b4', '#d0dbd4', '#648580'] : ['#344653', '#455564', '#5f7180', '#35485a'];
-    corners.forEach(([x, z], i) => {
-      const [nextX, nextZ] = corners[(i + 1) % 4];
-      face([[x, 0.04, z], [nextX, 0.04, nextZ], [nextX, roof(nextZ), nextZ], [x, roof(z), z]], wallColors[i]);
+    const slabX = halfX + 0.72, slabZ = halfZ + 0.95;
+    const slab = groundRect(-slabX, -slabZ, slabX, slabZ, 0);
+    const lower = groundRect(-slabX, -slabZ, slabX, slabZ, -0.24);
+    const normals = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+    const shade = ctx.createRadialGradient(width / 2, anchorY, scale * 0.5, width / 2, anchorY, footprint * scale * 1.17);
+    shade.addColorStop(0, '#030a14cc');
+    shade.addColorStop(1, '#030a1400');
+    ctx.fillStyle = shade;
+    ctx.fillRect(0, 0, width, height);
+    normals.forEach(([x, z], i) => {
+      if (cameraX * x + cameraZ * z <= 0) return;
+      const next = (i + 1) % 4;
+      shape([lower[i], lower[next], slab[next], slab[i]], rgb([98, 114, 114], wallLight(x, z)), '#0a1724b0');
     });
-    function roofTile(x1, z1, x2, z2, offset = 0) {
-      return [[x1, z1], [x2, z1], [x2, z2], [x1, z2]].map(([x, z]) => [x, roof(z) + offset, z]);
-    }
-    face(roofTile(-halfX - 0.15, -halfZ - 0.16, halfX + 0.15, halfZ + 0.16), daylight ? '#354952' : '#253348');
-    for (const item of faces.sort((a, b) => a.depth - b.depth)) path(item.points, item.color, item.border);
+    shape(slab, day ? (config.weather === 'rain' ? '#6d8181' : '#88938b') : '#354651', '#becace70');
+    shape(groundRect(-slabX + 0.18, -slabZ + 0.18, slabX - 0.18, slabZ - 0.18, 0.005),
+      day ? '#666f61' : '#26383b', day ? '#bac4af9a' : '#81918a65');
 
-    for (let i = 0; i < config.panelCount; i++) {
-      const x = (i % columns - columns / 2) * 0.88 + 0.05;
-      const z = -rows * 1.34 / 2 + Math.floor(i / columns) * 1.34 + 0.06;
-      const tile = roofTile(x, z, x + 0.78, z + 1.22, 0.025);
-      path(tile.map(point => project(point)), daylight ? '#163c60' : '#152c50', daylight ? '#aacbd5' : '#6585a0');
-      for (let cell = 1; cell < 4; cell++) {
-        const lineZ = z + cell * 1.22 / 4;
-        path([[x, roof(lineZ) + 0.026, lineZ], [x + 0.78, roof(lineZ) + 0.026, lineZ]].map(point => project(point)), null, '#97bfd251');
+    if (day) {
+      // Keep low-angle shadows on the scale model's plinth.
+      ctx.save();
+      shape(slab, null, null);
+      ctx.closePath();
+      ctx.clip();
+      const shadow = groundRect(-halfX, -halfZ, halfX, halfZ, 0).map(([x, y, z]) => {
+        const length = roof(z) / Math.max(sun.up, 0.25);
+        return [x - sunX * length, y, z - sunZ * length];
+      });
+      shape(shadow, 'rgba(11,25,29,' + (0.16 + direct * 0.16) + ')');
+      ctx.restore();
+    }
+
+    const deckZ = halfZ + 0.72;
+    shape(groundRect(-halfX, halfZ, halfX, deckZ, 0.025), day ? '#a59b85' : '#57554e', '#e3d9bc55');
+    for (let i = 0; i < 5; i++) {
+      const z = halfZ + i * 0.144;
+      shape([[-halfX, 0.028, z], [halfX, 0.028, z]], null, '#211e1947');
+    }
+    for (const x of [-halfX + 0.35, halfX - 0.35]) {
+      shape(groundRect(x - 0.29, halfZ + 0.28, x + 0.29, halfZ + 0.64, 0.041),
+        day ? '#3e4e3f' : '#23382f', '#b5bc9b70');
+      for (let i = -2; i <= 2; i++) {
+        const from = project([x + i * 0.095, 0.04, halfZ + 0.48]);
+        const tip = project([x + i * 0.12, 0.16 + (2 - Math.abs(i)) * 0.06, halfZ + 0.44]);
+        ctx.lineWidth = Math.max(1, scale * 0.043);
+        polygon(ctx, [from, tip], null, day ? '#94a673' : '#5d8269');
       }
     }
+    ctx.lineWidth = 1;
 
-    if (facing.cos * camera.cos + facing.sin * camera.sin > 0) {
-      const z = halfZ + 0.02;
-      path([[-0.32, 0.05, z], [0.32, 0.05, z], [0.32, 1.20, z], [-0.32, 1.20, z]].map(point => project(point)), '#263b4a', '#aec5c896');
-      path([[0.58, 0.65, z], [1.36, 0.65, z], [1.36, 1.19, z], [0.58, 1.19, z]].map(point => project(point)), daylight ? '#55808e' : '#e6ab58', '#aec5c896');
+    const corners = groundRect(-halfX, -halfZ, halfX, halfZ, 0.04);
+    normals.forEach(([nx, nz], i) => {
+      if (cameraX * nx + cameraZ * nz <= 0) return;
+      const [x, , z] = corners[i];
+      const [x2, , z2] = corners[(i + 1) % 4];
+      const light = wallLight(nx, nz);
+      function wallPoint(u, y, offset = 0) {
+        return [x + (x2 - x) * u + nx * offset, y, z + (z2 - z) * u + nz * offset];
+      }
+      function wallRect(a, b, low, high, fill, stroke) {
+        shape([wallPoint(a, low, 0.012), wallPoint(b, low, 0.012), wallPoint(b, high, 0.012), wallPoint(a, high, 0.012)], fill, stroke);
+      }
+      const top1 = wallPoint(0, roof(z)), top2 = wallPoint(1, roof(z2));
+      const plaster = ctx.createLinearGradient(0, Math.min(project(top1).y, project(top2).y), 0, Math.max(project(corners[i]).y, project(corners[(i + 1) % 4]).y));
+      plaster.addColorStop(0, rgb([239, 231, 213], light));
+      plaster.addColorStop(1, rgb([176, 180, 164], light));
+      shape([wallPoint(0, 0.04), wallPoint(1, 0.04), top2, top1], plaster, '#17232a90');
+      wallRect(0, 1, 0.045, 0.16, rgb([76, 88, 90], light));
+      if (nz === 1) {
+        wallRect(0.04, 0.34, 0.16, 1.60, rgb([153, 115, 77], light));
+        for (let slat = 1; slat < 13; slat++) {
+          const u = 0.04 + slat * 0.30 / 13;
+          shape([wallPoint(u, 0.16, 0.016), wallPoint(u, 1.60, 0.016)], null, '#392a235c');
+        }
+      }
+      const windows = nz === 1 ? [[0.14, 0.28, 0.16, 1.40], [0.39, 0.91, 0.24, 1.47]] :
+        nz === -1 ? [[0.21, 0.76, 0.7, 1.43]] : [[0.20, 0.81, 0.57, 1.47]];
+      windows.forEach(([a, b, bottom, top]) => {
+        const margin = 0.015;
+        wallRect(a - margin, b + margin, bottom - 0.04, top + 0.045, '#23303a');
+        const glassTop = project(wallPoint(a, top)).y, glassBottom = project(wallPoint(b, bottom)).y;
+        const glass = ctx.createLinearGradient(0, glassTop, 0, glassBottom + 1);
+        glass.addColorStop(0, day ? '#83a4ac' : '#f9ca87');
+        glass.addColorStop(0.55, day ? '#456977' : '#ce975b');
+        glass.addColorStop(1, day ? '#263e4d' : '#735b52');
+        wallRect(a, b, bottom, top, glass, day ? '#c0d4d55c' : '#f0c17f91');
+        const middle = (a + b) * 0.5;
+        shape([wallPoint(middle, bottom, 0.019), wallPoint(middle, top, 0.019)], null, '#26323c');
+        shape([wallPoint(a, top - 0.08, 0.019), wallPoint(b, bottom + 0.23, 0.019)], null, day ? '#d3e7ec39' : '#fff3d920');
+      });
+    });
+
+    function roofTile(x1, z1, x2, z2, offset = 0) {
+      return groundRect(x1, z1, x2, z2, 0).map(([x, , z]) => [x, roof(z) + offset, z]);
+    }
+    const edgeX = halfX + 0.18, edgeZ = halfZ + 0.19;
+    const roofTop = roofTile(-edgeX, -edgeZ, edgeX, edgeZ, 0.08);
+    const roofBottom = roofTile(-edgeX, -edgeZ, edgeX, edgeZ, -0.12);
+    normals.forEach(([x, z], i) => {
+      if (cameraX * x + cameraZ * z <= 0) return;
+      const j = (i + 1) % 4;
+      shape([roofBottom[i], roofBottom[j], roofTop[j], roofTop[i]], day ? '#36434b' : '#202d3a', '#b5bbc450');
+    });
+    const roofTone = ctx.createLinearGradient(0, project(roofTop[0]).y, 0, project(roofTop[2]).y + 1);
+    roofTone.addColorStop(0, day ? '#677579' : '#2d3c4d');
+    roofTone.addColorStop(1, day ? '#465055' : '#253040');
+    shape(roofTop, roofTone, day ? '#adb8b7' : '#718297');
+    for (let seam = 1; seam < columns * 3; seam++) {
+      const x = -edgeX + seam * 2 * edgeX / (columns * 3);
+      shape([[x, roof(-edgeZ) + 0.082, -edgeZ], [x, roof(edgeZ) + 0.082, edgeZ]], null, '#0d1b2770');
+    }
+
+    const sunOnPlane = sun.up * Math.cos(tilt) + sunZ * Math.sin(tilt);
+    const reflective = day && sunOnPlane > 0.25 && clear;
+    for (let i = 0; i < config.panelCount; i++) {
+      const column = i % columns;
+      const row = Math.floor(i / columns);
+      const rowCount = Math.min(columns, config.panelCount - row * columns);
+      const x = (column - rowCount / 2) * 0.88 + 0.045;
+      const z = -rows * 1.34 / 2 + row * 1.34 + 0.06;
+      const w = 0.79, h = 1.22;
+      shape(roofTile(x - 0.014, z + 0.035, x + w + 0.036, z + h + 0.055, 0.091), '#081321b3');
+      const tile = roofTile(x, z, x + w, z + h, 0.135);
+      const highlight = project(tile[0]), dark = project(tile[2]);
+      const glass = ctx.createLinearGradient(highlight.x, highlight.y, dark.x, dark.y);
+      glass.addColorStop(0, reflective ? '#417087' : day ? '#2d5068' : '#293b60');
+      glass.addColorStop(0.48, day ? '#163249' : '#152741');
+      glass.addColorStop(1, '#0e1d32');
+      shape(tile, glass, day ? '#b4cbd1' : '#596e8d');
+      const offset = 0.138;
+      for (let cell = 1; cell < 6; cell++) {
+        const lineZ = z + cell * h / 6;
+        shape([[x, roof(lineZ) + offset, lineZ], [x + w, roof(lineZ) + offset, lineZ]], null, '#91bad255');
+      }
+      for (const share of [0.33, 0.66]) {
+        const mid = x + w * share;
+        shape([[mid, roof(z) + offset, z], [mid, roof(z + h) + offset, z + h]], null, '#91bad241');
+      }
     }
 
     if (config.weather === 'rain') {
-      for (let i = 0; i < 45; i++) {
+      for (let i = 0; i < 54; i++) {
         const x = (i * 67 % 461) / 461 * width, y = (i * 41 % 191) / 191 * height;
-        path([{ x, y }, { x: x - 4, y: y + 11 }], null, '#d2e9f353');
+        polygon(ctx, [{ x, y }, { x: x - 4, y: y + 11 }], null, '#d2e9f340');
       }
     }
 
-    const north = project([0, 0, ground * 0.9], false);
-    const south = project([0, 0, ground * 0.58], false);
-    path([south, north], null, '#dfece8');
-    ctx.fillStyle = '#f5f7f2';
-    ctx.font = '700 12px system-ui';
-    ctx.textAlign = 'center';
-    ctx.fillText('Bắc', north.x, north.y - 7);
+    const cx = width - 33, cy = height - 31;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 19, 0, Math.PI * 2);
+    ctx.fillStyle = '#102132df';
+    ctx.fill();
+    ctx.strokeStyle = '#a3bccc7a';
+    ctx.stroke();
+    const nx = -camera.sin, ny = camera.cos * pitch.sin;
+    const tip = { x: cx + nx * 11, y: cy + ny * 11 };
+    const tail = { x: cx - nx * 8, y: cy - ny * 8 };
+    polygon(ctx, [tip, { x: tail.x - ny * 4, y: tail.y + nx * 4 },
+      { x: tail.x + ny * 4, y: tail.y - nx * 4 }], '#e5ba6d');
+    ctx.fillStyle = '#e5edf4';
+    ctx.font = '600 11px system-ui';
+    ctx.textAlign = 'right';
+    ctx.fillText('Bắc', cx - 26, cy + 4);
   }
 
   window.SolarScene = { draw };
