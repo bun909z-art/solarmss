@@ -18,6 +18,17 @@ body {
   gap: clamp(12px, 2vw, 26px);
 }
 
+.topbar .brand:has(img:is([src="/assets/logo-default.jpg"], [src^="/assets/logo-default.jpg?"])) {
+  padding: 3px 6px;
+  border: 1px solid #aac5b4;
+  border-radius: 10px;
+  background: linear-gradient(145deg, #edf3e8, #dce9df);
+  isolation: isolate;
+}
+.topbar .brand img:is([src="/assets/logo-default.jpg"], [src^="/assets/logo-default.jpg?"]) {
+  mix-blend-mode: multiply;
+}
+
 .main-nav { gap: 4px; padding: 3px; }
 .main-nav .nav-link {
   display: inline-flex;
@@ -326,6 +337,18 @@ body:has(.home-main) .site-footer .co { margin: 0; padding: 0; border: 0; color:
 }
 
 @media (max-width: 640px) {
+  .topbar .brand img:is([src="/assets/logo-default.jpg"], [src^="/assets/logo-default.jpg?"]) {
+    height: min(var(--logo-h), 44px);
+  }
+  .topbar-right { min-width: 0; margin-left: auto; }
+  .hotline { min-width: 0; overflow-wrap: anywhere; }
+  .hotline-label {
+    font-size: 12px;
+    letter-spacing: normal;
+    text-transform: none;
+  }
+  .hotline-list { gap: 2px 8px; }
+  .hotline-list a { display: block; font-size: 13px; }
   .main-nav { grid-auto-flow: column; grid-auto-columns: minmax(max-content, 1fr); grid-template-columns: none; border-color: #a8c8b737; background: #e9fff507; }
   .main-nav .nav-link { justify-content: center; white-space: nowrap; }
 }

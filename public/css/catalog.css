@@ -54,11 +54,8 @@
     gap: 8px 10px;
     flex-wrap: wrap;
   }
-  .brand img { height: 36px !important; max-width: 155px; }
+  .brand img { height: 36px; max-width: 155px; }
   .topbar-right { gap: 8px; }
-  .hotline-label { display: none; }
-  .hotline-list { gap: 2px 8px; margin-top: 0; }
-  .hotline-list a { font-size: 13px; }
   .main-nav {
     order: 3;
     width: 100%;

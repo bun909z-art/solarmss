@@ -425,7 +425,6 @@ td.dim { opacity: 0.45; }
 @media (max-width: 920px) {
   .grid { grid-template-columns: minmax(0, 1fr); }
   .sticky-col.is-sticky { position: static; }
-  .hotline-label { display: none; }
   .brand img { height: min(var(--logo-h), 44px); }
 }
 @media (max-width: 560px) {
