@@ -78,6 +78,15 @@
     <div class="demo-results">
       <details class="demo-report demo-roof-editor" id="demoRoofEditor" open>
         <summary>Thiết kế mái &amp; bố trí tấm pin</summary>
+        <div class="demo-roof-switch">
+          <label><input type="checkbox" id="demoEnableAnnex"> Thêm mái phụ</label>
+          <div class="demo-roof-toolbar" id="demoRoofZoneSwitch" role="group" aria-label="Mái đang chỉnh" hidden>
+            <button type="button" id="demoEditMainRoof" aria-controls="demoMainRoof" aria-pressed="true">Mái chính</button>
+            <button type="button" id="demoEditAnnexRoof" aria-controls="demoAnnexRoof" aria-pressed="false">Mái phụ</button>
+          </div>
+        </div>
+        <p id="demoRoofInputStatus" class="demo-muted demo-roof-input-status" role="status"></p>
+        <div id="demoMainRoof">
         <form class="demo-roof-settings" id="demoRoofGeometry">
           <label>Kiểu mái
             <select id="demoRoofType">
@@ -86,8 +95,8 @@
               <option value="flat">Mái bằng</option>
             </select>
           </label>
-          <label>Rộng mái (m)<input id="demoRoofWidth" type="number" min="3" max="24" step="0.1" value="8" required></label>
-          <label>Chiều sâu mái (m)<input id="demoRoofDepth" type="number" min="3" max="24" step="0.1" value="7.5" required></label>
+          <label>Rộng mái (m)<input id="demoRoofWidth" type="text" inputmode="decimal" value="8" required></label>
+          <label>Chiều sâu mái (m)<input id="demoRoofDepth" type="text" inputmode="decimal" value="7,5" required></label>
           <label>Hướng mặt trước
             <select id="demoAzimuth">
               <option value="0">Bắc</option><option value="45">Đông Bắc</option>
@@ -96,8 +105,13 @@
               <option value="270">Tây</option><option value="315">Tây Bắc</option>
             </select>
           </label>
-          <label>Độ dốc mái (°)<input id="demoTilt" type="number" min="0" max="45" step="1" value="18" required></label>
+          <label>Độ dốc mái (°)<input id="demoTilt" type="text" inputmode="decimal" value="18" required></label>
           <label>Số tấm muốn lắp<input id="demoPanelCount" type="number" min="0" max="60" step="1" value="12" required></label>
+          <label data-annex-position hidden>Vị trí mái phụ
+            <select id="demoAnnexPosition">
+              <option value="right">Bên phải</option><option value="left">Bên trái</option><option value="back">Phía sau</option>
+            </select>
+          </label>
         </form>
         <div class="demo-roof-summary" id="demoRoofSummary"></div>
         <div class="demo-roof-toolbar">
@@ -109,13 +123,14 @@
         </div>
         <p class="demo-muted demo-roof-hint" id="demoRoofHint">Kéo tấm pin trên bản vẽ để đổi vị trí. Bạn cũng có thể bấm <b>Tấm pin mới</b> rồi chạm vào mái để đặt.</p>
         <div class="demo-roof-stage">
-          <div id="demoRoofBoard" role="group" aria-label="Bản vẽ mái nhìn từ trên" aria-describedby="demoRoofHint">
+          <div class="demo-roof-board" id="demoRoofBoard" role="group" aria-label="Bản vẽ mái nhìn từ trên" aria-describedby="demoRoofHint">
             <div class="demo-roof-ridge" id="demoRoofRidge" hidden></div>
             <div class="demo-panel-ghost" id="demoPanelGhost" hidden></div>
           </div>
           <span class="demo-roof-front" id="demoRoofFront"></span>
         </div>
-        <p id="demoRoofMessage" class="demo-muted" role="status"></p>
+        <p id="demoRoofMessage" class="demo-muted demo-roof-message" role="status"></p>
+        </div>
         <a class="demo-plan-view" href="#demoSceneTitle">Xem mô hình 3D ↓</a>
       </details>
 

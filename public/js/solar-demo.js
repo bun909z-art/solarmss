@@ -3,7 +3,15 @@
 
   const $ = id => document.getElementById(id);
   const form = $('demoConfig');
-  const roofForm = $('demoRoofGeometry');
+  const mainRoof = $('demoMainRoof');
+  const annexRoof = mainRoof.cloneNode(true);
+  annexRoof.id = 'demoAnnexRoof';
+  annexRoof.hidden = true;
+  annexRoof.querySelectorAll('[id]').forEach(element => { element.id += 'Aux'; });
+  annexRoof.querySelector('[data-annex-position]').hidden = false;
+  annexRoof.querySelector('[aria-describedby]').setAttribute('aria-describedby', 'demoRoofHintAux');
+  mainRoof.after(annexRoof);
+  const enableAnnex = $('demoEnableAnnex');
   const canvas = $('demoCanvas');
   const hourInput = $('demoHour');
   const playButton = $('demoPlay');
@@ -37,7 +45,12 @@
   let sceneVisible = true, dirty = true;
   let drag = null;
   const roofPlanner = SolarRoofPlanner.create(simulate);
+  const annexPlanner = SolarRoofPlanner.create(simulate, 'Aux');
 
+  $('demoRoofWidthAux').value = '4,5';
+  $('demoRoofDepthAux').value = '4';
+  $('demoTiltAux').value = '12';
+  $('demoPanelCountAux').value = '4';
   for (let month = 1; month <= 12; month++) $('demoMonth').add(new Option('Tháng ' + month, month));
   $('demoMonth').value = '3';
   $('demoSettings').open = !matchMedia('(max-width: 820px)').matches;
@@ -79,28 +92,69 @@
     return { width: 1.134, length: 2.278, estimated: true };
   }
 
+  function readRoof(suffix = '') {
+    const input = id => $(id + suffix);
+    const type = input('demoRoofType').value;
+    input('demoTilt').disabled = type === 'flat';
+    const minimumSpan = suffix ? 2 : 3;
+    const measurements = [
+      { id: 'demoRoofWidth', key: 'width', label: 'Rộng mái', min: minimumSpan, max: 24, unit: 'm', example: '7,5' },
+      { id: 'demoRoofDepth', key: 'depth', label: 'Chiều sâu mái', min: minimumSpan, max: 24, unit: 'm', example: '7,5' },
+      { id: 'demoTilt', key: 'tilt', label: 'Độ dốc mái', min: 0, max: 45, unit: 'độ', example: '12,5' }
+    ];
+    const roof = { type, azimuth: Number(input('demoAzimuth').value) };
+    const error = [];
+    const name = suffix ? 'Mái phụ' : 'Mái chính';
+    for (const { id, key, label, min, max, unit, example } of measurements) {
+      const element = input(id);
+      const value = element.disabled ? 0 : SolarRoof.parseMeasure(element.value, min, max);
+      if (value === null) {
+        element.setAttribute('aria-invalid', 'true');
+        element.setAttribute('aria-describedby', 'demoRoofInputStatus');
+        error.push(name + ' · ' + label + ' cần từ ' + min + ' đến ' + max + ' ' + unit + '. Ví dụ ' + example + '.');
+      } else {
+        element.removeAttribute('aria-invalid');
+        element.removeAttribute('aria-describedby');
+        roof[key] = value;
+      }
+    }
+    const count = input('demoPanelCount');
+    if (!count.validity.valid) {
+      error.push(name + ' · Số tấm cần là số nguyên từ 0 đến ' + SolarRoof.limit + '.');
+      count.setAttribute('aria-invalid', 'true');
+      count.setAttribute('aria-describedby', 'demoRoofInputStatus');
+    } else {
+      count.removeAttribute('aria-invalid');
+      count.removeAttribute('aria-describedby');
+    }
+    return { roof, count: count.valueAsNumber, error };
+  }
+
   function readSettings() {
     const batteryOn = Boolean($('demoBattery').value);
     $('demoBatteryFields').hidden = !batteryOn;
     $('demoBatteryCount').disabled = !batteryOn;
     $('demoInitialSoc').disabled = !batteryOn;
-    const type = $('demoRoofType').value;
-    $('demoTilt').disabled = type === 'flat';
-    if (!form.checkValidity() || !roofForm.checkValidity()) return null;
+    const main = readRoof();
+    const aux = enableAnnex.checked ? readRoof('Aux') : null;
+    const roofError = main.error[0] || aux?.error[0] || '';
+    $('demoRoofInputStatus').textContent = roofError;
+    if (!form.checkValidity() || roofError) return null;
     const rating = (category, id, key) => Number(equipment[category].find(item => item.id === $(id).value)?.[key]) || 0;
     const panel = equipment.panel.find(item => item.id === $('demoPanel').value);
-    const roof = { type, width: number('demoRoofWidth'), depth: number('demoRoofDepth'),
-      azimuth: Number($('demoAzimuth').value), tilt: type === 'flat' ? 0 : number('demoTilt') };
     const size = panelDimensions(panel);
-    const layout = roofPlanner.sync(roof, size, number('demoPanelCount'));
+    const layout = roofPlanner.sync(main.roof, size, main.count);
+    const auxLayout = aux && annexPlanner.sync(aux.roof, size, aux.count);
+    const annex = aux && { roof: aux.roof, panels: auxLayout.panels, position: $('demoAnnexPositionAux').value };
     return {
-      panelWp: Number(panel?.wattWp) || 0, panelCount: layout.panels.length, roof, panelSize: size,
-      panels: layout.panels, arrays: layout.arrays,
+      panelWp: Number(panel?.wattWp) || 0, panelCount: layout.panels.length + (annex?.panels.length || 0),
+      roof: main.roof, panelSize: size, panels: layout.panels, annex,
+      arrays: auxLayout ? [...layout.arrays, ...auxLayout.arrays] : layout.arrays,
       inverterKw: rating('inverter', 'demoInverter', 'powerKw'),
       batteryKwh: rating('battery', 'demoBattery', 'capacityKwh'),
       batteryCount: batteryOn ? number('demoBatteryCount') : 0,
       initialSoc: batteryOn ? number('demoInitialSoc') : 0,
-      azimuth: roof.azimuth, tilt: roof.tilt, latitude: Number($('demoLatitude').value),
+      azimuth: main.roof.azimuth, tilt: main.roof.tilt, latitude: Number($('demoLatitude').value),
       month: Number($('demoMonth').value), weather: $('demoWeather').value, dailyLoad: number('demoLoad')
     };
   }
@@ -207,19 +261,18 @@
       return '<tr><th scope="row">' + clock(row.hour) + '</th>' + cells.map(cell => '<td>' + cell + '</td>').join('') + '</tr>';
     }).join('');
     $('demoSceneMeta').textContent = format.format(dcKw) + ' kWp · ' + settings.panelCount + ' tấm · ' +
-      format.format(capacity) + ' kWh lưu trữ';
+      format.format(capacity) + ' kWh lưu trữ' + (settings.annex ? ' · 2 mái' : '');
   }
 
   function simulate() {
     if (!enabled()) return;
     const next = readSettings();
     if (!next) {
-      const note = roofForm.matches(':invalid') ? $('demoRoofMessage') : $('demoEquipmentNote');
-      note.textContent = 'Kiểm tra các ô số. Kết quả đang hiển thị theo cấu hình hợp lệ gần nhất.';
+      if (form.matches(':invalid')) {
+        $('demoEquipmentNote').textContent = 'Kiểm tra các ô số. Kết quả đang hiển thị theo cấu hình hợp lệ gần nhất.';
+      }
       return;
     }
-    const roofMessage = $('demoRoofMessage');
-    if (roofMessage.textContent.startsWith('Kiểm tra các ô số.')) roofMessage.textContent = '';
     settings = next;
     $('demoEquipmentNote').textContent = usingSamples ? 'Dùng cấu hình mẫu cho nhóm thiết bị chưa có dữ liệu trong danh mục.' : '';
     model = SolarModel.simulate(settings);
@@ -258,8 +311,29 @@
   hourInput.addEventListener('input', () => { stop(); renderHour(); });
   form.addEventListener('submit', event => { event.preventDefault(); simulate(); });
   form.addEventListener('input', simulate);
-  roofForm.addEventListener('submit', event => { event.preventDefault(); simulate(); });
-  roofForm.addEventListener('input', simulate);
+  for (const roofForm of [$('demoRoofGeometry'), $('demoRoofGeometryAux')]) {
+    roofForm.addEventListener('submit', event => { event.preventDefault(); simulate(); });
+    roofForm.addEventListener('input', simulate);
+  }
+  function selectRoof(useAnnex) {
+    mainRoof.hidden = useAnnex;
+    annexRoof.hidden = !useAnnex;
+    $('demoEditMainRoof').setAttribute('aria-pressed', String(!useAnnex));
+    $('demoEditAnnexRoof').setAttribute('aria-pressed', String(useAnnex));
+  }
+  let annexInitialized = false;
+  enableAnnex.addEventListener('change', () => {
+    const enabled = enableAnnex.checked;
+    if (enabled && !annexInitialized) {
+      $('demoAzimuthAux').value = $('demoAzimuth').value;
+      annexInitialized = true;
+    }
+    $('demoRoofZoneSwitch').hidden = !enabled;
+    selectRoof(enabled);
+    simulate();
+  });
+  $('demoEditMainRoof').addEventListener('click', () => selectRoof(false));
+  $('demoEditAnnexRoof').addEventListener('click', () => selectRoof(true));
   document.querySelectorAll('[data-rotate]').forEach(button => {
     button.addEventListener('click', () => {
       targetAngle += Number(button.dataset.rotate) * 0.34;

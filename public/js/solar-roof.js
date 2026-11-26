@@ -7,6 +7,13 @@
   const radians = degrees => degrees * Math.PI / 180;
   const limit = 60;
 
+  function parseMeasure(value, min, max) {
+    const input = value.trim();
+    if (!/^\d+(?:[.,]\d{1,2})?$/.test(input)) return null;
+    const result = Number(input.replace(',', '.'));
+    return result >= min && result <= max ? result : null;
+  }
+
   function faces(roof) {
     if (roof.type === 'gable') {
       return [
@@ -18,7 +25,7 @@
   }
 
   function elevation(roof, z) {
-    const start = -roof.depth / 2, end = roof.depth / 2;
+    const end = roof.depth / 2;
     const run = roof.type === 'gable' ? end - Math.abs(z) : end - z;
     return roof.type === 'flat' ? 0 : Math.tan(radians(roof.tilt)) * run;
   }
@@ -76,7 +83,7 @@
     return groups.filter(group => group.count > 0);
   }
 
-  const api = { limit, snap, faces, elevation, dimensions, fits, fill, arrays };
+  const api = { limit, snap, parseMeasure, faces, elevation, dimensions, fits, fill, arrays };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else window.SolarRoof = api;
 })();

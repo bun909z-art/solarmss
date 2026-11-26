@@ -124,24 +124,57 @@
 
     const camera = { cos: Math.cos(angle), sin: Math.sin(angle) };
     const pitch = { cos: Math.cos(elevation), sin: Math.sin(elevation) };
-    const heading = radians(config.azimuth);
-    const facing = { cos: Math.cos(heading), sin: Math.sin(heading) };
     const daylight = smooth(-0.19, 0.23, sun.up);
-    const tint = (night, day) => mix(night, day, daylight);
-    const direct = 1 - effects.clouds * 0.76;
     drawSky(ctx, width, height, sun, camera, daylight, effects);
 
-    const geometry = config.roof;
+    const main = config.roof;
+    const mainWidth = main.width / 2 + 0.72, mainDepth = main.depth / 2 + 0.95;
+    const buildings = [{ roof: main, panels: config.panels, x: 0, z: 0, wall: 2.45 }];
+    let centerX = 0, centerZ = 0, envelope = Math.hypot(mainWidth, mainDepth);
+    if (config.annex) {
+      const { roof, panels, position } = config.annex;
+      const relativeHeading = radians(roof.azimuth - main.azimuth);
+      const cos = Math.abs(Math.cos(relativeHeading)), sin = Math.abs(Math.sin(relativeHeading));
+      const w = roof.width / 2 + 0.72, d = roof.depth / 2 + 0.95;
+      const spanX = w * cos + d * sin, spanZ = w * sin + d * cos;
+      const x = position === 'back' ? 0 : (mainWidth + spanX + 0.06) * (position === 'left' ? -1 : 1);
+      const z = position === 'back' ? -mainDepth - spanZ - 0.06 : 0;
+      const minX = Math.min(-mainWidth, x - spanX), maxX = Math.max(mainWidth, x + spanX);
+      const minZ = Math.min(-mainDepth, z - spanZ), maxZ = Math.max(mainDepth, z + spanZ);
+      centerX = (minX + maxX) / 2;
+      centerZ = (minZ + maxZ) / 2;
+      envelope = Math.hypot((maxX - minX) / 2, (maxZ - minZ) / 2);
+      buildings.push({ roof, panels, x, z, wall: 1.9 });
+    }
+    const peak = Math.max(...buildings.map(({ roof, wall }) => wall +
+      SolarRoof.elevation(roof, roof.type === 'gable' ? 0 : -roof.depth / 2)));
+    const scale = Math.min(width * 0.44 / envelope, height * 0.89 / (envelope * pitch.sin * 2 + peak * pitch.cos));
+    const anchorY = height * 0.58 + scale * peak * pitch.cos * 0.27;
+    const view = angle - radians(main.azimuth);
+    const viewX = Math.sin(view), viewZ = Math.cos(view);
+    const depth = building => building.x * viewX + building.z * viewZ;
+    buildings.sort((a, b) => depth(a) - depth(b));
+    for (const building of buildings) {
+      const x = building.x - centerX, z = building.z - centerZ;
+      const frame = { scale, pitch, daylight, angle,
+        centerX: width / 2 + (x * viewZ - z * viewX) * scale,
+        centerY: anchorY + (x * viewX + z * viewZ) * pitch.sin * scale };
+      drawBuilding(ctx, building, config.panelSize, sun, frame, effects);
+    }
+    drawForeground(ctx, width, height, camera, pitch, effects);
+  }
+
+  function drawBuilding(ctx, building, panelSize, sun, frame, effects) {
+    const { roof: geometry, panels, wall } = building;
+    const { scale, daylight, pitch, angle, centerX, centerY } = frame;
+    const tint = (night, day) => mix(night, day, daylight);
+    const direct = 1 - effects.clouds * 0.76;
     const halfX = geometry.width / 2, halfZ = geometry.depth / 2;
     const gable = geometry.type === 'gable';
-    const roof = z => 2.45 + SolarRoof.elevation(geometry, z);
-    const peak = roof(gable ? 0 : -halfZ);
-    const footprint = Math.hypot(halfX + 0.72, halfZ + 0.95);
-    const scale = Math.min(width * 0.44 / footprint, height * 0.89 / (footprint * pitch.sin * 2 + peak * pitch.cos));
-    const anchorY = height * 0.58 + scale * peak * pitch.cos * 0.27;
-
-    const cameraX = camera.sin * facing.cos - camera.cos * facing.sin;
-    const cameraZ = camera.sin * facing.sin + camera.cos * facing.cos;
+    const roof = z => wall + SolarRoof.elevation(geometry, z);
+    const heading = radians(geometry.azimuth);
+    const facing = { cos: Math.cos(heading), sin: Math.sin(heading) };
+    const cameraX = Math.sin(angle - heading), cameraZ = Math.cos(angle - heading);
     const sunX = sun.east * facing.cos - sun.north * facing.sin;
     const sunZ = sun.east * facing.sin + sun.north * facing.cos;
     const wallLight = (x, z) => 0.32 + 0.12 * Math.max(0, cameraX * x + cameraZ * z) +
@@ -149,8 +182,8 @@
 
     function project([x, y, z]) {
       return {
-        x: width / 2 + (x * cameraZ - z * cameraX) * scale,
-        y: anchorY + ((x * cameraX + z * cameraZ) * pitch.sin - y * pitch.cos) * scale
+        x: centerX + (x * cameraZ - z * cameraX) * scale,
+        y: centerY + ((x * cameraX + z * cameraZ) * pitch.sin - y * pitch.cos) * scale
       };
     }
 
@@ -166,11 +199,12 @@
     const slab = groundRect(-slabX, -slabZ, slabX, slabZ, 0);
     const lower = groundRect(-slabX, -slabZ, slabX, slabZ, -0.24);
     const normals = [[0, -1], [1, 0], [0, 1], [-1, 0]];
-    const shade = ctx.createRadialGradient(width / 2, anchorY, scale * 0.5, width / 2, anchorY, footprint * scale * 1.17);
+    const shadowRadius = Math.hypot(slabX, slabZ) * scale * 1.17;
+    const shade = ctx.createRadialGradient(centerX, centerY, scale * 0.5, centerX, centerY, shadowRadius);
     shade.addColorStop(0, '#030a14cc');
     shade.addColorStop(1, '#030a1400');
     ctx.fillStyle = shade;
-    ctx.fillRect(0, 0, width, height);
+    ctx.fillRect(centerX - shadowRadius, centerY - shadowRadius, shadowRadius * 2, shadowRadius * 2);
     normals.forEach(([x, z], i) => {
       if (cameraX * x + cameraZ * z <= 0) return;
       const next = (i + 1) % 4;
@@ -281,7 +315,7 @@
         shape([[x, roof(from) + 0.082, from], [x, roof(to) + 0.082, to]], null, '#0d1b2770');
       }
     }
-    if (gable) shape([[-edgeX, peak + 0.106, 0], [edgeX, peak + 0.106, 0]], null, '#c3c6b4');
+    if (gable) shape([[-edgeX, roof(0) + 0.106, 0], [edgeX, roof(0) + 0.106, 0]], null, '#c3c6b4');
 
     const tilt = radians(geometry.tilt);
     const glassStarts = [-1, 1].map(direction => {
@@ -291,9 +325,9 @@
     });
     const glassCenter = tint('#152741', '#163249');
     const frameColor = tint('#596e8d', '#b4cbd1');
-    for (const panel of config.panels) {
+    for (const panel of panels) {
       const x = panel.x - halfX, z = panel.z - halfZ;
-      const { width: w, depth: h } = SolarRoof.dimensions(panel, config.panelSize, geometry);
+      const { width: w, depth: h } = SolarRoof.dimensions(panel, panelSize, geometry);
       shape(roofTile(x - 0.014, z + 0.035, x + w + 0.036, z + h + 0.055, 0.091), '#081321b3');
       const tile = roofTile(x, z, x + w, z + h, 0.135);
       const highlight = project(tile[0]), dark = project(tile[2]);
@@ -313,6 +347,9 @@
       }
     }
 
+  }
+
+  function drawForeground(ctx, width, height, camera, pitch, effects) {
     if (effects.rain > 0) {
       ctx.globalAlpha = effects.rain;
       for (let layer = 0; layer < 2; layer++) {

@@ -32,6 +32,13 @@
 .demo-equipment:empty { display: none; }
 
 .demo-roof-editor > summary { cursor: pointer; font-size: 1.14rem; font-weight: 750; }
+.demo-roof-switch { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 15px; margin-top: 10px; }
+.demo-roof-switch label { display: inline-flex; align-items: center; min-height: 44px; gap: 7px; font-weight: 700; cursor: pointer; }
+.demo-roof-switch .demo-roof-toolbar { margin: 0; }
+.demo-roof-switch [aria-pressed="true"] { background: #173933; color: #f5f9f7; }
+.demo-roof-input-status { color: var(--ink); font-weight: 650; margin: 8px 0; }
+.demo-roof-input-status:empty { display: none; }
+.demo-roof-settings [aria-invalid="true"] { border-color: #bd402a; box-shadow: 0 0 0 1px #bd402a; }
 .demo-roof-settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 115px), 1fr)); gap: 9px; margin-top: 14px; }
 .demo-roof-settings label { display: grid; gap: 4px; min-width: 0; align-content: start; font-size: .83rem; font-weight: 650; }
 .demo-roof-settings :is(select, input) { width: 100%; min-width: 0; min-height: 44px; border: 1px solid var(--line); border-radius: 7px; padding: 6px 8px; color: var(--ink); background: var(--surface-2); font: inherit; font-size: 1rem; }
@@ -43,7 +50,7 @@
 .demo-roof-toolbar .demo-plan-add[aria-pressed="true"] { color: #241a0b; background: #ffd88c; }
 .demo-roof-hint { margin: 9px 0; }
 .demo-roof-stage { display: grid; justify-items: center; gap: 6px; padding: 12px 10px 8px; border: 1px solid #39505d; border-radius: 10px; background: #0f202c; }
-#demoRoofBoard {
+.demo-roof-board {
   position: relative;
   width: 100%;
   aspect-ratio: 8 / 7.5;
@@ -53,7 +60,7 @@
   background-color: #304653;
   background-image: linear-gradient(to right, #a5bdc424 1px, transparent 1px), linear-gradient(to bottom, #a5bdc424 1px, transparent 1px);
 }
-#demoRoofBoard[data-placing="true"] { cursor: crosshair; }
+.demo-roof-board[data-placing="true"] { cursor: crosshair; }
 .demo-roof-ridge { position: absolute; inset: 50% 0 auto; z-index: 1; border-top: 2px dashed #ffd88c; pointer-events: none; }
 .demo-roof-front { color: #c7dce4; font-size: .79rem; font-weight: 650; text-align: center; }
 .demo-roof-panel, .demo-panel-ghost {
@@ -73,7 +80,7 @@
 .demo-roof-panel[aria-pressed="true"], .demo-roof-panel:focus-visible { outline: 2px solid #ffd88c; outline-offset: -2px; z-index: 2; }
 .demo-panel-ghost { z-index: 3; opacity: .79; pointer-events: none; }
 .demo-panel-ghost[data-valid="false"] { border-color: #ffc1b6; background: #872f37; }
-#demoRoofMessage { min-height: 1.35em; margin: 7px 0; }
+.demo-roof-message { min-height: 1.35em; margin: 7px 0; }
 .demo-plan-view { display: inline-flex; min-height: 44px; align-items: center; color: var(--ink); font-weight: 700; }
 #demoSceneTitle { scroll-margin-top: 142px; }
 

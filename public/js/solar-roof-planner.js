@@ -1,12 +1,12 @@
 (function () {
   'use strict';
 
-  const $ = id => document.getElementById(id);
   const format = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 });
   const directions = ['Bắc', 'Đông Bắc', 'Đông', 'Đông Nam', 'Nam', 'Tây Nam', 'Tây', 'Tây Bắc'];
   const bearing = azimuth => directions[azimuth / 45];
 
-  function create(onChange) {
+  function create(onChange, suffix = '') {
+    const $ = id => document.getElementById(id + suffix);
     const board = $('demoRoofBoard'), add = $('demoAddPanel'), ghost = $('demoPanelGhost');
     let roof, size, panels = [], requested = 0, nextId = 0;
     let selected = null, placing = false, custom = false, drag = null, ignoreClickUntil = 0;
