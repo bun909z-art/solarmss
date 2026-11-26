@@ -24,6 +24,7 @@
   let CONFIG = null;
   let PRESETS = {};
   let PRODUCTS = [];
+  let savedProductStates = new Map();
   let NEWS = [];
   let LEADS = [];
   let USERS = [];
@@ -281,7 +282,7 @@
 
       const [data, prodData, newsData, leadsData, usersData, tgData] = await Promise.all([
         api('/api/config'),
-        api('/api/products').catch(() => null),
+        api(can('products') ? '/api/admin/products' : '/api/products').catch(() => null),
         can('news') ? api('/api/admin/news').catch(() => null) : null,
         can('leads') ? api('/api/admin/leads').catch(() => null) : null,
         isSuper ? api('/api/admin/users').catch(() => ({ users: [] })) : Promise.resolve({ users: [] }),
@@ -295,7 +296,7 @@
       $('adminFavicon').href = brand.faviconUrl || '/assets/favicon.png?v=mss';
       PRESETS = data.presets || {};
       datasetReady = { products: Array.isArray(prodData?.products), news: Array.isArray(newsData?.articles), leads: Array.isArray(leadsData?.leads) };
-      PRODUCTS = datasetReady.products ? prodData.products : [];
+      setLoadedProducts(datasetReady.products ? prodData.products : []);
       NEWS = datasetReady.news ? newsData.articles : [];
       LEADS = datasetReady.leads ? leadsData.leads : [];
       $('btnSaveProds').disabled = !datasetReady.products;
@@ -624,6 +625,39 @@
   };
 
   // ---------- PRODUCT CATALOG MANAGER ----------
+  function setLoadedProducts(products) {
+    PRODUCTS = products;
+    savedProductStates = new Map(products.map(product => [product.id, {
+      active: product.active !== false, stock: productStock(product)
+    }]));
+  }
+
+  function publicationChanged(product, saved = savedProductStates.get(product.id)) {
+    return !saved || saved.active !== (product.active !== false) || saved.stock !== productStock(product);
+  }
+
+  function productPublication(product) {
+    const saved = savedProductStates.get(product.id);
+    if (!saved) return 'Sản phẩm mới · chờ lưu';
+    if (publicationChanged(product, saved)) return 'Có thay đổi · chờ lưu';
+    return saved.active ? 'Đã đăng' : 'Đang ẩn';
+  }
+
+  function updateProductPublication() {
+    if (!datasetReady.products) {
+      $('prodPublicationSummary').textContent = '';
+      $('btnHiddenInStock').hidden = true;
+      return;
+    }
+    const saved = [...savedProductStates.values()];
+    const published = saved.filter(state => state.active).length;
+    const hiddenInStock = saved.filter(state => !state.active && state.stock === 'in_stock').length;
+    const pending = savedProductStates.size !== PRODUCTS.length ||
+      PRODUCTS.some(product => publicationChanged(product));
+    $('prodPublicationSummary').textContent = `${published} đã đăng · ${hiddenInStock} còn hàng nhưng đang ẩn${pending ? ' · Bấm Lưu danh mục sản phẩm để áp dụng thay đổi' : ''}`;
+    $('btnHiddenInStock').hidden = !PRODUCTS.some(product => product.active === false && productStock(product) === 'in_stock');
+  }
+
   function filteredProducts() {
     const query = normalizeSearch($('prodSearch').value);
     const stock = $('prodStockFilter').value;
@@ -647,6 +681,7 @@
   function renderProdList() {
     const el = $('prodListEditor');
     if (!el) return;
+    updateProductPublication();
     if ($('prodCount')) $('prodCount').textContent = PRODUCTS.length;
     const filtered = filteredProducts();
     const visible = new Set(filtered.map(({ p }) => p));
@@ -661,15 +696,19 @@
         <label class="adm-check"><input type="checkbox" data-p-select="${idx}" aria-label="Chọn ${escapeAttr(p.name)}" ${selectedProducts.has(p) ? 'checked' : ''}> Chọn để cập nhật hàng loạt</label>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
           <img src="${escapeAttr(p.imageUrl || '/assets/prod-' + p.category + '.jpg')}" alt="" style="width:36px;height:36px;border-radius:7px;object-fit:cover;border:1px solid #E2E8F0;flex:none">
-          <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;flex:1;min-width:0">
-            <input type="checkbox" data-p-act="${idx}" ${p.active !== false ? 'checked' : ''}>
-            <span style="color:#D9560B">[${catLabel[p.category] || p.category}]</span>
+          <div style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;flex:1;min-width:0">
+            <span style="color:#D9560B;white-space:nowrap">[${catLabel[p.category] || p.category}]</span>
             <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeAttr(p.name)}</span>
-          </label>
+          </div>
           <label class="btn-ghost small" style="padding:4px 7px;font-size:11px;cursor:pointer;white-space:nowrap" title="Tải ảnh sản phẩm">
             Đổi ảnh<input type="file" accept="image/*" data-p-img="${idx}" hidden>
           </label>
           <button type="button" class="del-btn" data-p-del="${idx}" title="Xóa">×</button>
+        </div>
+        <div class="adm-product-publication">
+          <label><input type="checkbox" data-p-act="${idx}" aria-label="Hiện trên trang khách: ${escapeAttr(p.name)}" ${p.active !== false ? 'checked' : ''}> Hiện trên trang khách</label>
+          <span data-p-publication="${idx}">${productPublication(p)}</span>
+          ${savedProductStates.get(p.id)?.active ? `<a href="/products?id=${encodeURIComponent(p.id)}" target="_blank" rel="noopener">Xem trang khách</a>` : ''}
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
           <input type="text" class="f-input" data-p-name="${idx}" value="${escapeAttr(p.name)}" placeholder="Tên sản phẩm">
@@ -708,8 +747,13 @@
       updateProductSelection();
     });
     el.querySelectorAll('[data-p-act]').forEach(cb => cb.onchange = () => {
-      PRODUCTS[+cb.dataset.pAct].active = cb.checked;
+      const idx = Number(cb.dataset.pAct);
+      PRODUCTS[idx].active = cb.checked;
       if ($('prodVisibility').value !== 'all') renderProdList();
+      else {
+        el.querySelector(`[data-p-publication="${idx}"]`).textContent = productPublication(PRODUCTS[idx]);
+        updateProductPublication();
+      }
       pushPreview();
     });
     el.querySelectorAll('[data-p-name]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pName].name = inp.value; pushPreview(); });
@@ -731,6 +775,11 @@
       PRODUCTS[+sel.dataset.pStock].manualStockOverride = true;
       sel.style.color = st === 'out_of_stock' ? '#B91C1C' : (st === 'contact' ? '#B45309' : '#047857');
       if ($('prodStockFilter').value !== 'all') renderProdList();
+      else {
+        const idx = Number(sel.dataset.pStock);
+        el.querySelector(`[data-p-publication="${idx}"]`).textContent = productPublication(PRODUCTS[idx]);
+        updateProductPublication();
+      }
       pushPreview();
     });
     el.querySelectorAll('[data-p-note]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pNote].note = inp.value; });
@@ -805,6 +854,12 @@
   $('prodSearch').oninput = renderProdList;
   $('prodStockFilter').onchange = renderProdList;
   $('prodVisibility').onchange = renderProdList;
+  $('btnHiddenInStock').onclick = () => {
+    $('prodSearch').value = '';
+    $('prodStockFilter').value = 'in_stock';
+    $('prodVisibility').value = 'hidden';
+    $('prodFilterTabs').querySelector('[data-pcat="all"]').click();
+  };
   $('btnSelectProducts').onclick = () => {
     for (const { p } of filteredProducts()) selectedProducts.add(p);
     renderProdList();
@@ -870,7 +925,7 @@
       pane.setAttribute('aria-busy', 'true');
       try {
         const res = await api('/api/admin/products', { method: 'PUT', body: JSON.stringify({ products: PRODUCTS }) });
-        PRODUCTS = res.products;
+        setLoadedProducts(res.products);
         renderProdList(); pushPreview();
         toast(`Đã lưu ${PRODUCTS.length} sản phẩm lên máy chủ!`);
       } catch (err) { toast(err.message); }
@@ -883,7 +938,7 @@
       if (!confirm('Thay thế kho sản phẩm hiện tại bằng kho mẫu?')) return;
       try {
         const res = await api('/api/admin/products/reset', { method: 'POST' });
-        PRODUCTS = res.products;
+        setLoadedProducts(res.products);
         renderProdList(); pushPreview();
         toast('Đã khôi phục kho sản phẩm mẫu.');
       } catch (err) { toast(err.message); }
@@ -910,7 +965,7 @@
             payload = { format: 'json', mode, products: JSON.parse(reader.result) };
           }
           const res = await api('/api/admin/products/import', { method: 'POST', body: JSON.stringify(payload) });
-          PRODUCTS = res.products;
+          setLoadedProducts(res.products);
           renderProdList(); pushPreview();
           toast(`Đã cập nhật ${res.count} sản phẩm từ tệp ${file.name}!`);
         } catch (err) { toast(err.message || 'Tệp Excel/CSV/JSON không hợp lệ.'); }
@@ -1381,7 +1436,7 @@
       btn.disabled = true; btn.textContent = '⏳ Đang đồng bộ từ Google Sheet...';
       try {
         const res = await api('/api/admin/products/sync-sheet', { method: 'POST', body: JSON.stringify({ url }) });
-        PRODUCTS = res.products || PRODUCTS;
+        if (Array.isArray(res.products)) setLoadedProducts(res.products);
         if (res.config) CONFIG.sheetSync = res.config.sheetSync;
         renderProdList(); pushPreview();
         if ($('gs_status')) $('gs_status').innerHTML = `✅ Đồng bộ xong (${escapeAttr(fmtLeadTime(res.lastSyncedAt))}): <b>${escapeAttr(res.summary)}</b>`;
@@ -1566,7 +1621,7 @@
       try {
         toast('Đang kéo Kho sản phẩm từ Google Sheets...');
         const res = await api('/api/admin/gsheet/pull-products', { method: 'POST' });
-        if (Array.isArray(res.products)) { PRODUCTS = res.products; renderProdList(); pushPreview(); }
+        if (Array.isArray(res.products)) { setLoadedProducts(res.products); renderProdList(); pushPreview(); }
         renderGsheetStatus(res.status);
         toast(`Đã kéo ${res.count} sản phẩm từ Google Sheets!`);
       } catch (err) {

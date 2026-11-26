@@ -22,6 +22,10 @@
     return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
+  function normalizeSearch(value) {
+    return String(value ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/đ/g, 'd').trim();
+  }
+
   function getPrimaryContact() {
     const hotlines = (CFG && CFG.branding && CFG.branding.hotlines) || [];
     const primaryHl = hotlines[0] || { tel: '0913350597', zalo: '0913350597' };
@@ -273,11 +277,12 @@
     $('cntBat').textContent = active.filter(p => p.category === 'battery').length;
     if ($('cntAcc')) $('cntAcc').textContent = active.filter(p => p.category === 'accessory').length;
 
-    const q = searchQ.trim().toLowerCase();
+    const terms = normalizeSearch(searchQ).split(/\s+/).filter(Boolean);
     const list = active.filter(p => {
       if (activeCat !== 'all' && p.category !== activeCat) return false;
-      if (q && !(`${p.name} ${p.brand} ${p.note} ${p.description} ${p.specs || ''}`.toLowerCase().includes(q))) return false;
-      return true;
+      if (!terms.length) return true;
+      const text = normalizeSearch([p.id, p.name, p.brand, p.note, p.description, p.specs].join(' '));
+      return terms.every(term => text.includes(term));
     });
 
     $('catalogResultsTitle').textContent = activeCat === 'all' ? 'Tất cả thiết bị' : CAT_LABEL[activeCat];

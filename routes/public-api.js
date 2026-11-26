@@ -62,7 +62,7 @@ async function handlePublicApi(req, res, pathname, method) {
   }
 
   if (pathname === '/api/products' && method === 'GET') {
-    return sendJson(res, 200, { products: productStore.loadProducts() }), true;
+    return sendJson(res, 200, { products: productStore.loadProducts().filter(product => product.active !== false) }), true;
   }
 
   if (pathname === '/api/news' && method === 'GET') {

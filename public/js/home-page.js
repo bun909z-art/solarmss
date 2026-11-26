@@ -194,15 +194,24 @@
 
   function renderFeaturedProducts(products) {
     const active = (products || []).filter(p => p && p.active !== false);
+    const stockRank = product => {
+      const status = getStockMeta(product);
+      return status.out ? 2 : status.cls === 'contact-stock' ? 1 : 0;
+    };
     const maxP = Number((CFG && CFG.home && CFG.home.productsCount) || 4);
     const picks = [];
-    for (const cat of ['inverter', 'panel', 'battery', 'accessory']) {
-      const found = active.find(p => p.category === cat);
-      if (found) picks.push(found);
-    }
-    for (const p of active) {
+    const categories = ['inverter', 'panel', 'battery', 'accessory'];
+    for (const rank of [0, 1, 2]) {
+      const ranked = active.filter(p => stockRank(p) === rank);
+      for (const cat of categories) {
+        const found = ranked.find(p => p.category === cat);
+        if (found) picks.push(found);
+      }
+      for (const p of ranked) {
+        if (picks.length >= maxP) break;
+        if (!picks.some(x => x.id === p.id)) picks.push(p);
+      }
       if (picks.length >= maxP) break;
-      if (!picks.some(x => x.id === p.id)) picks.push(p);
     }
     picks.splice(maxP);
     const grid = $('homeProdsGrid');

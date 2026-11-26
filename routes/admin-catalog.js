@@ -118,10 +118,20 @@ async function handleAdminCatalog(req, res, pathname, method, authState) {
   }
 
   // ---------- PRODUCTS & EXCEL IMPORT/EXPORT ----------
+  if (pathname === '/api/admin/products' && method === 'GET') {
+    if (!requireAdmin(req, res, authState, ['products'])) return true;
+    return sendJson(res, 200, { products: productStore.loadProducts() }), true;
+  }
   if (pathname === '/api/admin/products' && (method === 'PUT' || method === 'POST')) {
     if (!requireAdmin(req, res, authState, ['products'])) return true;
     const body = await readJsonBody(req, 2 * 1024 * 1024);
-    const savedProds = productStore.saveProducts(body.products || []);
+    if (!Array.isArray(body?.products)) return sendJson(res, 400, { error: 'Danh mục sản phẩm không hợp lệ.' }), true;
+    const parsed = body.products.map((product, index) => productStore.sanitizeProduct(product, index));
+    const invalid = parsed.indexOf(null);
+    if (invalid >= 0) {
+      return sendJson(res, 400, { error: `Sản phẩm thứ ${invalid + 1} cần có tên và nhóm hợp lệ. Kho hiện tại chưa bị thay đổi.` }), true;
+    }
+    const savedProds = productStore.saveProducts(parsed);
     triggerRealtimeSheetPush('products', savedProds);
     return sendJson(res, 200, { ok: true, products: savedProds }), true;
   }
