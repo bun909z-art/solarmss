@@ -6,7 +6,7 @@
 <title id="docTitle">Hoàng Quân – Tư vấn Pin lưu trữ Hybrid</title>
 <meta name="theme-color" content="#F26A1B" id="metaTheme">
 <link rel="icon" type="image/png" href="/assets/favicon.png" id="docFavicon">
-<link rel="stylesheet" href="/css/app.css?v=33">
+<link rel="stylesheet" href="/css/app.css?v=34">
 </head>
 <body>
 
@@ -16,7 +16,7 @@
       <img id="brandLogo" src="/assets/logo-default.jpg" alt="Hoàng Quân – Electronics & Energy">
     </a>
 
-    <nav class="main-nav noprint" aria-label="Điều hướng chính"><a href="/" class="nav-link">Trang chủ</a><a href="/tuvan" class="nav-link active">Tư vấn</a><a href="/products" class="nav-link">Sản phẩm tham khảo</a><a href="/news" class="nav-link">Tin tức</a></nav>
+    <nav class="main-nav noprint" aria-label="Điều hướng chính"><a href="/" class="nav-link">Trang chủ</a><a href="/tuvan" class="nav-link active" aria-current="page">Tư vấn</a><a href="/products" class="nav-link">Sản phẩm</a><a href="/news" class="nav-link">Tin tức</a></nav>
     <div class="topbar-right">
       <div class="hotline" id="hotlineWrap">
         <span class="hotline-label" id="hotlineLabel">Hotline tư vấn kỹ thuật</span>
@@ -55,15 +55,14 @@
 
 
   <!-- MANDATORY CUSTOMER INFO GATE -->
-  <section class="card lead-gate-card" id="leadGateCard" style="max-width:680px;margin:0 auto 24px">
+  <section class="card lead-gate-card" id="leadGateCard" aria-labelledby="leadGateTitle">
     <div class="card-head">
-      <span class="step-num">1</span>
       <div>
-        <h2 style="margin:0">Nhập thông tin khách hàng để bắt đầu tư vấn</h2>
-        <p style="margin:4px 0 0;font-size:13.5px;color:var(--ink-2)">Vui lòng điền đầy đủ Họ tên, Số điện thoại và Địa chỉ để mở công cụ tính Pin Hybrid và nhận gợi ý Combo phù hợp.</p>
+        <h2 id="leadGateTitle">Thông tin tư vấn</h2>
+        <p>Điền thông tin bên dưới để tính dung lượng pin và xem cấu hình gợi ý.</p>
       </div>
     </div>
-    <form id="leadGateForm" novalidate style="display:flex;flex-direction:column;gap:12px;margin-top:8px">
+    <form id="leadGateForm" novalidate>
       <div>
         <label class="lbl" for="gateName">Họ và tên <span style="color:#DC2626">*</span></label>
         <div class="field">
@@ -87,8 +86,8 @@
           </div>
         </div>
       </div>
-      <div id="gateErr" style="color:#DC2626;font-size:13px;font-weight:700;min-height:18px"></div>
-      <button type="submit" class="btn-primary" style="width:100%;padding:13px 18px;font-size:15px">Tiếp tục tính Pin Hybrid &amp; xem Combo →</button>
+      <div id="gateErr" class="gate-error" role="alert"></div>
+      <button type="submit" class="btn-primary">Mở công cụ tính pin</button>
     </form>
   </section>
 

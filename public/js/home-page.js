@@ -66,20 +66,14 @@
       nav.hidden = isRestrict && visibleCount <= 1;
     }
     document.body.classList.toggle('maint-single-page', isRestrict && allowed.length <= 1);
-    document.querySelectorAll('a.home-quick-card, a.home-more-link, a.art-tool-btn.primary-outline').forEach(el => {
+    document.querySelectorAll('.home-hero-actions a, a.home-quick-card, a.home-more-link').forEach(el => {
       const href = el.getAttribute('href');
       if (href && ['/', '/tuvan', '/products', '/news'].includes(href)) {
         el.hidden = isRestrict && !allowed.includes(href);
       }
     });
-    const qg = document.getElementById('homeQuickGrid');
-    if (qg && isRestrict) {
-      const visCards = Array.from(qg.querySelectorAll('a.home-quick-card')).filter(x => !x.hidden);
-      if (!visCards.length) qg.hidden = true;
-      else qg.style.gridTemplateColumns = `repeat(${Math.min(3, visCards.length)}, minmax(0, 1fr))`;
-    } else if (qg) {
-      qg.style.gridTemplateColumns = '';
-    }
+    const quickGrid = $('homeQuickGrid');
+    if (!quickGrid.querySelector('a:not([hidden])')) quickGrid.hidden = true;
   }
 
   function applyTheme(cfg) {
@@ -142,10 +136,10 @@
       if (Array.isArray(hm.quickCards) && hm.quickCards.length) {
         $('homeQuickGrid').innerHTML = hm.quickCards.map((c, idx) => `
           <a href="${esc(c.href || (idx === 0 ? '/tuvan' : idx === 1 ? '/products' : '/news'))}" class="card home-quick-card${c.primary || idx === 0 ? ' primary-card' : ''}">
-            <div class="hq-icon">${esc(c.icon || '⚡')}</div>
+            <div class="hq-icon" aria-hidden="true">${esc(c.icon || '⚡')}</div>
             <h3>${esc(c.title || '')}</h3>
             <p>${esc(c.desc || '')}</p>
-            <span class="news-readmore">${esc(c.cta || 'Xem ngay →')}</span>
+            <span class="news-readmore">${esc((c.cta || 'Xem ngay').replace(/\s*→\s*$/, ''))}</span>
           </a>
         `).join('');
       }
@@ -163,20 +157,22 @@
     slideIdx = ((idx % SLIDES.length) + SLIDES.length) % SLIDES.length;
     const card = track.children[slideIdx];
     if (card) {
-      track.scrollTo({ left: card.offsetLeft - track.offsetLeft, behavior: 'smooth' });
+      track.scrollTo({ left: card.offsetLeft, behavior: reducedMotion.matches ? 'instant' : 'smooth' });
     }
     updateDots();
   }
 
   function updateDots() {
     $('sliderDots').querySelectorAll('.slider-dot').forEach((d, i) => {
-      d.classList.toggle('active', i === slideIdx);
+      if (i === slideIdx) d.setAttribute('aria-current', 'true');
+      else d.removeAttribute('aria-current');
     });
   }
 
   function startAutoSlide() {
     stopAutoSlide();
-    if (SLIDES.length <= 1) return;
+    if (SLIDES.length <= 1 || reducedMotion.matches || $('homeSliderSection').hidden ||
+        $('homeSliderSection').matches(':focus-within')) return;
     const hm = (CFG && CFG.home) || {};
     if (hm.autoSlide === false) return;
     const ms = Math.max(2000, Math.min(15000, (Number(hm.sliderIntervalSec) || 4.5) * 1000));
@@ -191,8 +187,11 @@
     const featured = pub.filter(a => a.featured !== false);
     SLIDES = featured.length ? featured : pub.slice(0, 6);
     const track = $('featuredSliderTrack');
+    slideIdx = 0;
+    $('sliderControls').hidden = SLIDES.length <= 1;
+    stopAutoSlide();
     if (!SLIDES.length) {
-      track.innerHTML = '<div class="card" style="width:100%;text-align:center;color:var(--ink-3)">Chưa có bài viết nổi bật nào.</div>';
+      track.innerHTML = '<p class="card featured-empty">Chưa có bài viết nổi bật nào.</p>';
       $('sliderDots').innerHTML = '';
       return;
     }
@@ -200,40 +199,25 @@
     track.innerHTML = SLIDES.map(a => `
       <a class="featured-slide-card" href="/news?id=${encodeURIComponent(a.id)}">
         <div class="fslide-img">
-          <img src="${esc(a.imageUrl || '/assets/prod-panel.jpg')}" alt="${esc(a.title)}">
-          <span class="prod-cat-tag">${esc(a.category || 'Tin tức')}</span>
+          <img src="${esc(a.imageUrl || '/assets/solar-home.jpg')}" alt="" loading="lazy">
         </div>
         <div class="fslide-body">
-          <div class="fslide-badge-row"><span>★ ${esc(a.category || 'Tin tức')}</span><span>·</span><span>📅 ${esc(fmtDate(a.publishedAt))}</span></div>
+          <div class="fslide-badge-row"><span>${esc(a.category || 'Tin tức')}</span>${a.publishedAt ? `<span>${esc(fmtDate(a.publishedAt))}</span>` : ''}</div>
           <h3>${esc(a.title)}</h3>
           ${a.summary ? `<p>${esc(a.summary)}</p>` : ''}
-          <span class="fslide-cta">Đọc bài viết →</span>
+          <span class="fslide-cta">Đọc bài viết</span>
         </div>
       </a>
     `).join('');
 
     $('sliderDots').innerHTML = SLIDES.map((_, i) =>
-      `<button type="button" class="slider-dot${i === 0 ? ' active' : ''}" data-sdot="${i}" aria-label="Bài ${i + 1}"></button>`
+      `<button type="button" class="slider-dot" data-sdot="${i}" aria-label="Bài ${i + 1}"></button>`
     ).join('');
     $('sliderDots').querySelectorAll('[data-sdot]').forEach(btn => {
       btn.onclick = () => { scrollToSlide(+btn.dataset.sdot); startAutoSlide(); };
     });
 
-    track.addEventListener('mouseenter', stopAutoSlide);
-    track.addEventListener('mouseleave', startAutoSlide);
-    track.addEventListener('touchstart', stopAutoSlide, { passive: true });
-    track.addEventListener('scroll', () => {
-      const cards = Array.from(track.children);
-      if (!cards.length) return;
-      const curLeft = track.scrollLeft;
-      let best = 0, bestDist = Infinity;
-      cards.forEach((c, i) => {
-        const dist = Math.abs((c.offsetLeft - track.offsetLeft) - curLeft);
-        if (dist < bestDist) { bestDist = dist; best = i; }
-      });
-      if (best !== slideIdx) { slideIdx = best; updateDots(); }
-    }, { passive: true });
-
+    scrollToSlide(0);
     startAutoSlide();
   }
 
@@ -279,6 +263,25 @@
     }).join('');
   }
 
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  reducedMotion.addEventListener('change', startAutoSlide);
+  const slider = $('homeSliderSection');
+  slider.addEventListener('mouseenter', stopAutoSlide);
+  slider.addEventListener('mouseleave', startAutoSlide);
+  slider.addEventListener('touchstart', stopAutoSlide, { passive: true });
+  slider.addEventListener('focusin', stopAutoSlide);
+  slider.addEventListener('focusout', e => {
+    if (!slider.contains(e.relatedTarget)) requestAnimationFrame(startAutoSlide);
+  });
+  const track = $('featuredSliderTrack');
+  track.addEventListener('scroll', () => {
+    if (!SLIDES.length) return;
+    const visibleIndex = Math.round(track.scrollLeft / track.clientWidth);
+    if (Number.isFinite(visibleIndex) && visibleIndex !== slideIdx) {
+      slideIdx = visibleIndex;
+      updateDots();
+    }
+  }, { passive: true });
   $('slidePrev').onclick = () => { scrollToSlide(slideIdx - 1); startAutoSlide(); };
   $('slideNext').onclick = () => { scrollToSlide(slideIdx + 1); startAutoSlide(); };
 
