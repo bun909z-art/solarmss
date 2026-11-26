@@ -109,7 +109,7 @@
       $('homeQuickGrid').hidden = hm.showQuickCards === false;
       if (Array.isArray(hm.quickCards) && hm.quickCards.length) {
         $('homeQuickGrid').innerHTML = hm.quickCards.map((c, idx) => `
-          <a href="${esc(c.href || (idx === 0 ? '/tuvan' : idx === 1 ? '/products' : '/news'))}" class="card home-quick-card${c.primary || idx === 0 ? ' primary-card' : ''}">
+          <a href="${esc(c.href || (idx === 0 ? '/tuvan' : idx === 1 ? '/products' : '/news'))}" class="card home-quick-card">
             <div class="hq-icon" aria-hidden="true">${esc(c.icon || '⚡')}</div>
             <h3>${esc(c.title || '')}</h3>
             <p>${esc(c.desc || '')}</p>

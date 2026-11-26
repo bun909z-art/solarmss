@@ -181,8 +181,7 @@ body:has(.home-main) { background: var(--solar-night); }
   text-decoration: none;
   box-shadow: none;
 }
-.home-quick-card.primary-card { background: #1c332b; }
-.home-quick-card:hover { background: #244035; }
+.home-quick-card:hover { background: var(--surface-2); }
 .home-quick-card:focus-visible { outline-offset: -3px; }
 .home-quick-card .hq-icon {
   display: grid;
@@ -350,8 +349,6 @@ body.coordinated-theme .topbar { background: var(--theme-band); }
   background: linear-gradient(90deg, var(--theme-band), color-mix(in srgb, var(--theme-band) 88%, transparent) 19%, transparent 82%);
 }
 .coordinated-theme .home-action-secondary { background: var(--theme-band-raised); }
-.coordinated-theme .home-quick-card.primary-card,
-.coordinated-theme .home-quick-card:hover,
 .coordinated-theme .home-more-link,
 .coordinated-theme .home-main .prod-spec-pill {
   background: var(--surface-2);
