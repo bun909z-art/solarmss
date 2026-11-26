@@ -72,7 +72,15 @@
               <option value="overcast">Nhiều mây</option><option value="rain">Mưa</option>
             </select>
           </label>
-          <label>Mức dùng điện (kWh/ngày)<input id="demoLoad" type="number" min="0" max="300" step="0.1" value="20" required></label>
+          <label>Cách đặt tải nhà
+            <select id="demoLoadMode">
+              <option value="peak">Theo đỉnh công suất</option>
+              <option value="daily">Theo điện năng trong ngày</option>
+            </select>
+          </label>
+          <label id="demoPeakLoadField">Đỉnh tải mong muốn (kW)<input id="demoPeakLoad" type="number" min="0" max="20" step="0.1" value="20" required></label>
+          <label id="demoDailyLoadField" hidden>Mức dùng điện (kWh/ngày)<input id="demoLoad" type="number" min="0" max="300" step="0.1" value="20" required disabled></label>
+          <p id="demoLoadNote" class="demo-muted"></p>
           <label class="demo-inline-check"><input id="demoExportSurplus" type="checkbox"> Mô phỏng phát điện dư lên lưới</label>
         </fieldset>
         <p class="demo-muted demo-equipment" id="demoEquipmentNote"></p>
@@ -124,6 +132,7 @@
         <div class="demo-roof-toolbar">
           <button class="demo-plan-add" type="button" id="demoAddPanel" aria-pressed="false">＋ Tấm pin mới</button>
           <button type="button" id="demoAutoPanels" title="Tính lại toàn bộ vị trí trên mái">Xếp lại</button>
+          <button type="button" id="demoBalanceCurrentRoof" title="Cân tấm giữa hai mặt mái hoặc giữa các hàng">Cân tấm trên mái này</button>
           <button type="button" id="demoRotatePanel" disabled>Xoay tấm</button>
           <button type="button" id="demoRemovePanel" disabled>Gỡ tấm</button>
           <button type="button" id="demoClearRoof" disabled>Dọn mái</button>
@@ -164,6 +173,7 @@
           <h2 id="demoSystemTitle">Dòng điện trong hệ thống</h2>
           <span id="demoFlowHour" class="demo-roof-result"></span>
         </div>
+        <p class="demo-muted">Công suất trung bình trong giờ đang chọn.</p>
         <div class="demo-flow-diagram" aria-label="Sơ đồ mô phỏng dòng năng lượng">
           <div class="demo-flow-node" data-area="pv"><strong>Tấm pin</strong><span id="demoFlowPv"></span></div>
           <div class="demo-flow-link" data-flow="pv"></div>
@@ -179,7 +189,14 @@
           <div class="demo-flow-link" data-flow="load"></div>
           <div class="demo-flow-node" data-area="load"><strong>Tải tiêu thụ</strong><span id="demoFlowLoad"></span></div>
         </div>
-        <dl id="demoFlowStats" class="demo-flow-stats"></dl>
+        <dl id="demoFlowStats" class="demo-flow-stats">
+          <div><dt>PV → biến tần</dt><dd id="demoFlowPvPower"></dd></div>
+          <div><dt>Biến tần → AC</dt><dd id="demoFlowAcPower"></dd></div>
+          <div><dt>Sạc pin</dt><dd id="demoFlowChargePower"></dd></div>
+          <div><dt>Xả pin</dt><dd id="demoFlowDischargePower"></dd></div>
+          <div><dt>Điện từ lưới</dt><dd id="demoFlowImportPower"></dd></div>
+          <div><dt>Phát lên lưới</dt><dd id="demoFlowExportPower"></dd></div>
+        </dl>
         <p id="demoInverterHourly" class="demo-muted"></p>
         <details class="demo-details" open>
           <summary>Phân string và biến tần</summary>
@@ -217,7 +234,7 @@
         </details>
         <details class="demo-details">
           <summary>Giả định mô phỏng</summary>
-          <p>Ngày đại diện giữa tháng, theo giờ mặt trời của khu vực đã chọn. Bức xạ và nhiệt độ lấy từ kịch bản giả lập. Tải dồn nhiều hơn vào buổi tối. Tổn hao hệ DC 6%, hiệu suất biến tần 97%, hiệu suất sạc và xả 95% mỗi chiều, dung lượng dự phòng 10%. Giới hạn sạc/xả lấy theo mức thấp hơn giữa công suất biến tần và 0,5 kW cho mỗi kWh dung lượng. Pin chỉ sạc bằng điện mặt trời dư.</p>
+          <p>Ngày đại diện giữa tháng, theo giờ mặt trời của khu vực đã chọn. Bức xạ và nhiệt độ lấy từ kịch bản giả lập. Tải nhà giả lập có giờ thấp điểm và các đỉnh sáng, trưa, tối. Tổn hao hệ DC 6%, hiệu suất biến tần 97%, hiệu suất sạc và xả 95% mỗi chiều, dung lượng dự phòng 10%. Giới hạn sạc/xả lấy theo mức thấp hơn giữa công suất biến tần và 0,5 kW cho mỗi kWh dung lượng. Pin chỉ sạc bằng điện mặt trời dư.</p>
           <p>Kết quả dùng để so sánh phương án sơ bộ. Sản lượng được tính theo số tấm đã đặt và hướng từng mặt mái. Mô hình bỏ qua che bóng, khả năng chịu tải của mái, kiểm tra chuỗi MPPT, khả năng tương thích thiết bị và dữ liệu thời tiết đo thực tế.</p>
         </details>
       </section>

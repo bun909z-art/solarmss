@@ -29,6 +29,7 @@
   const enabled = () => !document.body.classList.contains('solar-demo-off');
   const clock = hour => String(hour).padStart(2, '0') + ':00';
   const energy = value => format.format(value) + ' kWh';
+  const power = value => format.format(value) + ' kW';
   const percent = value => whole.format(value) + '%';
   const defaults = {
     panel: [{ id: 'demo-panel-550', name: 'Tấm pin mẫu', wattWp: 550 }, { id: 'demo-panel-610', name: 'Tấm pin mẫu', wattWp: 610 }],
@@ -49,6 +50,25 @@
   let drag = null;
   const roofPlanner = SolarRoofPlanner.create(simulate);
   const annexPlanner = SolarRoofPlanner.create(simulate, 'Aux');
+
+  for (const [name, link] of Object.entries(flowLinks)) {
+    const vertical = name === 'ac' || name === 'load';
+    link.dataset.axis = vertical ? 'vertical' : 'horizontal';
+    link.setAttribute('aria-hidden', 'true');
+    for (const direction of ['forward', 'reverse']) {
+      const stream = document.createElement('span');
+      stream.className = 'demo-flow-stream';
+      stream.dataset.travel = direction;
+      const arrow = document.createElement('span');
+      arrow.className = 'demo-flow-arrow';
+      arrow.dataset.travel = direction;
+      arrow.textContent = direction === 'forward' ? (vertical ? '↓' : '→') : (vertical ? '↑' : '←');
+      link.append(stream, arrow);
+    }
+  }
+  new IntersectionObserver(([entry]) => {
+    entry.target.toggleAttribute('data-visible', entry.isIntersecting);
+  }).observe(document.querySelector('.demo-flow-diagram'));
 
   $('demoRoofWidthAux').defaultValue = '4,5';
   $('demoRoofDepthAux').defaultValue = '4';
@@ -126,6 +146,12 @@
   }
 
   function readSettings() {
+    const loadMode = $('demoLoadMode').value;
+    const daily = loadMode === 'daily';
+    $('demoDailyLoadField').hidden = !daily;
+    $('demoLoad').disabled = !daily;
+    $('demoPeakLoadField').hidden = daily;
+    $('demoPeakLoad').disabled = daily;
     const batteryOn = Boolean($('demoBattery').value);
     const batteryAuxOn = Boolean($('demoBatteryAux').value);
     const inverterAuxOn = Boolean($('demoInverterAux').value);
@@ -181,7 +207,8 @@
       initialSoc: batteryGroups.length ? equipmentValue('demoInitialSoc') : 0,
       latitude: Number($('demoLatitude').value),
       month: Number($('demoMonth').value), weather: $('demoWeather').value,
-      dailyLoad: equipmentValue('demoLoad'), exportSurplus: $('demoExportSurplus').checked
+      loadMode, dailyLoad: daily ? equipmentValue('demoLoad') : 0,
+      peakLoad: daily ? 0 : equipmentValue('demoPeakLoad'), exportSurplus: $('demoExportSurplus').checked
     };
   }
 
@@ -193,27 +220,26 @@
     const toAc = row.pv + row.discharge - row.charge;
     const unused = row.surplus - row.export;
     $('demoFlowHour').textContent = clock(row.hour);
-    $('demoFlowHub').textContent = energy(toAc + row.grid);
-    $('demoFlowGrid').textContent = row.grid > 0 ? 'Mua ' + energy(row.grid)
-      : row.export > 0 ? 'Nhận ' + energy(row.export) : '0 kWh';
-    $('demoFlowLoad').textContent = energy(row.load);
-    $('demoFlowUnused').textContent = energy(unused);
-    $('demoFlowStats').innerHTML = definitionList([
-      ['PV → biến tần', energy(row.pv + row.clipping)], ['Biến tần → AC', energy(toAc)],
-      ['Sạc pin', energy(row.charge)], ['Xả pin', energy(row.discharge)],
-      ['Điện từ lưới', energy(row.grid)], ['Phát lên lưới', energy(row.export)]
-    ]);
+    $('demoFlowGrid').textContent = row.grid > 0 ? 'Mua ' + power(row.grid)
+      : row.export > 0 ? 'Nhận ' + power(row.export) : '0 kW';
+    const values = {
+      demoFlowHub: toAc + row.grid, demoFlowLoad: row.load, demoFlowUnused: unused,
+      demoFlowPvPower: row.pv + row.clipping, demoFlowAcPower: toAc, demoFlowChargePower: row.charge,
+      demoFlowDischargePower: row.discharge, demoFlowImportPower: row.grid, demoFlowExportPower: row.export
+    };
+    for (const [id, value] of Object.entries(values)) $(id).textContent = power(value);
     const paths = {
       pv: row.pv + row.clipping, ac: toAc, battery: row.charge - row.discharge,
       grid: row.export - row.grid, load: row.load, unused: -unused
     };
     for (const [name, value] of Object.entries(paths)) {
       const link = flowLinks[name];
-      if (Math.abs(value) < 0.001) delete link.dataset.direction;
-      else link.dataset.direction = value > 0 ? 'forward' : 'reverse';
+      const direction = Math.abs(value) < 0.001 ? '' : value > 0 ? 'forward' : 'reverse';
+      if (direction && link.dataset.direction !== direction) link.dataset.direction = direction;
+      else if (!direction && link.dataset.direction) delete link.dataset.direction;
     }
     $('demoInverterHourly').textContent = 'PV qua từng biến tần trong giờ này · ' +
-      row.inverterProduction.map((value, index) => 'BT ' + (index + 1) + ': ' + energy(value)).join(' · ');
+      row.inverterProduction.map((value, index) => 'BT ' + (index + 1) + ': ' + power(value)).join(' · ');
   }
 
   function renderSystem() {
@@ -327,6 +353,11 @@
 
   function renderReport() {
     const { results, totals, dcKw, capacity } = model;
+    const limit = Math.min(model.inverterKw, 20);
+    $('demoLoadNote').textContent = 'Đỉnh mô phỏng ' + power(model.loadPeak) + ' · ' + energy(totals.load) +
+      ' mỗi ngày. Giới hạn theo cụm biến tần: ' + power(limit) + '.' +
+      (settings.loadMode === 'daily' && totals.load + .01 < settings.dailyLoad
+        ? ' Điện năng mô phỏng đã giảm để giữ giới hạn này.' : '');
     const autonomy = totals.load > 0 ? (1 - totals.grid / totals.load) * 100 : null;
     $('demoTotals').innerHTML = definitionList([
       ['Sản lượng PV', energy(totals.pv)], ['Tải tiêu thụ', energy(totals.load)],

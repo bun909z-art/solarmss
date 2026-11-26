@@ -69,9 +69,9 @@
     });
   }
 
-  function pack(panels, count, size, roof, orientations) {
+  function pack(panels, count, size, roof, orientations, roofFaces = faces(roof).reverse()) {
     const placed = panels.slice(0, count);
-    for (const face of faces(roof).reverse()) {
+    for (const face of roofFaces) {
       for (const rotated of orientations) {
         const footprint = dimensions({ rotated }, size, roof);
         const dx = upToCentimetre(footprint.width + gap);
@@ -105,6 +105,55 @@
     return { main: onMain, annex: placed - onMain, remainder: count - placed };
   }
 
+  function centerFace(count, size, roof, face) {
+    let best = [];
+    for (const rotated of [false, true]) {
+      const { width, depth } = dimensions({ rotated }, size, roof);
+      const columns = Math.floor((roof.width - 2 * edge + gap + 1e-6) / (width + gap));
+      const rows = Math.floor((face.to - face.from - 2 * edge + gap + 1e-6) / (depth + gap));
+      const placed = Math.min(count, Math.max(0, columns) * Math.max(0, rows));
+      if (placed <= best.length) continue;
+      const usedRows = Math.min(placed, rows);
+      const firstZ = (face.from + face.to - usedRows * depth - (usedRows - 1) * gap) / 2;
+      best = [];
+      for (let row = 0; row < usedRows; row++) {
+        const inRow = Math.floor(placed / usedRows) + (row < placed % usedRows ? 1 : 0);
+        const firstX = (roof.width - inRow * width - (inRow - 1) * gap) / 2;
+        for (let column = 0; column < inRow; column++) {
+          best.push({ x: firstX + column * (width + gap), z: firstZ + row * (depth + gap), rotated });
+        }
+      }
+    }
+    if (best.length === count) return best;
+    // Mixed orientations can fit more modules in a tight space.
+    for (const order of [[false, true], [true, false]]) {
+      const mixed = pack([], count, size, roof, order, [face]);
+      if (mixed.length <= best.length) continue;
+      const right = Math.max(...mixed.map(panel => panel.x + dimensions(panel, size, roof).width));
+      const bottom = Math.max(...mixed.map(panel => panel.z + dimensions(panel, size, roof).depth));
+      const dx = (roof.width - right - Math.min(...mixed.map(panel => panel.x))) / 2;
+      const dz = (face.from + face.to - bottom - Math.min(...mixed.map(panel => panel.z))) / 2;
+      best = mixed.map(panel => ({ ...panel, x: panel.x + dx, z: panel.z + dz }));
+    }
+    return best;
+  }
+
+  function balanceOnRoof(count, size, roof, createId) {
+    const roofFaces = faces(roof);
+    let panels;
+    if (roofFaces.length === 1) {
+      panels = centerFace(count, size, roof, roofFaces[0]);
+    } else {
+      const [back, front] = roofFaces;
+      const frontLimit = centerFace(count, size, roof, front).length;
+      const backLimit = centerFace(count, size, roof, back).length;
+      const placed = Math.min(count, frontLimit + backLimit);
+      const onFront = Math.min(frontLimit, Math.max(Math.ceil(placed / 2), placed - backLimit));
+      panels = [...centerFace(onFront, size, roof, front), ...centerFace(placed - onFront, size, roof, back)];
+    }
+    return panels.map(panel => ({ ...panel, id: createId() }));
+  }
+
   function arrays(panels, size, roof) {
     const groups = faces(roof).map(face => ({ azimuth: face.azimuth, tilt: face.tilt, count: 0 }));
     for (const panel of panels) {
@@ -114,7 +163,7 @@
     return groups.filter(group => group.count > 0);
   }
 
-  const api = { limit, snap, parseMeasure, moduleSize, faces, elevation, dimensions, fits, fill, arrays, balance };
+  const api = { limit, snap, parseMeasure, moduleSize, faces, elevation, dimensions, fits, fill, arrays, balance, balanceOnRoof };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else window.SolarRoof = api;
 })();

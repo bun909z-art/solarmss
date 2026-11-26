@@ -9,7 +9,7 @@
     const $ = id => document.getElementById(id + suffix);
     const board = $('demoRoofBoard'), add = $('demoAddPanel'), ghost = $('demoPanelGhost');
     let roof, size, panels = [], requested = 0, nextId = 0;
-    let selected = null, placing = false, custom = false, drag = null, ignoreClickUntil = 0;
+    let selected = null, placing = false, mode = 'auto', drag = null, ignoreClickUntil = 0;
     const newId = () => ++nextId;
     const selectedPanel = () => panels.find(panel => panel.id === selected);
     const report = message => { $('demoRoofMessage').textContent = message; };
@@ -23,7 +23,9 @@
         return report('Đã xếp ' + panels.length + ' tấm. Còn ' + (requested - panels.length) +
           ' tấm chưa có chỗ phù hợp với mái và kích thước tấm đang chọn.');
       }
-      report('Đã xếp đủ ' + requested + ' tấm. Có thể kéo hoặc xoay từng tấm để chỉnh lại.');
+      const balanced = roof.type === 'gable' ? ' giữa hai mặt mái.' : ' theo hàng cân giữa mái.';
+      report(mode === 'balanced' ? 'Đã cân ' + requested + ' tấm' + balanced :
+        'Đã xếp đủ ' + requested + ' tấm. Có thể kéo hoặc xoay từng tấm để chỉnh lại.');
     }
 
     function position(element, panel) {
@@ -39,6 +41,7 @@
       $('demoRemovePanel').disabled = !selectedPanel();
       $('demoClearRoof').disabled = !panels.length && !requested;
       $('demoAutoPanels').disabled = !requested;
+      $('demoBalanceCurrentRoof').disabled = !requested;
       add.disabled = panels.length >= SolarRoof.limit;
       add.setAttribute('aria-pressed', String(placing));
       board.dataset.placing = String(placing);
@@ -87,9 +90,11 @@
       if (geometryChanged || detailsChanged || count !== requested) {
         roof = nextRoof;
         size = nextSize;
-        if (geometryChanged || count !== requested) {
+        if ((geometryChanged || count !== requested) && mode === 'balanced') {
+          panels = SolarRoof.balanceOnRoof(count, size, roof, newId);
+        } else if (geometryChanged || count !== requested) {
           const kept = [];
-          if (custom) {
+          if (mode === 'manual') {
             for (const panel of panels) if (SolarRoof.fits(panel, kept, size, roof)) kept.push(panel);
           }
           panels = SolarRoof.fill(kept, count, size, roof, newId);
@@ -106,8 +111,8 @@
       return { panels, arrays: SolarRoof.arrays(panels, size, roof) };
     }
 
-    function commit(message, adjustCount = false) {
-      custom = true;
+    function commit(message, adjustCount = false, nextMode = 'manual') {
+      mode = nextMode;
       placing = false;
       if (adjustCount) {
         requested = panels.length;
@@ -245,11 +250,17 @@
       if (!roof) return;
       panels = SolarRoof.fill([], requested, size, roof, newId);
       selected = null;
-      commit('');
+      commit('', false, 'auto');
       reportPacking();
-      custom = false;
     });
-    return { sync, reflow() { roof = null; custom = false; } };
+    $('demoBalanceCurrentRoof').addEventListener('click', () => {
+      if (!roof) return;
+      panels = SolarRoof.balanceOnRoof(requested, size, roof, newId);
+      selected = null;
+      commit('', false, 'balanced');
+      reportPacking();
+    });
+    return { sync, reflow() { roof = null; mode = 'balanced'; } };
   }
 
   window.SolarRoofPlanner = { create };

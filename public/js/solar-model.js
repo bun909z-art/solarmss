@@ -3,6 +3,13 @@
 
   const hourCount = 24;
   const rad = degrees => degrees * Math.PI / 180;
+  const householdProfile = [
+    .07, .024, .01, 0, 0, .07, .41, .72, .13, .07, .15, .19,
+    .54, .32, .08, .11, .17, .43, .86, 1, .69, .48, .19, .08
+  ];
+  const loadOrder = householdProfile.map((weight, hour) => ({ hour, weight }))
+    .filter(row => row.weight > 0).sort((a, b) => b.weight - a.weight);
+  const totalLoadWeight = loadOrder.reduce((sum, row) => sum + row.weight, 0);
   const weather = {
     sunny: { beam: 1, diffuse: 1, temperature: 32 },
     variable: { beam: 0.62, diffuse: 1.45, temperature: 29 },
@@ -61,11 +68,31 @@
     return { strings, banks };
   }
 
+  function hourlyLoads(config, inverterKw) {
+    const limit = Math.min(20, inverterKw);
+    if (config.loadMode === 'peak') {
+      const peak = Math.min(limit, Math.max(0, config.peakLoad ?? 20));
+      return householdProfile.map(weight => peak * weight);
+    }
+    const cap = config.loadMode === 'daily' ? limit : Infinity;
+    const loads = Array(hourCount).fill(0);
+    let remaining = Math.min(config.dailyLoad, cap * loadOrder.length);
+    let remainingWeight = totalLoadWeight;
+    for (const { hour, weight } of loadOrder) {
+      const load = Math.min(cap, Math.max(0, remaining * weight / remainingWeight));
+      loads[hour] = load;
+      remaining -= load;
+      remainingWeight -= weight;
+    }
+    return loads;
+  }
+
   // Each row covers one hour. Inverter and storage power caps are therefore also one-hour energy caps.
   function simulate(config) {
     const dcKw = config.panelWp * config.panelCount / 1000;
     const inverterCaps = config.topology?.banks.map(unit => unit.kw) || [config.inverterKw];
     const inverterKw = inverterCaps.reduce((sum, kw) => sum + kw, 0);
+    const loads = hourlyLoads(config, inverterKw);
     const capacity = config.batteryGroups
       ? config.batteryGroups.reduce((sum, group) => sum + group.kwh * group.count, 0)
       : config.batteryKwh * config.batteryCount;
@@ -74,7 +101,7 @@
     const storageEfficiency = 0.95;
     const pvGroups = config.topology?.strings || config.arrays ||
       [{ count: config.panelCount, azimuth: config.azimuth, tilt: config.tilt }];
-    const arrays = pvGroups.map(array => ({
+    const arrays = pvGroups.filter(array => array.count > 0).map(array => ({
       dcKw: config.panelWp * array.count / 1000, tilt: rad(array.tilt), azimuth: rad(array.azimuth),
       inverter: array.inverter ?? 0
     }));
@@ -93,13 +120,11 @@
       const inverterProduction = available.map((power, index) => Math.min(power, inverterCaps[index]));
       const pv = inverterProduction.reduce((sum, power) => sum + power, 0);
       const clipping = available.reduce((sum, power, index) => sum + Math.max(0, power - inverterCaps[index]), 0);
-      const weight = hour >= 18 && hour <= 22 ? 2.45 : hour >= 6 && hour <= 8 ? 1.35 : hour <= 5 ? 0.42 : 0.86;
-      return { hour, sun, irradiance: dcKw ? weightedIrradiance / dcKw : 0, pv, clipping, inverterProduction, weight };
+      return { hour, sun, irradiance: dcKw ? weightedIrradiance / dcKw : 0, pv, clipping, inverterProduction };
     });
-    const totalWeight = hours.reduce((sum, row) => sum + row.weight, 0);
     let stored = capacity * Math.max(10, config.initialSoc) / 100;
-    const results = hours.map(({ weight, ...row }) => {
-      const load = config.dailyLoad * weight / totalWeight;
+    const results = hours.map(row => {
+      const load = loads[row.hour];
       const direct = Math.min(row.pv, load);
       const surplus = row.pv - direct;
       const deficit = load - direct;
@@ -115,7 +140,7 @@
     for (const key of ['pv', 'load', 'direct', 'charge', 'discharge', 'grid', 'surplus', 'export', 'clipping']) {
       totals[key] = results.reduce((sum, row) => sum + row[key], 0);
     }
-    return { results, totals, dcKw, capacity, inverterKw };
+    return { results, totals, dcKw, capacity, inverterKw, loadPeak: Math.max(...loads) };
   }
 
   if (typeof module !== 'undefined' && module.exports) module.exports = { simulate, planStrings };
