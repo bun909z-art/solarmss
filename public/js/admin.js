@@ -407,7 +407,6 @@
     if ($('radiusVal')) $('radiusVal').textContent = t.radius ?? 18;
     setVal('t_maxWidth', t.maxWidth ?? 1160);
     if ($('maxWidthVal')) $('maxWidthVal').textContent = t.maxWidth ?? 1160;
-    setVal('t_shadowLevel', t.shadowLevel || 'medium');
     setVal('t_fontFamily', t.fontFamily || 'system');
     setChk('t_stickyResult', t.stickyResult !== false);
 
@@ -1927,7 +1926,6 @@
   });
   bind('t_radius', el => { CONFIG.theme.radius = Number(el.value); if ($('radiusVal')) $('radiusVal').textContent = el.value; });
   bind('t_maxWidth', el => { CONFIG.theme.maxWidth = Number(el.value); if ($('maxWidthVal')) $('maxWidthVal').textContent = el.value; });
-  bind('t_shadowLevel', el => { CONFIG.theme.shadowLevel = el.value; });
   bind('t_fontFamily', el => { CONFIG.theme.fontFamily = el.value; });
   bind('t_stickyResult', el => { CONFIG.theme.stickyResult = el.checked; });
 
