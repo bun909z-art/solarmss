@@ -16,6 +16,10 @@
   };
 
   let CFG = null;
+
+  function pageTitle(label) {
+    return `${label} – ${CFG?.branding?.companyName || 'Công Ty TNHH Mai Sơn Solar'}`;
+  }
   let PRODUCTS = [];
   let activeCat = 'all';
   let searchQ = '';
@@ -111,8 +115,10 @@
     document.body.classList.toggle('dark-mode', Boolean(t.darkMode));
     $('heroSection').dataset.style = cfg.hero?.style || 'gradient';
 
-    if (b.logoUrl) $('brandLogo').src = b.logoUrl;
-    if (b.faviconUrl) $('docFavicon').href = b.faviconUrl;
+    if ($('prodDetailView').hidden) document.title = pageTitle('Sản phẩm tham khảo');
+    $('brandLogo').src = b.logoUrl || '/assets/logo-default.jpg?v=mss';
+    $('brandLogo').alt = b.companyName || 'Công Ty TNHH Mai Sơn Solar';
+    $('docFavicon').href = b.faviconUrl || '/assets/favicon.png?v=mss';
     $('hotlineWrap').hidden = b.showHotline === false;
     $('hotlineLabel').textContent = b.hotlineLabel || 'Hotline tư vấn';
     const hotlines = Array.isArray(b.hotlines) ? b.hotlines : [];
@@ -191,7 +197,7 @@
     if (!p) return;
     $('prodListView').hidden = true;
     $('prodDetailView').hidden = false;
-    document.title = `${p.name} – Hoàng Quân Electronics & Energy`;
+    document.title = pageTitle(p.name);
 
     const sm = getStockMeta(p);
     $('pdBreadcrumb').textContent = `${CAT_LABEL[p.category] || p.category}${p.brand ? ' / ' + p.brand : ''}`;
@@ -264,7 +270,7 @@
   function showProductList(pushUrl = true) {
     $('prodDetailView').hidden = true;
     $('prodListView').hidden = false;
-    document.title = 'Sản phẩm tham khảo – Hoàng Quân Electronics & Energy';
+    document.title = pageTitle('Sản phẩm tham khảo');
     if (pushUrl && window.history && window.history.pushState) {
       window.history.pushState({}, '', '/products');
     }

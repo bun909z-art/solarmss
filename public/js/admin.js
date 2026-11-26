@@ -276,6 +276,11 @@
         isSuper ? api('/api/admin/telegram').catch(() => ({ telegram: {} })) : Promise.resolve({ telegram: {} })
       ]);
       CONFIG = data.config;
+      const brand = CONFIG.branding;
+      document.title = `Quản trị website – ${brand.companyName || 'Công Ty TNHH Mai Sơn Solar'}`;
+      $('adminBrandLogo').src = brand.logoUrl || '/assets/logo-default.jpg?v=mss';
+      $('adminBrandLogo').alt = brand.companyName || 'Công Ty TNHH Mai Sơn Solar';
+      $('adminFavicon').href = brand.faviconUrl || '/assets/favicon.png?v=mss';
       PRESETS = data.presets || {};
       datasetReady = { products: Array.isArray(prodData?.products), news: Array.isArray(newsData?.articles), leads: Array.isArray(leadsData?.leads) };
       PRODUCTS = datasetReady.products ? prodData.products : [];
@@ -356,7 +361,7 @@
   function populateForm() {
     const { branding: b, hero: h, theme: t, sections: s, defaults: d, tariffs: tar, footer: f } = CONFIG;
 
-    if ($('logoPreview')) $('logoPreview').src = b.logoUrl || '/assets/logo-default.jpg';
+    if ($('logoPreview')) $('logoPreview').src = b.logoUrl || '/assets/logo-default.jpg?v=mss';
     setVal('b_logoHeight', b.logoHeight || 54);
     if ($('logoHeightVal')) $('logoHeightVal').textContent = b.logoHeight || 54;
     setVal('b_siteTitle', b.siteTitle || '');
@@ -996,7 +1001,7 @@
         title,
         category: $('nn_cat').value,
         publishedAt: $('nn_date').value || new Date().toISOString().slice(0, 10),
-        author: $('nn_author').value.trim() || 'Hoàng Quân',
+        author: $('nn_author').value.trim() || 'Mai Sơn Solar',
         imageUrl: newNewsImgUrl || '/assets/prod-panel.jpg',
         summary: $('nn_summary').value.trim(),
         content: $('nn_content').value.trim(),
@@ -1637,7 +1642,7 @@
       try {
         const resp = await fetch('/api/admin/backup-full', { credentials: 'include', headers: authHeaders() });
         if (!resp.ok) throw new Error('Không thể tải bản sao lưu toàn bộ.');
-        downloadFile(await resp.blob(), `hoangquan-full-backup-${new Date().toISOString().slice(0, 10)}.json`);
+        downloadFile(await resp.blob(), `mai-son-solar-backup-${new Date().toISOString().slice(0, 10)}.json`);
         toast('Đã tải xuống bản sao lưu toàn bộ dữ liệu!');
       } catch (err) { toast(err.message); }
     };
@@ -1919,7 +1924,7 @@
   });
 
   $('btnRestoreLogo').onclick = () => {
-    CONFIG.branding.logoUrl = '/assets/logo-default.jpg';
+    CONFIG.branding.logoUrl = '/assets/logo-default.jpg?v=mss';
     $('logoPreview').src = CONFIG.branding.logoUrl;
     setDirty(true); pushPreview();
   };
@@ -1980,7 +1985,7 @@
 
   $('btnExport').onclick = () => {
     const blob = new Blob([JSON.stringify(editorConfig(), null, 2)], { type: 'application/json' });
-    downloadFile(blob, `hoangquan-config-${new Date().toISOString().slice(0, 10)}.json`);
+    downloadFile(blob, `mai-son-solar-config-${new Date().toISOString().slice(0, 10)}.json`);
   };
 
   $('importFile').addEventListener('change', e => {

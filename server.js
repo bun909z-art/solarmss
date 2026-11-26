@@ -52,7 +52,7 @@ if (require.main === module) {
   leadStore.loadLeads();
   refreshGsheetAutoPull();
   server.listen(PORT, HOST, () => {
-    console.log(`Hoàng Quân Pin Hybrid Server đang chạy tại:`);
+    console.log(`Máy chủ Mai Sơn Solar đang chạy tại:`);
     console.log(`  • Trang chủ:      http://localhost:${PORT}/`);
     console.log(`  • Trang tư vấn:   http://localhost:${PORT}/tuvan`);
     console.log(`  • Sản phẩm:       http://localhost:${PORT}/products`);

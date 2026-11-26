@@ -172,7 +172,7 @@ async function handleAdminAuth(req, res, pathname, method, authState) {
     const token = String(body.botToken || (authState.telegram && authState.telegram.botToken) || '').trim();
     const chatId = String(body.chatId || (authState.telegram && authState.telegram.chatId) || '').trim();
     try {
-      await telegram.sendTelegramMessage(token, chatId, '✅ <b>Kết nối Telegram thành công!</b>\nHệ thống Hoàng Quân Pin Hybrid sẽ tự động gửi thông tin khách hàng &amp; Combo về nhóm/chat này.');
+      await telegram.sendTelegramMessage(token, chatId, '✅ <b>Kết nối Telegram thành công!</b>\nHệ thống Mai Sơn Solar sẽ tự động gửi thông tin khách hàng &amp; Combo về nhóm/chat này.');
       return sendJson(res, 200, { ok: true, message: 'Đã gửi tin nhắn thử tới Telegram thành công!' }), true;
     } catch (err) {
       return sendJson(res, 400, { error: 'Gửi Telegram thất bại: ' + (err.message || 'Kiểm tra lại Bot Token và Chat ID.') }), true;

@@ -1,9 +1,9 @@
 {
   "branding": {
-    "companyName": "CTY HOÀNG QUÂN – Electronics & Energy",
-    "siteTitle": "Hoàng Quân – Tư vấn Pin lưu trữ Hybrid",
-    "logoUrl": "/assets/logo-default.jpg",
-    "faviconUrl": "/assets/favicon.png",
+    "companyName": "Công Ty TNHH Mai Sơn Solar",
+    "siteTitle": "Tư vấn Pin lưu trữ Hybrid – Công Ty TNHH Mai Sơn Solar",
+    "logoUrl": "/assets/logo-default.jpg?v=mss",
+    "faviconUrl": "/assets/favicon.png?v=mss",
     "logoHeight": 54,
     "hotlineLabel": "Hotline tư vấn kỹ thuật",
     "showHotline": true,
@@ -146,7 +146,7 @@
       "Kết quả quy đổi từ tiền hóa đơn là ước tính; muốn chính xác nhất hãy nhập đúng sản lượng kWh trên hóa đơn.",
       "Dung lượng pin là kết quả tính toán sơ bộ để tư vấn; thiết kế chi tiết cần khảo sát thực tế."
     ],
-    "companyLine": "CTY HOÀNG QUÂN – Electronics & Energy · 0913 350 597 · 0345 128 688",
+    "companyLine": "Công Ty TNHH Mai Sơn Solar · 0913 350 597 · 0345 128 688",
     "ctaTitle": "Liên hệ ngay để được tư vấn & khảo sát miễn phí",
     "ctaSubtitle": "Gọi trực tiếp hoặc kết nối qua Zalo để nhận báo giá chi tiết và phương án lắp đặt phù hợp nhất.",
     "ctaAddress": "",

@@ -72,7 +72,7 @@ async function handleAdminConfig(req, res, pathname, method, authState) {
     const buf = Buffer.from(JSON.stringify(payload, null, 2), 'utf8');
     res.writeHead(200, {
       'Content-Type': 'application/json; charset=utf-8',
-      'Content-Disposition': `attachment; filename="hoangquan-full-backup-${new Date().toISOString().slice(0, 10)}.json"`,
+      'Content-Disposition': `attachment; filename="mai-son-solar-backup-${new Date().toISOString().slice(0, 10)}.json"`,
       'Content-Length': buf.length
     });
     res.end(buf);

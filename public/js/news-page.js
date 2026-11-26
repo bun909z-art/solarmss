@@ -11,6 +11,10 @@
   const LIKES_KEY = 'hq_news_likes_v1';
 
   let CFG = null;
+
+  function pageTitle(label) {
+    return `${label} – ${CFG?.branding?.companyName || 'Công Ty TNHH Mai Sơn Solar'}`;
+  }
   let ARTICLES = [];
   let activeCat = 'all';
   let searchQ = '';
@@ -111,8 +115,10 @@
     document.body.classList.toggle('dark-mode', Boolean(t.darkMode));
     $('heroSection').dataset.style = cfg.hero?.style || 'gradient';
 
-    if (b.logoUrl) $('brandLogo').src = b.logoUrl;
-    if (b.faviconUrl) $('docFavicon').href = b.faviconUrl;
+    if ($('newsArticleView').hidden) document.title = pageTitle('Tin tức & Kiến thức');
+    $('brandLogo').src = b.logoUrl || '/assets/logo-default.jpg?v=mss';
+    $('brandLogo').alt = b.companyName || 'Công Ty TNHH Mai Sơn Solar';
+    $('docFavicon').href = b.faviconUrl || '/assets/favicon.png?v=mss';
     $('hotlineWrap').hidden = b.showHotline === false;
     $('hotlineLabel').textContent = b.hotlineLabel || 'Hotline tư vấn';
     const hotlines = Array.isArray(b.hotlines) ? b.hotlines : [];
@@ -194,7 +200,7 @@
     $('readProgressTrack').hidden = false;
     $('readProgressBar').style.width = '0%';
 
-    document.title = `${a.title} – Hoàng Quân Electronics & Energy`;
+    document.title = pageTitle(a.title);
     $('artCat').textContent = a.category || 'Tin tức';
     $('artDate').textContent = a.publishedAt ? formatDate(a.publishedAt) : '';
     $('artDate').dateTime = a.publishedAt || '';
@@ -237,7 +243,7 @@
     $('newsArticleView').hidden = true;
     $('readProgressTrack').hidden = true;
     $('newsListView').hidden = false;
-    document.title = 'Tin tức & Kiến thức – Hoàng Quân Electronics & Energy';
+    document.title = pageTitle('Tin tức & Kiến thức');
     if (pushUrl && window.history && window.history.pushState) {
       window.history.pushState({}, '', '/news');
     }

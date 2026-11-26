@@ -106,10 +106,10 @@
     $('stickyCol').classList.toggle('is-sticky', t.stickyResult !== false);
 
     // Branding
-    document.title = b.siteTitle || 'Hoàng Quân – Tư vấn Pin lưu trữ Hybrid';
-    if (b.logoUrl) $('brandLogo').src = b.logoUrl;
-    $('brandLogo').alt = b.companyName || 'Logo';
-    if (b.faviconUrl) $('docFavicon').href = b.faviconUrl;
+    document.title = b.siteTitle || 'Tư vấn Pin lưu trữ Hybrid – Công Ty TNHH Mai Sơn Solar';
+    $('brandLogo').src = b.logoUrl || '/assets/logo-default.jpg?v=mss';
+    $('brandLogo').alt = b.companyName || 'Công Ty TNHH Mai Sơn Solar';
+    $('docFavicon').href = b.faviconUrl || '/assets/favicon.png?v=mss';
     $('hotlineWrap').hidden = b.showHotline === false;
     $('hotlineLabel').textContent = b.hotlineLabel || 'Hotline tư vấn';
     const hotlines = Array.isArray(b.hotlines) ? b.hotlines : [];
@@ -601,7 +601,7 @@
 
   $('copySummary').onclick = async () => {
     const r = window._hqLastResult || {};
-    const company = (CFG && CFG.branding && CFG.branding.companyName) || 'HOÀNG QUÂN';
+    const company = (CFG && CFG.branding && CFG.branding.companyName) || 'Công Ty TNHH Mai Sơn Solar';
     const lines = [
       `[${company}] TƯ VẤN PIN LƯU TRỮ HYBRID`,
       S.name ? `• Khách hàng: ${S.name}` : null,

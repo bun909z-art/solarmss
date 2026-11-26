@@ -96,8 +96,11 @@
     r.setProperty('--shadow', SHADOW_MAP[t.shadowLevel] || SHADOW_MAP.medium);
     document.body.classList.toggle('dark-mode', Boolean(t.darkMode));
 
-    if (b.logoUrl) $('brandLogo').src = b.logoUrl;
-    if (b.faviconUrl) $('docFavicon').href = b.faviconUrl;
+    const company = b.companyName || 'Công Ty TNHH Mai Sơn Solar';
+    document.title = `Trang chủ – ${company}`;
+    $('brandLogo').src = b.logoUrl || '/assets/logo-default.jpg?v=mss';
+    $('brandLogo').alt = company;
+    $('docFavicon').href = b.faviconUrl || '/assets/favicon.png?v=mss';
     $('hotlineWrap').hidden = b.showHotline === false;
     $('hotlineLabel').textContent = b.hotlineLabel || 'Hotline tư vấn';
     const hotlines = Array.isArray(b.hotlines) ? b.hotlines : [];
