@@ -109,9 +109,7 @@
     r.setProperty('--logo-h', (Number(b.logoHeight) || 54) + 'px');
     r.setProperty('--shadow', SHADOW_MAP[t.shadowLevel] || SHADOW_MAP.medium);
     document.body.classList.toggle('dark-mode', Boolean(t.darkMode));
-    if ($('heroSection') && cfg.hero && cfg.hero.style) {
-      $('heroSection').className = 'hero-banner style-' + cfg.hero.style;
-    }
+    $('heroSection').dataset.style = cfg.hero?.style || 'gradient';
 
     if (b.logoUrl) $('brandLogo').src = b.logoUrl;
     if (b.faviconUrl) $('docFavicon').href = b.faviconUrl;
@@ -144,17 +142,17 @@
     $('footerCompany').textContent = f.companyLine || b.companyName || '';
   }
 
-  function renderCardHtml(p, idx, attrName) {
+  function renderCardHtml(p, index) {
     const { tel, zalo } = getPrimaryContact();
     const spec = esc(getSpecText(p));
     const img = esc(p.imageUrl || `/assets/prod-${p.category}.jpg`);
     const hasDocs = Boolean(p.datasheetUrl || (p.attachments && p.attachments.length));
     const sm = getStockMeta(p);
-    return `<article class="card prod-card${sm.out ? ' out-of-stock' : ''}" ${attrName}="${idx}">
+    return `<article class="card prod-card${sm.out ? ' out-of-stock' : ''}" data-product-index="${index}">
       <div class="prod-img-wrap">
-        <img src="${img}" alt="${esc(p.name)}" loading="lazy">
+        <img src="${img}" alt="" loading="lazy">
         <span class="prod-cat-tag">${esc(CAT_LABEL[p.category] || p.category)}</span>
-        ${hasDocs ? '<span class="prod-doc-badge">📄 Datasheet</span>' : ''}
+        ${hasDocs ? '<span class="prod-doc-badge">Tài liệu kỹ thuật</span>' : ''}
         <span class="prod-stock-badge ${sm.cls}">${sm.badge}</span>
       </div>
       <div class="prod-body">
@@ -162,7 +160,7 @@
           ${p.brand ? `<span class="prod-brand">${esc(p.brand)}</span>` : '<span></span>'}
           <span class="prod-spec-pill">${spec}</span>
         </div>
-        <h3 class="prod-name">${esc(p.name)}</h3>
+        <h3 class="prod-name"><a class="product-detail-link" href="/products?id=${encodeURIComponent(p.id)}">${esc(p.name)}</a></h3>
         ${p.warranty ? `<div class="prod-detail">Bảo hành: <b>${esc(p.warranty)}</b></div>` : ''}
         ${p.description ? `<p class="prod-desc">${esc(p.description)}</p>` : (p.note ? `<div class="prod-detail">${esc(p.note)}</div>` : '')}
         <div class="prod-price-contact">
@@ -170,11 +168,23 @@
           <strong>Liên hệ để báo giá</strong>
         </div>
         <div class="prod-actions">
-          <a class="cta-btn call" style="flex:1;justify-content:center" href="tel:${tel}" onclick="event.stopPropagation()">📞 Gọi ngay</a>
-          ${zalo ? `<a class="cta-btn zalo" style="flex:1;justify-content:center" href="https://zalo.me/${zalo}" target="_blank" rel="noopener" onclick="event.stopPropagation()">💬 Zalo</a>` : ''}
+          <a class="cta-btn call" href="tel:${tel}">Gọi báo giá</a>
+          ${zalo ? `<a class="cta-btn zalo" href="https://zalo.me/${zalo}" target="_blank" rel="noopener">Zalo</a>` : ''}
         </div>
       </div>
     </article>`;
+  }
+
+  function renderProductGrid(grid, products) {
+    grid.innerHTML = products.map(renderCardHtml).join('');
+    grid.onclick = event => {
+      const card = event.target.closest('[data-product-index]');
+      if (!card) return;
+      const link = event.target.closest('a');
+      if (link && (!link.matches('.product-detail-link') || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey)) return;
+      event.preventDefault();
+      openStandaloneProduct(products[Number(card.dataset.productIndex)]);
+    };
   }
 
   function openStandaloneProduct(p, pushUrl = true) {
@@ -194,6 +204,8 @@
     $('pdTitle').textContent = p.name || '';
     $('pdDesc').textContent = p.description || p.note || '';
     $('pdDesc').hidden = !(p.description || p.note);
+    $('pdWarranty').textContent = p.warranty ? `Bảo hành ${p.warranty}` : '';
+    $('pdWarranty').hidden = !p.warranty;
 
     // Specs table
     const rows = [];
@@ -218,7 +230,7 @@
         else rows.push(['Thông số', line]);
       });
     }
-    $('pdSpecsBody').innerHTML = rows.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('');
+    $('pdSpecsBody').innerHTML = rows.map(([k, v]) => `<tr><th scope="row">${esc(k)}</th><td>${esc(v)}</td></tr>`).join('');
 
     // Datasheet & Attachments (hidden if empty)
     const docs = [];
@@ -233,22 +245,20 @@
 
     const { tel, zalo } = getPrimaryContact();
     $('pdActions').innerHTML = `
-      <a class="cta-btn call" style="flex:1;justify-content:center" href="tel:${tel}">📞 Gọi ngay</a>
-      ${zalo ? `<a class="cta-btn zalo" style="flex:1;justify-content:center" href="https://zalo.me/${zalo}" target="_blank" rel="noopener">💬 Báo giá Zalo</a>` : ''}
+      <a class="cta-btn call" href="tel:${tel}">Gọi báo giá</a>
+      ${zalo ? `<a class="cta-btn zalo" href="https://zalo.me/${zalo}" target="_blank" rel="noopener">Nhắn Zalo</a>` : ''}
     `;
 
     // Related products in same category
     const related = PRODUCTS.filter(x => x && x.active !== false && x.id !== p.id && x.category === p.category).slice(0, 3);
     $('relatedProdsWrap').hidden = !related.length;
-    $('relatedProdsGrid').innerHTML = related.map((r, i) => renderCardHtml(r, i, 'data-open-rel-prod')).join('');
-    $('relatedProdsGrid').querySelectorAll('[data-open-rel-prod]').forEach(card => {
-      card.onclick = () => openStandaloneProduct(related[+card.dataset.openRelProd], true);
-    });
+    renderProductGrid($('relatedProdsGrid'), related);
 
     if (pushUrl && window.history && window.history.pushState) {
       window.history.pushState({ prodId: p.id }, '', `/products?id=${encodeURIComponent(p.id)}`);
     }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (pushUrl) $('pdTitle').focus({ preventScroll: true });
+    window.scrollTo({ top: 0, behavior: 'instant' });
   }
 
   function showProductList(pushUrl = true) {
@@ -258,7 +268,8 @@
     if (pushUrl && window.history && window.history.pushState) {
       window.history.pushState({}, '', '/products');
     }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (pushUrl) $('catalogResultsTitle').focus({ preventScroll: true });
+    window.scrollTo({ top: 0, behavior: 'instant' });
   }
 
   $('btnBackProds').onclick = () => showProductList(true);
@@ -295,21 +306,20 @@
       return true;
     });
 
-    if (!list.length) {
-      $('catalogGrid').innerHTML = '<div class="card" style="grid-column:1/-1;text-align:center;color:var(--ink-3)">Không tìm thấy sản phẩm phù hợp.</div>';
-      return;
-    }
-
-    $('catalogGrid').innerHTML = list.map((p, idx) => renderCardHtml(p, idx, 'data-open-prod')).join('');
-    $('catalogGrid').querySelectorAll('[data-open-prod]').forEach(card => {
-      card.onclick = () => openStandaloneProduct(list[+card.dataset.openProd], true);
+    $('catalogResultsTitle').textContent = activeCat === 'all' ? 'Tất cả thiết bị' : CAT_LABEL[activeCat];
+    $('catalogCount').textContent = `${list.length} sản phẩm`;
+    $('catPills').querySelectorAll('[data-cat]').forEach(btn => {
+      const selected = btn.dataset.cat === activeCat;
+      btn.classList.toggle('active', selected);
+      btn.setAttribute('aria-pressed', selected);
     });
+    const grid = $('catalogGrid');
+    renderProductGrid(grid, list);
+    if (!list.length) grid.innerHTML = '<p class="card subpage-empty">Không tìm thấy sản phẩm phù hợp. Thử từ khóa hoặc nhóm thiết bị khác.</p>';
   }
 
   $('catPills').querySelectorAll('[data-cat]').forEach(btn => {
     btn.onclick = () => {
-      $('catPills').querySelectorAll('[data-cat]').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
       activeCat = btn.dataset.cat;
       renderCatalog();
     };
@@ -328,5 +338,8 @@
       const found = PRODUCTS.find(p => p.id === initialId);
       if (found) openStandaloneProduct(found, false);
     }
-  }).catch(err => console.error(err));
+  }).catch(err => {
+    $('catalogCount').textContent = 'Không tải được danh mục. Vui lòng tải lại trang.';
+    console.error(err);
+  });
 })();

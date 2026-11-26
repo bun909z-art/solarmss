@@ -109,7 +109,7 @@
     r.setProperty('--logo-h', (Number(b.logoHeight) || 54) + 'px');
     r.setProperty('--shadow', SHADOW_MAP[t.shadowLevel] || SHADOW_MAP.medium);
     document.body.classList.toggle('dark-mode', Boolean(t.darkMode));
-    if ($('heroSection') && cfg.hero && cfg.hero.style) $('heroSection').className = 'hero-banner style-' + cfg.hero.style;
+    $('heroSection').dataset.style = cfg.hero?.style || 'gradient';
 
     if (b.logoUrl) $('brandLogo').src = b.logoUrl;
     if (b.faviconUrl) $('docFavicon').href = b.faviconUrl;
@@ -144,18 +144,46 @@
 
   function updateReadProgress() {
     if ($('newsArticleView').hidden) return;
-    const h = document.documentElement;
-    const maxScroll = Math.max(1, h.scrollHeight - window.innerHeight);
-    const pct = Math.min(100, Math.max(0, (window.scrollY / maxScroll) * 100));
+    const article = $('newsArticleView').querySelector('.article-full').getBoundingClientRect();
+    const headerHeight = document.querySelector('.topbar').offsetHeight;
+    const maxScroll = Math.max(1, article.height - (window.innerHeight - headerHeight));
+    const pct = Math.min(100, Math.max(0, ((headerHeight - article.top) / maxScroll) * 100));
     $('readProgressBar').style.width = pct.toFixed(1) + '%';
   }
   window.addEventListener('scroll', updateReadProgress, { passive: true });
+  window.addEventListener('resize', updateReadProgress);
 
   function updateLikeUI(artId) {
     const map = getLikesMap();
     const entry = map[artId] || { liked: false, count: 12 };
     $('btnLikeArt').classList.toggle('liked', Boolean(entry.liked));
+    $('btnLikeArt').setAttribute('aria-pressed', Boolean(entry.liked));
     $('artLikeCount').textContent = entry.count;
+  }
+
+  function renderArticleGrid(grid, articles, showSummary) {
+    grid.innerHTML = articles.map((article, index) => `
+      <article class="card news-card" data-article-index="${index}">
+        <div class="news-cover">
+          <img src="${esc(article.imageUrl || '/assets/prod-panel.jpg')}" alt="" loading="lazy">
+          <span class="prod-cat-tag">${esc(article.category || 'Tin tức')}</span>
+        </div>
+        <div class="news-card-body">
+          <div class="news-meta-line">
+            ${article.publishedAt ? `<time datetime="${esc(article.publishedAt)}">${esc(formatDate(article.publishedAt))}</time>` : ''}
+            ${article.author ? `<span>${esc(article.author)}</span>` : ''}
+          </div>
+          <h3 class="news-title"><a href="/news?id=${encodeURIComponent(article.id)}">${esc(article.title)}</a></h3>
+          ${showSummary && article.summary ? `<p class="news-summary">${esc(article.summary)}</p>` : ''}
+        </div>
+      </article>
+    `).join('');
+    grid.onclick = event => {
+      const card = event.target.closest('[data-article-index]');
+      if (!card || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      openStandaloneArticle(articles[Number(card.dataset.articleIndex)]);
+    };
   }
 
   function openStandaloneArticle(a, pushUrl = true) {
@@ -168,9 +196,12 @@
 
     document.title = `${a.title} – Hoàng Quân Electronics & Energy`;
     $('artCat').textContent = a.category || 'Tin tức';
-    $('artDate').textContent = a.publishedAt ? '📅 ' + formatDate(a.publishedAt) : '';
-    $('artAuthor').textContent = a.author ? '✍️ ' + a.author : '';
-    $('artReadTime').textContent = `⏱ ~${estimateReadMins(a.content)} phút đọc`;
+    $('artDate').textContent = a.publishedAt ? formatDate(a.publishedAt) : '';
+    $('artDate').dateTime = a.publishedAt || '';
+    $('artDate').hidden = !a.publishedAt;
+    $('artAuthor').textContent = a.author || '';
+    $('artAuthor').hidden = !a.author;
+    $('artReadTime').textContent = `${estimateReadMins(a.content)} phút đọc`;
     $('artTitle').textContent = a.title || '';
     $('artSummary').textContent = a.summary || '';
     $('artSummary').hidden = !a.summary;
@@ -184,34 +215,21 @@
 
     const { tel, zalo } = getPrimaryContact();
     $('artActions').innerHTML = `
-      <a class="cta-btn call" style="flex:1;justify-content:center" href="tel:${tel}">📞 Gọi ngay</a>
-      ${zalo ? `<a class="cta-btn zalo" style="flex:1;justify-content:center" href="https://zalo.me/${zalo}" target="_blank" rel="noopener">💬 Tư vấn Zalo</a>` : ''}
+      <a class="cta-btn call" href="tel:${tel}">Gọi kỹ thuật</a>
+      ${zalo ? `<a class="cta-btn zalo" href="https://zalo.me/${zalo}" target="_blank" rel="noopener">Nhắn Zalo</a>` : ''}
     `;
 
     // Related articles
     const related = ARTICLES.filter(x => x && x.published !== false && x.id !== a.id).slice(0, 3);
     $('relatedNewsWrap').hidden = !related.length;
-    $('relatedNewsGrid').innerHTML = related.map((r, idx) => `
-      <article class="card news-card" data-open-rel="${idx}">
-        <div class="news-cover">
-          <img src="${esc(r.imageUrl || '/assets/prod-panel.jpg')}" alt="${esc(r.title)}" loading="lazy">
-          <span class="prod-cat-tag">${esc(r.category || 'Tin tức')}</span>
-        </div>
-        <div class="news-card-body">
-          <div class="news-meta-line"><span>📅 ${esc(formatDate(r.publishedAt))}</span></div>
-          <h3 class="news-title">${esc(r.title)}</h3>
-          <div class="news-readmore">Đọc bài viết →</div>
-        </div>
-      </article>
-    `).join('');
-    $('relatedNewsGrid').querySelectorAll('[data-open-rel]').forEach(c => {
-      c.onclick = () => openStandaloneArticle(related[+c.dataset.openRel], true);
-    });
+    renderArticleGrid($('relatedNewsGrid'), related, false);
 
     if (pushUrl && window.history && window.history.pushState) {
       window.history.pushState({ articleId: a.id }, '', `/news?id=${encodeURIComponent(a.id)}`);
     }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (pushUrl) $('artTitle').focus({ preventScroll: true });
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    updateReadProgress();
   }
 
   function showNewsList(pushUrl = true) {
@@ -223,7 +241,8 @@
     if (pushUrl && window.history && window.history.pushState) {
       window.history.pushState({}, '', '/news');
     }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (pushUrl) $('newsResultsTitle').focus({ preventScroll: true });
+    window.scrollTo({ top: 0, behavior: 'instant' });
   }
 
   $('btnBackNews').onclick = () => showNewsList(true);
@@ -266,38 +285,21 @@
       return true;
     });
 
-    if (!list.length) {
-      $('newsGrid').innerHTML = '<div class="card" style="grid-column:1/-1;text-align:center;color:var(--ink-3)">Chưa có bài viết phù hợp.</div>';
-      return;
-    }
-
-    $('newsGrid').innerHTML = list.map((a, idx) => `
-      <article class="card news-card" data-open-news="${idx}">
-        <div class="news-cover">
-          <img src="${esc(a.imageUrl || '/assets/prod-panel.jpg')}" alt="${esc(a.title)}" loading="lazy">
-          <span class="prod-cat-tag">${esc(a.category || 'Tin tức')}</span>
-        </div>
-        <div class="news-card-body">
-          <div class="news-meta-line">
-            <span>📅 ${esc(formatDate(a.publishedAt))}</span>
-            ${a.author ? `<span>· ${esc(a.author)}</span>` : ''}
-          </div>
-          <h3 class="news-title">${esc(a.title)}</h3>
-          ${a.summary ? `<p class="news-summary">${esc(a.summary)}</p>` : ''}
-          <div class="news-readmore">Đọc bài viết →</div>
-        </div>
-      </article>
-    `).join('');
-
-    $('newsGrid').querySelectorAll('[data-open-news]').forEach(card => {
-      card.onclick = () => openStandaloneArticle(list[+card.dataset.openNews], true);
+    $('newsResultsTitle').textContent = activeCat === 'all' ? 'Tất cả bài viết' : activeCat;
+    $('newsCount').textContent = `${list.length} bài viết`;
+    $('newsCatPills').querySelectorAll('[data-ncat]').forEach(btn => {
+      const selected = btn.dataset.ncat === activeCat;
+      btn.classList.toggle('active', selected);
+      btn.setAttribute('aria-pressed', selected);
     });
+    const grid = $('newsGrid');
+    grid.classList.toggle('journal-featured', activeCat === 'all' && !q);
+    renderArticleGrid(grid, list, true);
+    if (!list.length) grid.innerHTML = '<p class="card subpage-empty">Không tìm thấy bài viết phù hợp. Thử từ khóa hoặc chủ đề khác.</p>';
   }
 
   $('newsCatPills').querySelectorAll('[data-ncat]').forEach(btn => {
     btn.onclick = () => {
-      $('newsCatPills').querySelectorAll('[data-ncat]').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
       activeCat = btn.dataset.ncat;
       renderNews();
     };
@@ -316,5 +318,8 @@
       const found = ARTICLES.find(a => a.id === initialId);
       if (found) openStandaloneArticle(found, false);
     }
-  }).catch(err => console.error(err));
+  }).catch(err => {
+    $('newsCount').textContent = 'Không tải được bài viết. Vui lòng tải lại trang.';
+    console.error(err);
+  });
 })();

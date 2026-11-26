@@ -6,7 +6,7 @@
 <title id="docTitle">Sản phẩm tham khảo – Hoàng Quân Electronics &amp; Energy</title>
 <meta name="theme-color" content="#F26A1B" id="metaTheme">
 <link rel="icon" type="image/png" href="/assets/favicon.png" id="docFavicon">
-<link rel="stylesheet" href="/css/app.css?v=35">
+<link rel="stylesheet" href="/css/app.css?v=36">
 </head>
 <body>
 
@@ -34,33 +34,47 @@
 
 <!-- PRODUCT LISTING VIEW -->
 <div id="prodListView">
-  <section class="hero-banner" id="heroSection">
-    <div class="hero-glow" aria-hidden="true"></div>
-    <div class="wrap hero-inner" id="heroInner">
-      <div class="hero-badge"><span class="dot"></span><span>Danh mục thiết bị chính hãng</span></div>
-      <h1>Sản phẩm Điện Mặt Trời Hybrid &amp; Pin Lưu Trữ</h1>
-      <p>Tham khảo các dòng Inverter Hybrid, Tấm pin năng lượng mặt trời, Pin lưu trữ Lithium và Phụ kiện lắp đặt đang phân phối. Liên hệ trực tiếp để nhận báo giá tốt nhất theo cấu hình lắp đặt.</p>
+  <section class="subpage-hero catalog-hero" id="heroSection" aria-labelledby="catalogTitle">
+    <div class="wrap catalog-intro" id="heroInner">
+      <div>
+        <p class="subpage-kicker">Danh mục thiết bị</p>
+        <h1 id="catalogTitle">Thiết bị điện mặt trời <em>Hybrid</em></h1>
+        <p>Chọn theo nhóm thiết bị để xem công suất, dung lượng, bảo hành và tài liệu kỹ thuật của từng sản phẩm.</p>
+      </div>
+      <div class="catalog-intro-visual" aria-hidden="true">
+        <img src="/assets/prod-panel.jpg" alt="" width="256" height="256">
+        <img src="/assets/prod-inverter.jpg" alt="" width="256" height="256">
+        <img src="/assets/prod-battery.jpg" alt="" width="256" height="256">
+      </div>
     </div>
   </section>
 
-  <main class="wrap main-wrap">
-    <section class="card catalog-toolbar">
-      <div class="cat-pills" id="catPills">
-        <button type="button" class="cat-pill active" data-cat="all">Tất cả (<span id="cntAll">0</span>)</button>
-        <button type="button" class="cat-pill" data-cat="inverter">Inverter Hybrid (<span id="cntInv">0</span>)</button>
-        <button type="button" class="cat-pill" data-cat="panel">Pin mặt trời (<span id="cntPan">0</span>)</button>
-        <button type="button" class="cat-pill" data-cat="battery">Pin lưu trữ (<span id="cntBat">0</span>)</button>
-        <button type="button" class="cat-pill" data-cat="accessory">Phụ kiện lắp đặt (<span id="cntAcc">0</span>)</button>
+  <main class="wrap catalog-workspace">
+    <aside class="card catalog-sidebar" aria-labelledby="categoryTitle">
+      <h2 id="categoryTitle">Nhóm thiết bị</h2>
+      <div class="cat-pills" id="catPills" role="group" aria-labelledby="categoryTitle">
+        <button type="button" class="cat-pill active" data-cat="all" aria-pressed="true">Tất cả <span id="cntAll">0</span></button>
+        <button type="button" class="cat-pill" data-cat="inverter" aria-pressed="false">Inverter Hybrid <span id="cntInv">0</span></button>
+        <button type="button" class="cat-pill" data-cat="panel" aria-pressed="false">Pin mặt trời <span id="cntPan">0</span></button>
+        <button type="button" class="cat-pill" data-cat="battery" aria-pressed="false">Pin lưu trữ <span id="cntBat">0</span></button>
+        <button type="button" class="cat-pill" data-cat="accessory" aria-pressed="false">Phụ kiện lắp đặt <span id="cntAcc">0</span></button>
       </div>
-      <div class="field catalog-search">
-        <span class="field-icon" aria-hidden="true">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        </span>
-        <input id="prodSearch" type="text" placeholder="Tìm theo tên sản phẩm hoặc hãng..." autocomplete="off">
+    </aside>
+    <section class="catalog-results" aria-labelledby="catalogResultsTitle">
+      <div class="catalog-results-head">
+        <div>
+          <h2 id="catalogResultsTitle" tabindex="-1">Tất cả thiết bị</h2>
+          <p id="catalogCount" role="status">Đang tải danh mục…</p>
+        </div>
+        <div class="field catalog-search">
+          <span class="field-icon" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </span>
+          <input id="prodSearch" type="search" aria-label="Tìm thiết bị" placeholder="Tìm tên, mã hoặc hãng" autocomplete="off">
+        </div>
       </div>
+      <div class="catalog-grid" id="catalogGrid"></div>
     </section>
-
-    <section class="catalog-grid" id="catalogGrid" aria-live="polite"></section>
   </main>
 </div>
 
@@ -68,7 +82,7 @@
 <div id="prodDetailView" hidden>
   <main class="wrap main-wrap prod-detail-wrap">
     <div class="article-topbar">
-      <button type="button" class="article-back-btn" id="btnBackProds">← Quay lại danh sách Sản phẩm</button>
+      <button type="button" class="article-back-btn" id="btnBackProds">Danh mục thiết bị</button>
       <span class="prod-breadcrumb" id="pdBreadcrumb"></span>
     </div>
 
@@ -83,26 +97,24 @@
             <span class="prod-brand" id="pdBrand"></span>
             <span class="prod-spec-pill" id="pdSpecPill"></span>
           </div>
-          <h1 class="pd-title" id="pdTitle"></h1>
+          <h1 class="pd-title" id="pdTitle" tabindex="-1"></h1>
           <p class="pd-desc" id="pdDesc"></p>
-
-          <div class="pd-price-box">
-            <span>Giá bán tham khảo:</span>
-            <strong>Liên hệ để báo giá</strong>
+          <p class="pd-warranty" id="pdWarranty" hidden></p>
+          <div class="pd-quote">
+            <h2>Báo giá theo cấu hình</h2>
+            <div class="pd-cta-row" id="pdActions"></div>
+            <a href="/tuvan" class="art-tool-btn primary-outline">Tính cấu hình pin phù hợp</a>
           </div>
-
-          <div class="pd-cta-row" id="pdActions"></div>
-          <a href="/tuvan" class="art-tool-btn primary-outline" style="width:100%;justify-content:center;margin-top:8px">⚡ Tính cấu hình Pin Hybrid phù hợp</a>
         </div>
       </div>
 
       <div class="pd-details-grid">
         <div class="pm-section" id="pdSpecsWrap">
-          <h3>Thông số kỹ thuật chi tiết</h3>
+          <h2>Thông số kỹ thuật</h2>
           <table class="pm-spec-table"><tbody id="pdSpecsBody"></tbody></table>
         </div>
         <div class="pm-section" id="pdDocsWrap" hidden>
-          <h3>Datasheet &amp; Tài liệu kỹ thuật</h3>
+          <h2>Tài liệu kỹ thuật</h2>
           <div class="pm-docs" id="pdDocsList"></div>
         </div>
       </div>
@@ -115,7 +127,7 @@
   </main>
 </div>
 
-<section class="wrap" style="margin-bottom:26px">
+<section class="wrap subpage-contact">
   <div class="card contact-cta" id="contactCtaCard">
     <div class="cta-head">
       <h2 id="ctaTitle">Liên hệ ngay để được tư vấn &amp; khảo sát miễn phí</h2>
@@ -132,7 +144,7 @@
   </div>
 </footer>
 
-<script src="/js/products-page.js?v=33"></script>
+<script src="/js/products-page.js?v=36"></script>
 <script src="/js/img-protect.js?v=33"></script>
 </body>
 </html>

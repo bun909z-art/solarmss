@@ -6,7 +6,7 @@
 <title id="docTitle">Tin tức &amp; Kiến thức – Hoàng Quân Electronics &amp; Energy</title>
 <meta name="theme-color" content="#F26A1B" id="metaTheme">
 <link rel="icon" type="image/png" href="/assets/favicon.png" id="docFavicon">
-<link rel="stylesheet" href="/css/app.css?v=35">
+<link rel="stylesheet" href="/css/app.css?v=36">
 </head>
 <body>
 
@@ -36,33 +36,38 @@
 
 <!-- LISTING VIEW -->
 <div id="newsListView">
-  <section class="hero-banner" id="heroSection">
-    <div class="hero-glow" aria-hidden="true"></div>
-    <div class="wrap hero-inner" id="heroInner">
-      <div class="hero-badge"><span class="dot"></span><span>Cập nhật kiến thức &amp; dự án thực tế</span></div>
-      <h1>Tin tức Điện Mặt Trời Hybrid &amp; Pin Lưu Trữ</h1>
-      <p>Chia sẻ kinh nghiệm lựa chọn cấu hình, hướng dẫn kỹ thuật, bảng giá điện EVN mới nhất và các công trình thực tế do Hoàng Quân thi công.</p>
+  <section class="subpage-hero journal-hero" id="heroSection" aria-labelledby="journalTitle">
+    <div class="wrap journal-intro" id="heroInner">
+      <div>
+        <p class="subpage-kicker">Tin tức &amp; kiến thức</p>
+        <h1 id="journalTitle">Góc điện mặt trời</h1>
+      </div>
+      <p class="journal-intro-copy">Kinh nghiệm chọn thiết bị, hướng dẫn kỹ thuật và các dự án lắp đặt thực tế của Hoàng Quân.</p>
     </div>
   </section>
 
-  <main class="wrap main-wrap">
-    <section class="card catalog-toolbar">
-      <div class="cat-pills" id="newsCatPills">
-        <button type="button" class="cat-pill active" data-ncat="all">Tất cả (<span id="ncntAll">0</span>)</button>
-        <button type="button" class="cat-pill" data-ncat="Kiến thức Hybrid">Kiến thức Hybrid</button>
-        <button type="button" class="cat-pill" data-ncat="Dự án thực tế">Dự án thực tế</button>
-        <button type="button" class="cat-pill" data-ncat="Tin ngành điện">Tin ngành điện</button>
-        <button type="button" class="cat-pill" data-ncat="Khuyến mãi">Khuyến mãi</button>
+  <main class="wrap journal-workspace">
+    <section class="journal-toolbar" aria-label="Lọc và tìm bài viết">
+      <div class="cat-pills" id="newsCatPills" role="group" aria-label="Chủ đề">
+        <button type="button" class="cat-pill active" data-ncat="all" aria-pressed="true">Tất cả (<span id="ncntAll">0</span>)</button>
+        <button type="button" class="cat-pill" data-ncat="Kiến thức Hybrid" aria-pressed="false">Kiến thức Hybrid</button>
+        <button type="button" class="cat-pill" data-ncat="Dự án thực tế" aria-pressed="false">Dự án thực tế</button>
+        <button type="button" class="cat-pill" data-ncat="Tin ngành điện" aria-pressed="false">Tin ngành điện</button>
+        <button type="button" class="cat-pill" data-ncat="Khuyến mãi" aria-pressed="false">Khuyến mãi</button>
       </div>
       <div class="field catalog-search">
         <span class="field-icon" aria-hidden="true">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         </span>
-        <input id="newsSearch" type="text" placeholder="Tìm bài viết..." autocomplete="off">
+        <input id="newsSearch" type="search" aria-label="Tìm bài viết" placeholder="Tìm bài viết" autocomplete="off">
       </div>
     </section>
 
-    <section class="news-grid" id="newsGrid" aria-live="polite"></section>
+    <div class="journal-results-head">
+      <h2 id="newsResultsTitle" tabindex="-1">Tất cả bài viết</h2>
+      <p id="newsCount" role="status">Đang tải bài viết…</p>
+    </div>
+    <section class="news-grid" id="newsGrid" aria-labelledby="newsResultsTitle"></section>
   </main>
 </div>
 
@@ -70,29 +75,34 @@
 <div id="newsArticleView" hidden>
   <main class="wrap main-wrap article-page-wrap">
     <div class="article-topbar">
-      <button type="button" class="article-back-btn" id="btnBackNews">← Quay lại danh sách Tin tức</button>
+      <button type="button" class="article-back-btn" id="btnBackNews">Tất cả bài viết</button>
     </div>
 
     <article class="card article-full">
-      <div class="nm-meta">
-        <span class="prod-spec-pill" id="artCat"></span>
-        <span id="artDate"></span>
-        <span id="artAuthor"></span>
-        <span id="artReadTime"></span>
-      </div>
-      <h1 class="article-full-title" id="artTitle"></h1>
-      <p class="nm-summary" id="artSummary"></p>
+      <header class="article-heading">
+        <p class="subpage-kicker" id="artCat"></p>
+        <h1 class="article-full-title" id="artTitle" tabindex="-1"></h1>
+        <p class="nm-summary" id="artSummary"></p>
+        <div class="nm-meta">
+          <time id="artDate"></time>
+          <span id="artAuthor"></span>
+          <span id="artReadTime"></span>
+        </div>
+      </header>
       <div class="article-cover-full"><img id="artCover" src="" alt=""></div>
-      <div class="nm-content article-prose" id="artContent"></div>
-
-      <div class="article-interact-bar">
-        <button type="button" class="like-btn" id="btnLikeArt">👍 Hữu ích (<span id="artLikeCount">0</span>)</button>
-        <a href="/tuvan" class="art-tool-btn primary-outline">⚡ Tính nhanh Pin Hybrid</a>
-      </div>
-
-      <div class="pm-footer" style="margin-top:20px">
-        <div class="pm-price"><span>Cần tư vấn chi tiết?</span><strong>Liên hệ kỹ thuật Hoàng Quân</strong></div>
-        <div class="prod-actions" id="artActions"></div>
+      <div class="article-reading-layout">
+        <div>
+          <div class="nm-content article-prose" id="artContent"></div>
+          <div class="article-interact-bar">
+            <button type="button" class="like-btn" id="btnLikeArt" aria-pressed="false">Hữu ích (<span id="artLikeCount">0</span>)</button>
+          </div>
+        </div>
+        <aside class="article-contact" aria-labelledby="articleContactTitle">
+          <h2 id="articleContactTitle">Tư vấn kỹ thuật</h2>
+          <p>Trao đổi phương án lắp đặt theo mức dùng điện của gia đình.</p>
+          <a href="/tuvan" class="art-tool-btn primary-outline">Tính dung lượng pin</a>
+          <div class="prod-actions" id="artActions"></div>
+        </aside>
       </div>
     </article>
 
@@ -103,7 +113,7 @@
   </main>
 </div>
 
-<section class="wrap" style="margin-bottom:26px">
+<section class="wrap subpage-contact">
   <div class="card contact-cta" id="contactCtaCard">
     <div class="cta-head">
       <h2 id="ctaTitle">Liên hệ ngay để được tư vấn &amp; khảo sát miễn phí</h2>
@@ -120,7 +130,7 @@
   </div>
 </footer>
 
-<script src="/js/news-page.js?v=33"></script>
+<script src="/js/news-page.js?v=36"></script>
 <script src="/js/img-protect.js?v=33"></script>
 </body>
 </html>

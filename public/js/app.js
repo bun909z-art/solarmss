@@ -685,6 +685,7 @@
       syncInputs();
       update();
       unlockConsultation(true);
+      $('calcWorkspaceTitle').focus();
       showToast('Đã xác nhận thông tin! Mời bạn tính dung lượng Pin Hybrid.');
     });
   }

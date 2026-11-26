@@ -6,7 +6,7 @@
 <title id="docTitle">Hoàng Quân – Tư vấn Pin lưu trữ Hybrid</title>
 <meta name="theme-color" content="#F26A1B" id="metaTheme">
 <link rel="icon" type="image/png" href="/assets/favicon.png" id="docFavicon">
-<link rel="stylesheet" href="/css/app.css?v=35">
+<link rel="stylesheet" href="/css/app.css?v=36">
 </head>
 <body>
 
@@ -45,7 +45,7 @@
   </div>
 </section>
 
-<main class="wrap main-wrap" id="mainWrap">
+<main class="wrap main-wrap consult-workspace" id="mainWrap">
   <div class="print-sheet-head print-only">
     <div>
       <strong id="pTitle">PHIẾU TƯ VẤN PIN LƯU TRỮ HYBRID</strong>
@@ -58,8 +58,13 @@
   <section class="card lead-gate-card" id="leadGateCard" aria-labelledby="leadGateTitle">
     <div class="card-head">
       <div>
-        <h2 id="leadGateTitle">Thông tin tư vấn</h2>
-        <p>Chuẩn bị hóa đơn điện gần đây hoặc số kWh tiêu thụ trong tháng để tính dung lượng pin.</p>
+        <h2 id="leadGateTitle">Bắt đầu tư vấn</h2>
+        <p>Chuẩn bị hóa đơn điện gần đây hoặc số kWh tiêu thụ trong tháng.</p>
+        <ol class="consult-process">
+          <li>Nhập mức dùng điện và thói quen sử dụng</li>
+          <li>Xem dung lượng pin và số module gợi ý</li>
+          <li>Chọn cấu hình để in phiếu hoặc gửi tư vấn</li>
+        </ol>
       </div>
     </div>
     <form id="leadGateForm" novalidate>
@@ -92,6 +97,10 @@
   </section>
 
   <div id="calcUnlockedWrap" hidden>
+  <div class="consult-toolbar noprint">
+    <h2 id="calcWorkspaceTitle" tabindex="-1">Ước tính dung lượng pin</h2>
+    <a class="art-tool-btn" href="#calcResult">Xem kết quả</a>
+  </div>
   <div class="grid">
     <div class="col">
       <!-- Card 1 -->
@@ -243,7 +252,7 @@
 
     <!-- Sticky Result Panel -->
     <div class="col sticky-col" id="stickyCol">
-      <section class="card result-card" aria-live="polite">
+      <section class="card result-card" id="calcResult" tabindex="-1" aria-labelledby="resultTitle">
         <div class="result-hero">
           <div class="result-hero-top">
             <span class="result-k" id="resultTitle">Dung lượng pin cần lưu trữ</span>
@@ -251,7 +260,7 @@
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="18" height="10" rx="2"/><line x1="22" y1="11" x2="22" y2="13"/><path d="M11 10l-2 2h4l-2 2"/></svg>
             </span>
           </div>
-          <div class="result-v"><span id="rBat">—</span><small>kWh</small></div>
+          <div class="result-v" aria-live="polite"><span id="rBat">—</span><small>kWh</small></div>
           <div class="result-sub" id="rMods">Nhập hóa đơn hoặc số kWh để bắt đầu.</div>
         </div>
 
@@ -403,7 +412,7 @@
 
 <script src="/js/calculator.js"></script>
 <script src="/js/combo.js?v=33"></script>
-<script src="/js/app.js?v=33"></script>
+<script src="/js/app.js?v=36"></script>
 <script src="/js/img-protect.js?v=33"></script>
 </body>
 </html>
