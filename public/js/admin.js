@@ -38,7 +38,8 @@
   let editRevision = 0;
   let configSaving = false;
   let activeTab = '';
-  let previewOpen = !window.matchMedia('(max-width: 980px)').matches;
+  const compactLayout = window.matchMedia('(max-width: 980px)');
+  let previewOpen = !compactLayout.matches;
 
   function can(permission) {
     return Boolean(CURRENT_USER && (CURRENT_USER.role === 'admin' || CURRENT_USER.permissions?.includes(permission)));
@@ -1140,6 +1141,8 @@
   // ---------- TABS & VIEWPORT ----------
   const tabs = [...document.querySelectorAll('.adm-navigation [data-tab]')];
   const previewSizes = [...document.querySelectorAll('[data-vp]')];
+  const sidebar = document.querySelector('.adm-sidebar');
+  const panel = document.querySelector('.adm-panel-scroll');
 
   function highlightButton(buttons, selected) {
     buttons.forEach(button => {
@@ -1163,10 +1166,8 @@
     if (!button || button.hidden) return;
     const next = button.dataset.tab;
     const [title, description, page] = TAB_INFO[next];
-    if (activeTab !== next) {
-      document.querySelector('.adm-panel-scroll').scrollTop = 0;
-      $('adminMore').open = false;
-    }
+    const changed = activeTab !== next;
+    if (changed) $('adminMore').open = false;
     activeTab = next;
     $('workspaceTitle').textContent = title;
     $('workspaceDescription').textContent = description;
@@ -1182,6 +1183,13 @@
     });
     if (next === 'overview') renderOverview();
     renderPreview();
+    if (changed) {
+      panel.scrollTop = 0;
+      if (compactLayout.matches) {
+        const offset = panel.getBoundingClientRect().top - sidebar.getBoundingClientRect().bottom;
+        if (offset < 0) window.scrollBy(0, offset);
+      }
+    }
   }
 
   tabs.forEach(button => {
@@ -1208,7 +1216,7 @@
   $('btnToggleMobilePreview').onclick = () => {
     previewOpen = !previewOpen;
     renderPreview();
-    if (previewOpen && window.matchMedia('(max-width: 980px)').matches) $('adminPreview').scrollIntoView({ block: 'start' });
+    if (previewOpen && compactLayout.matches) $('adminPreview').scrollIntoView({ block: 'start' });
   };
   $('btnClosePreview').onclick = () => {
     previewOpen = false;
