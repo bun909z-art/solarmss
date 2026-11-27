@@ -9,6 +9,31 @@ const { sendJson, readJsonBody, requireAdmin } = require('../lib/http-helpers');
 
 let gsheetPullTimer = null;
 
+function savePulledProducts(rows) {
+  const current = productStore.loadProducts();
+  if (!rows.length) return current;
+  const byId = new Map(current.map(product => [product.id, product]));
+  const parsed = rows.map((row, index) => {
+    const product = productStore.sanitizeProduct(row, index);
+    if (!product) return null;
+    const previous = byId.get(product.id);
+    if (!previous) return product;
+    // The bundled Apps Script sends catalog fields but has no columns for these details.
+    const image = [row.imageUrl, row.imageurl, row.image, row.hinh_anh, row['hình ảnh'], row['ảnh'], row['link ảnh'], row.anh]
+      .find(value => String(value || '').trim());
+    if (!productStore.normalizeImageUrl(image)) product.imageUrl = previous.imageUrl;
+    if (!product.datasheetUrl) {
+      product.datasheetUrl = previous.datasheetUrl;
+      product.datasheetName = previous.datasheetName;
+    }
+    if (!Array.isArray(row.attachments)) product.attachments = previous.attachments;
+    if (!product.specs) product.specs = previous.specs;
+    return product;
+  });
+  if (parsed.includes(null)) return null;
+  return productStore.saveProducts(parsed);
+}
+
 function refreshGsheetAutoPull() {
   if (gsheetPullTimer) { clearInterval(gsheetPullTimer); gsheetPullTimer = null; }
   const cfg = store.loadConfig();
@@ -20,7 +45,9 @@ function refreshGsheetAutoPull() {
     if (!cur.gsheet || !cur.gsheet.enabled || !cur.gsheet.autoPullProducts) return;
     try {
       const res = await gsheet.pullProductsFromSheet(cur.gsheet);
-      if (res.ok && Array.isArray(res.products) && res.products.length) productStore.saveProducts(res.products);
+      if (res.ok && !savePulledProducts(res.products)) {
+        console.error('[Google Sheets] Dữ liệu sản phẩm không hợp lệ. Kho hiện tại được giữ nguyên.');
+      }
     } catch (err) {
       console.error('[Google Sheets] Không thể lưu sản phẩm đã đồng bộ:', err.message);
     }
@@ -104,7 +131,10 @@ async function handleAdminGsheet(req, res, pathname, method, authState) {
     const cfg = store.loadConfig();
     const resPull = await gsheet.pullProductsFromSheet(cfg.gsheet || {});
     if (!resPull.ok) return sendJson(res, 400, { ok: false, error: resPull.error, status: gsheet.getStatus(cfg) }), true;
-    const saved = resPull.products.length ? productStore.saveProducts(resPull.products) : productStore.loadProducts();
+    const saved = savePulledProducts(resPull.products);
+    if (!saved) {
+      return sendJson(res, 400, { ok: false, error: 'Google Sheet có dòng sản phẩm thiếu tên hoặc nhóm hợp lệ.' }), true;
+    }
     return sendJson(res, 200, { ok: true, count: resPull.products.length, products: saved, status: gsheet.getStatus(cfg) }), true;
   }
 

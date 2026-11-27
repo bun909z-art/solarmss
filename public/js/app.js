@@ -9,9 +9,9 @@
 
   let CFG = null;
   let PRODUCTS = [];
-  let selectedComboKey = 'recommended';
+  let selectedCombo = null;
   let comboMixSeeds = [0, 0, 0];
-  let S = {
+  const S = {
     name: '',
     phone: '',
     address: '',
@@ -224,8 +224,9 @@
   function saveLocal() {
     if (isPreview) return;
     try {
+      const { name, phone, address, ...settings } = S;
       localStorage.setItem(LOCAL_KEY, JSON.stringify({
-        ...S,
+        ...settings,
         _cfgUpdatedAt: CFG ? CFG.updatedAt : null
       }));
     } catch {}
@@ -338,7 +339,6 @@
 
   
   // ---------- AUTO-SAVE CUSTOMER DATA & COMBO ----------
-  const IS_PREVIEW = new URLSearchParams(window.location.search).get('preview') === '1';
   let leadSessionId = '';
   try {
     leadSessionId = sessionStorage.getItem('hq_lead_sid') || '';
@@ -351,55 +351,76 @@
   }
   let leadSaveTimer = null;
   let lastLeadSig = '';
+  let leadSaveQueue = Promise.resolve();
 
-  function buildLeadPayload() {
+  function summarizeCombo(c) {
+    return {
+      key: c.key,
+      badge: c.badge,
+      title: c.title,
+      inverterName: c.inverter ? c.inverter.name : '',
+      panelSummary: c.panel ? `${c.panelCount} tấm × ${c.panel.name} (${nf2.format(c.solarKwp)} kWp)` : '',
+      batterySummary: c.battery ? `${c.batCount} module × ${c.battery.name} (${nf2.format(c.batTotalKwh)} kWh)` : '',
+      accessoriesSummary: (c.accessories && c.accessories.length) ? c.accessories.map(a => a.name).join(' · ') : ''
+    };
+  }
+
+  function buildLeadPayload(contact = S) {
     const r = window._hqLastResult || {};
-    const c = (window._hqCombos || []).find(x => x.key === selectedComboKey) || null;
     return {
       sessionId: leadSessionId,
-      customerName: (S.name || '').trim(),
-      customerPhone: (S.phone || '').trim(),
-      customerAddress: (S.address || '').trim(),
+      customerName: contact.name.trim(),
+      customerPhone: contact.phone.trim(),
+      customerAddress: contact.address.trim(),
       billTotal: Math.round(r.billTotal || 0),
       kwhUsed: Math.round(r.kwhUsed || 0),
       evePct: S.eve,
       batNeededKwh: Number((r.bat || 0).toFixed(2)),
       modulesCount: r.modules || 0,
       moduleKwh: S.mod,
-      selectedCombo: c ? {
-        key: c.key,
-        badge: c.badge,
-        title: c.title,
-        inverterName: c.inverter ? c.inverter.name : '',
-        panelSummary: c.panel ? `${c.panelCount} tấm × ${c.panel.name} (${nf2.format(c.solarKwp)} kWp)` : '',
-        batterySummary: c.battery ? `${c.batCount} module × ${c.battery.name} (${nf2.format(c.batTotalKwh)} kWh)` : '',
-        accessoriesSummary: (c.accessories && c.accessories.length) ? c.accessories.map(a => a.name).join(' · ') : ''
-      } : null
+      selectedCombo
     };
   }
 
-  function saveLeadNow(force = false) {
-    if (IS_PREVIEW) return;
-    const payload = buildLeadPayload();
-    const phoneDigits = String(payload.customerPhone || '').replace(/\D/g, '');
-    const hasInfo = payload.customerName.length >= 2 && phoneDigits.length >= 9 && payload.customerAddress.length >= 2;
-    if (!hasInfo) return;
+  function saveLead(payload) {
     const sig = JSON.stringify(payload);
-    if (!force && sig === lastLeadSig) return;
-    lastLeadSig = sig;
-    fetch('/api/leads', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: sig,
-      keepalive: true
-    }).catch(() => {});
+    const request = leadSaveQueue.then(async () => {
+      if (sig === lastLeadSig) return;
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 10000);
+      try {
+        const response = await fetch('/api/leads', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: sig,
+          keepalive: true,
+          signal: controller.signal
+        });
+        if (!response.ok || (await response.json()).ok !== true) throw new Error('Không thể lưu thông tin tư vấn.');
+      } finally {
+        clearTimeout(timer);
+      }
+      lastLeadSig = sig;
+      try {
+        sessionStorage.setItem('hq_cust_info', JSON.stringify({
+          name: payload.customerName, phone: payload.customerPhone, address: payload.customerAddress,
+          selectedCombo: payload.selectedCombo
+        }));
+      } catch {}
+    });
+    leadSaveQueue = request.catch(() => {});
+    return request;
   }
 
-  function scheduleLeadSave(immediate = false) {
-    if (IS_PREVIEW) return;
+  function scheduleLeadSave() {
+    if (isPreview || !isLeadUnlocked) return;
     clearTimeout(leadSaveTimer);
-    if (immediate) saveLeadNow(true);
-    else leadSaveTimer = setTimeout(() => saveLeadNow(false), 1200);
+    leadSaveTimer = setTimeout(() => {
+      const payload = buildLeadPayload();
+      if (payload.customerName.length < 2 || payload.customerPhone.replace(/\D/g, '').length < 9 ||
+          payload.customerAddress.length < 2) return;
+      saveLead(payload).catch(() => showToast('Không thể lưu thay đổi tư vấn. Vui lòng kiểm tra kết nối.'));
+    }, 1200);
   }
 
   function renderCombos(kwhUsed, bat) {
@@ -425,7 +446,7 @@
       return;
     }
     grid.innerHTML = combos.map((c, idx) => {
-      const isSel = selectedComboKey === c.key;
+      const isSel = selectedCombo?.key === c.key && JSON.stringify(selectedCombo) === JSON.stringify(summarizeCombo(c));
       const isFeat = c.key === 'recommended';
       return `<div class="combo-item${isFeat ? ' featured' : ''}${isSel ? ' selected' : ''}">
         <div class="combo-top">
@@ -471,11 +492,18 @@
       </div>`;
     }).join('');
     grid.querySelectorAll('[data-select-combo]').forEach(btn => {
-      btn.onclick = () => {
-        selectedComboKey = btn.dataset.selectCombo;
+      btn.onclick = async () => {
+        const choice = combos.find(combo => combo.key === btn.dataset.selectCombo);
+        selectedCombo = summarizeCombo(choice);
         renderCombos(kwhUsed, bat);
-        scheduleLeadSave(true);
-        showToast('Đã chọn gói Combo và lưu thông tin tư vấn!');
+        if (isPreview) return;
+        clearTimeout(leadSaveTimer);
+        try {
+          await saveLead(buildLeadPayload());
+          showToast('Đã chọn gói Combo và lưu thông tin tư vấn!');
+        } catch {
+          showToast('Chưa lưu được gói đã chọn. Vui lòng thử lại.');
+        }
       };
     });
     grid.querySelectorAll('[data-mix-idx]').forEach(btn => {
@@ -565,7 +593,7 @@
       `• Tỷ lệ dùng buổi tối: ${S.eve}% (≈ ${nf2.format(r.eveDay || 0)} kWh/tối)`,
       `• Dung lượng pin cần: ${nf1.format(r.bat || 0)} kWh (DoD ${S.dod}%, hiệu suất ${S.eff}%)`,
       r.modules ? `• Gợi ý cấu hình pin: ${r.modules} module × ${nf2.format(S.mod)} kWh = ${nf2.format(r.modules * S.mod)} kWh` : null,
-      ...(function(){ const c = (window._hqCombos || []).find(x => x.key === selectedComboKey); if (!c) return []; const sp = Boolean(CFG && CFG.sections && CFG.sections.showComboPrices === true); return [`• Combo đề xuất (${c.badge}):`, `  - Inverter: 1 × ${c.inverter.name}`, `  - Pin MT: ${c.panelCount} tấm × ${c.panel.name} (${nf2.format(c.solarKwp)} kWp)`, `  - Lưu trữ: ${c.batCount} × ${c.battery.name} (${nf2.format(c.batTotalKwh)} kWh)`, sp ? `  - Dự kiến thiết bị: ${nf0.format(c.totalPrice)} đ` : '  - Giá bán: Liên hệ để báo giá']; })()
+      ...(function(){ const c = (window._hqCombos || []).find(x => x.key === (selectedCombo?.key || 'recommended')); if (!c) return []; const sp = Boolean(CFG && CFG.sections && CFG.sections.showComboPrices === true); return [`• Combo đề xuất (${c.badge}):`, `  - Inverter: 1 × ${c.inverter.name}`, `  - Pin MT: ${c.panelCount} tấm × ${c.panel.name} (${nf2.format(c.solarKwp)} kWp)`, `  - Lưu trữ: ${c.batCount} × ${c.battery.name} (${nf2.format(c.batTotalKwh)} kWh)`, sp ? `  - Dự kiến thiết bị: ${nf0.format(c.totalPrice)} đ` : '  - Giá bán: Liên hệ để báo giá']; })()
     ].filter(Boolean).join('\n');
     try {
       await navigator.clipboard.writeText(lines);
@@ -594,9 +622,9 @@
         try {
           const raw = localStorage.getItem(LOCAL_KEY);
           if (raw) {
-            const saved = JSON.parse(raw);
-            if (saved._cfgUpdatedAt === config.updatedAt) {
-              S = Object.assign(S, saved);
+            const { name, phone, address, _cfgUpdatedAt, ...settings } = JSON.parse(raw);
+            if (_cfgUpdatedAt === config.updatedAt) {
+              Object.assign(S, settings);
               restored = true;
             }
           }
@@ -617,41 +645,51 @@
   });
 
   // ---------- MANDATORY CUSTOMER INFO GATE ----------
-  let isLeadUnlocked = IS_PREVIEW;
-  function unlockConsultation(autoSave = true) {
+  let isLeadUnlocked = false;
+  function unlockConsultation() {
     isLeadUnlocked = true;
     if ($('leadGateCard')) $('leadGateCard').hidden = true;
     if ($('calcUnlockedWrap')) $('calcUnlockedWrap').hidden = false;
-    if (autoSave) scheduleLeadSave(true);
   }
-  if (IS_PREVIEW) {
-    unlockConsultation(false);
+  if (isPreview) {
+    unlockConsultation();
   } else {
     try {
       const saved = JSON.parse(sessionStorage.getItem('hq_cust_info') || 'null');
       if (saved && saved.name && String(saved.phone || '').replace(/\D/g, '').length >= 9 && saved.address) {
         S.name = saved.name; S.phone = saved.phone; S.address = saved.address;
+        selectedCombo = saved.selectedCombo || null;
         syncInputs();
-        unlockConsultation(false);
+        unlockConsultation();
       }
     } catch {}
   }
   if ($('leadGateForm')) {
-    $('leadGateForm').addEventListener('submit', e => {
+    $('leadGateForm').addEventListener('submit', async e => {
       e.preventDefault();
+      const submit = e.currentTarget.querySelector('button[type="submit"]');
+      if (submit.disabled) return;
       const name = ($('gateName').value || '').trim();
       const phone = ($('gatePhone').value || '').trim();
       const addr = ($('gateAddress').value || '').trim();
       const digits = phone.replace(/\D/g, '');
       if (name.length < 2) { $('gateErr').textContent = 'Vui lòng nhập họ và tên (tối thiểu 2 ký tự).'; $('gateName').focus(); return; }
-      if (digits.length < 9 || digits.length > 12) { $('gateErr').textContent = 'Vui lòng nhập số điện thoại hợp lệ (9–11 chữ số).'; $('gatePhone').focus(); return; }
+      if (digits.length < 9 || digits.length > 12) { $('gateErr').textContent = 'Vui lòng nhập số điện thoại hợp lệ (9–12 chữ số).'; $('gatePhone').focus(); return; }
       if (addr.length < 2) { $('gateErr').textContent = 'Vui lòng nhập địa chỉ lắp đặt / liên hệ.'; $('gateAddress').focus(); return; }
       $('gateErr').textContent = '';
-      S.name = name; S.phone = phone; S.address = addr;
-      try { sessionStorage.setItem('hq_cust_info', JSON.stringify({ name, phone, address: addr })); } catch {}
+      submit.disabled = true;
+      try {
+        await saveLead(buildLeadPayload({ name, phone, address: addr }));
+      } catch {
+        $('gateErr').textContent = 'Chưa lưu được thông tin. Vui lòng kiểm tra kết nối và gửi lại.';
+        return;
+      } finally {
+        submit.disabled = false;
+      }
+      Object.assign(S, { name, phone, address: addr });
       syncInputs();
+      unlockConsultation();
       update();
-      unlockConsultation(true);
       $('calcWorkspaceTitle').focus();
       showToast('Đã xác nhận thông tin! Mời bạn tính dung lượng Pin Hybrid.');
     });
