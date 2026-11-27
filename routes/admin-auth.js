@@ -150,7 +150,7 @@ async function handleAdminAuth(req, res, pathname, method, authState) {
   // SUPER ADMIN ONLY: Telegram Bot notification settings & test
   if (pathname === '/api/admin/telegram' && method === 'GET') {
     if (!requireAdmin(req, res, authState, 'SUPER_ADMIN')) return true;
-    return sendJson(res, 200, { telegram: authState.telegram || { enabled: false, botToken: '', chatId: '', onlyWithContactOrCombo: true } }), true;
+    return sendJson(res, 200, { telegram: authState.telegram || { enabled: false, botToken: '', chatId: '' } }), true;
   }
 
   if (pathname === '/api/admin/telegram' && (method === 'PUT' || method === 'POST')) {
@@ -159,8 +159,7 @@ async function handleAdminAuth(req, res, pathname, method, authState) {
     authState.telegram = {
       enabled: Boolean(body.enabled),
       botToken: String(body.botToken || '').trim(),
-      chatId: String(body.chatId || '').trim(),
-      onlyWithContactOrCombo: body.onlyWithContactOrCombo !== false
+      chatId: String(body.chatId || '').trim()
     };
     store.saveAuth(authState);
     return sendJson(res, 200, { ok: true, telegram: authState.telegram }), true;
@@ -172,7 +171,7 @@ async function handleAdminAuth(req, res, pathname, method, authState) {
     const token = String(body.botToken || (authState.telegram && authState.telegram.botToken) || '').trim();
     const chatId = String(body.chatId || (authState.telegram && authState.telegram.chatId) || '').trim();
     try {
-      await telegram.sendTelegramMessage(token, chatId, '✅ <b>Kết nối Telegram thành công!</b>\nHệ thống Mai Sơn Solar sẽ tự động gửi thông tin khách hàng &amp; Combo về nhóm/chat này.');
+      await telegram.sendTelegramMessage(token, chatId, '✅ <b>Kết nối Telegram thành công!</b>\nHệ thống Mai Sơn Solar sẽ gửi thông tin khách hàng và yêu cầu báo giá về nhóm/chat này.');
       return sendJson(res, 200, { ok: true, message: 'Đã gửi tin nhắn thử tới Telegram thành công!' }), true;
     } catch (err) {
       return sendJson(res, 400, { error: 'Gửi Telegram thất bại: ' + (err.message || 'Kiểm tra lại Bot Token và Chat ID.') }), true;

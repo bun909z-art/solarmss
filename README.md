@@ -10,7 +10,7 @@ node server.js
 
 Mặc định chạy tại `http://localhost:3000`:
 - `/` — Trang chủ (banner bài viết nổi bật trượt ngang, giải pháp nhanh, sản phẩm tiêu biểu)
-- `/tuvan` — Công cụ tư vấn dung lượng Pin Hybrid & gợi ý Combo
+- `/tuvan` — Công cụ tư vấn dung lượng Pin Hybrid và gửi yêu cầu báo giá
 - `/products` — Danh mục sản phẩm, phụ kiện & trang chi tiết độc lập (`/products?id=...`)
 - `/news` — Tin tức & trang bài viết độc lập (`/news?id=...`)
 - `/admin` — Trang quản trị & phân quyền (mặc định: `admin` / `admin123`)
@@ -40,13 +40,13 @@ hoangquan-pin-hybrid/
 │   ├── css/
 │   │   ├── app.css            # Tệp gom @import 4 mô-đun CSS bên dưới
 │   │   ├── base.css           # Biến màu, header, nav, card, dark mode
-│   │   ├── calculator.css     # Bố cục công cụ tính EVN, Combo & bản in PDF
+│   │   ├── calculator.css     # Bố cục công cụ tính EVN và yêu cầu báo giá
 │   │   ├── catalog.css        # Sản phẩm, trang chi tiết, Tin tức & slider Trang chủ
 │   │   ├── effects.css        # Hiệu ứng chuyển động v3 & chống sao chép ảnh
 │   │   └── admin.css          # Giao diện trang Quản trị
 │   └── js/
 │       ├── app.js, home-page.js, products-page.js, news-page.js
-│       ├── calculator.js, combo.js, img-protect.js
+│       ├── calculator.js, img-protect.js
 │       └── admin/             # Tách riêng 7 mô-đun giao diện quản trị
 │           ├── core.js        # Trạng thái dùng chung, gọi API, đăng nhập/đăng xuất
 │           ├── config-ui.js   # Thương hiệu, Trang chủ, Giao diện, Bố cục, EVN, Chân trang

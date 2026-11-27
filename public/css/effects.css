@@ -153,50 +153,6 @@ body.dark-mode .card {
   transform: translateY(-1px);
 }
 
-/* Tactile Combo Cards */
-.combo-item {
-  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.28s ease, border-color 0.28s ease;
-  position: relative;
-  overflow: hidden;
-}
-.combo-item::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0; height: 3px;
-  background: linear-gradient(90deg, var(--primary), var(--grad-end), var(--primary));
-  background-size: 200% 100%;
-  opacity: 0;
-  transition: opacity 0.25s ease;
-}
-.combo-item:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
-  border-color: var(--primary-line);
-}
-.combo-item:hover::before, .combo-item.featured::before, .combo-item.selected::before {
-  opacity: 1;
-  animation: hqShimmer 3.2s linear infinite;
-}
-.combo-item.selected {
-  box-shadow: 0 0 0 3px var(--primary-soft), 0 18px 40px var(--primary-line, rgba(242, 106, 27, 0.18)) !important;
-}
-.combo-thumb img {
-  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.combo-thumb:hover img {
-  transform: scale(1.08);
-}
-.combo-mix-one {
-  transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.combo-mix-one:hover {
-  transform: translateY(-2px) scale(1.03);
-  box-shadow: 0 6px 14px var(--primary-line, rgba(242, 106, 27, 0.2));
-}
-.combo-mix-one:active {
-  transform: scale(0.95);
-}
-
 /* Product Showcase & News Cards Hover Magic */
 .prod-card, .news-card {
   transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.28s ease, border-color 0.28s ease;
@@ -222,12 +178,12 @@ body.dark-mode .card {
 }
 
 /* Sheen Hover Effect on Primary & CTA Buttons */
-.btn-primary, .combo-btn, .cta-btn {
+.btn-primary, .cta-btn {
   position: relative;
   overflow: hidden;
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.22s ease, filter 0.2s ease;
 }
-.btn-primary::after, .combo-btn::after, .cta-btn::after {
+.btn-primary::after, .cta-btn::after {
   content: '';
   position: absolute;
   top: 0; left: -120%; width: 65%; height: 100%;
@@ -235,10 +191,10 @@ body.dark-mode .card {
   transition: left 0.55s ease;
   pointer-events: none;
 }
-.btn-primary:hover::after, .combo-btn:hover::after, .cta-btn:hover::after {
+.btn-primary:hover::after, .cta-btn:hover::after {
   left: 140%;
 }
-.btn-primary:hover, .combo-btn:hover, .cta-btn:hover {
+.btn-primary:hover, .cta-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 20px var(--primary-glow, rgba(242, 106, 27, 0.26));
 }
@@ -351,8 +307,6 @@ img {
 .news-cover img,
 .article-cover-full img,
 .fslide-img img,
-.combo-thumb img,
-.combo-spec-row img,
 .brand img {
   pointer-events: none;
 }

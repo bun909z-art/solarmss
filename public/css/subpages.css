@@ -201,7 +201,7 @@ body {
 .consult-toolbar a { display: none; min-height: 44px; }
 .consult-workspace .sticky-col.is-sticky { top: var(--subpage-anchor); }
 .consult-workspace .grid > .col { gap: 14px; }
-.consult-workspace .grid .card, .consult-workspace .combo-section, .consult-workspace .tables-stack .card { box-shadow: none; border-color: var(--line); }
+.consult-workspace .grid .card, .consult-workspace .tables-stack .card { box-shadow: none; border-color: var(--line); }
 .consult-workspace .step-num { background: var(--subpage-forest); color: var(--solar-light); }
 .consult-workspace .result-card { padding: 0; }
 .consult-workspace .result-hero { padding-block: 24px; background: radial-gradient(ellipse at 88% 0%, #456b56, transparent 64%), #102721; }
@@ -212,7 +212,6 @@ body {
 .consult-workspace .result-body .stat { min-width: 0; overflow-wrap: anywhere; }
 .consult-workspace .stat .a, .consult-workspace .bar-hint { font-size: .8125rem; }
 .consult-workspace .steps li { overflow-wrap: anywhere; }
-.consult-workspace .combo-sub { font-size: .9375rem; }
 #calcResult, #calcWorkspaceTitle { scroll-margin-top: var(--subpage-anchor); }
 
 .coordinated-theme {

@@ -203,7 +203,7 @@
     const frame = $('previewFrame');
     if (frame.contentWindow && CONFIG && !$('adminPreview').hidden) {
       const config = { ...editorConfig(), maintenance: CONFIG.maintenance, updatedAt: CONFIG.updatedAt };
-      frame.contentWindow.postMessage({ type: 'HQ_PREVIEW_CONFIG', config, products: PRODUCTS }, window.location.origin);
+      frame.contentWindow.postMessage({ type: 'HQ_PREVIEW_CONFIG', config }, window.location.origin);
     }
   }
 
@@ -327,7 +327,6 @@
       setChk('tg_enabled', Boolean(tg.enabled));
       setVal('tg_botToken', tg.botToken || '');
       setVal('tg_chatId', tg.chatId || '');
-      setChk('tg_onlyContact', tg.onlyWithContactOrCombo !== false);
       applyPermissionsUI();
       if ($('nn_date') && !$('nn_date').value) $('nn_date').value = new Date().toISOString().slice(0, 10);
       renderPresets();
@@ -449,13 +448,13 @@
     [
       'showCustomerName', 'showCustomerPhone', 'showCustomerAddress', 'showQuickChips',
       'showSliders', 'showAdvancedSettings', 'showDayNightBar', 'showCalcSteps',
-      'showTierTable', 'showScenarioTable', 'showComboSection', 'showComboPrices',
-      'showContactCta', 'showPrintButton', 'showFooterNotes'
+      'showTierTable', 'showScenarioTable',
+      'showContactCta', 'showFooterNotes'
     ].forEach(k => setChk('s_' + k, s[k] !== false));
 
     [
       'card1Title', 'card2Title', 'resultTitle', 'tierTableTitle',
-      'scenarioTableTitle', 'comboTitle', 'printTitle', 'printButtonText'
+      'scenarioTableTitle'
     ].forEach(k => setVal('s_' + k, s[k] || ''));
 
     setVal('d_mode', d.mode || 'bill');
@@ -467,7 +466,6 @@
     setVal('d_eff', d.eff ?? 95);
     setVal('d_vat', d.vat ?? 8);
     setVal('d_days', d.days ?? 30);
-    setVal('d_sunHours', d.sunHours ?? 4.0);
     setVal('d_billChips', (d.billChips || []).join(', '));
     setVal('d_kwhChips', (d.kwhChips || []).join(', '));
     setVal('d_scenarios', (d.scenarios || []).join(', '));
@@ -487,7 +485,7 @@
       showSlider: true, sliderKicker: '★ Nổi bật', sliderTitle: 'Tin tức & Dự án nổi bật',
       autoSlide: true, sliderIntervalSec: 4.5, sliderHeight: 430, showQuickCards: true,
       quickCards: [
-        { icon: '⚡', title: 'Tư vấn & Tính Pin Hybrid', desc: 'Nhập hóa đơn EVN hoặc số kWh để tính dung lượng pin lưu trữ cần thiết và nhận 3 gợi ý Combo lắp đặt chi tiết.', cta: 'Tính ngay →', href: '/tuvan', primary: true },
+        { icon: '⚡', title: 'Tư vấn & Tính Pin Hybrid', desc: 'Nhập hóa đơn EVN hoặc số kWh để ước tính dung lượng pin lưu trữ và gửi yêu cầu báo giá.', cta: 'Tính ngay →', href: '/tuvan', primary: true },
         { icon: '🔋', title: 'Sản phẩm & Phụ kiện chính hãng', desc: 'Khám phá Inverter Hybrid, Tấm pin mặt trời, Pin Lithium LFP và trọn bộ Phụ kiện lắp đặt kèm thông số, Datasheet.', cta: 'Xem sản phẩm →', href: '/products', primary: false },
         { icon: '📰', title: 'Kiến thức & Dự án thực tế', desc: 'Cập nhật kinh nghiệm chọn cấu hình, quy định giá điện mới nhất và các công trình Hybrid đã bàn giao.', cta: 'Đọc tin tức →', href: '/news', primary: false }
       ],
@@ -757,7 +755,7 @@
           ${p.category === 'accessory'
             ? `<input type="text" class="f-input" data-p-spec="${idx}" value="${escapeAttr(p.specText || '')}" placeholder="Quy cách (VD: IP65, 4mm²...)" title="Quy cách / Thông số chính">`
             : `<input type="number" class="f-input" data-p-spec="${idx}" value="${p.category === 'inverter' ? p.powerKw : p.category === 'panel' ? p.wattWp : p.capacityKwh}" step="0.01" title="Công suất / Dung lượng">`}
-          <input type="number" class="f-input" data-p-price="${idx}" value="${p.price || 0}" step="100000" title="Giá nội bộ (tính Combo)">
+          <input type="number" class="f-input" data-p-price="${idx}" value="${p.price || 0}" step="100000" title="Giá nội bộ">
           <input type="text" class="f-input" data-p-war="${idx}" value="${escapeAttr(p.warranty || '')}" placeholder="Bảo hành">
           <select class="f-input" data-p-stock="${idx}" style="font-weight:700;color:${(p.stockStatus || (p.inStock === false ? 'out_of_stock' : 'in_stock')) === 'out_of_stock' ? '#B91C1C' : (p.stockStatus === 'contact' ? '#B45309' : '#047857')}">
             <option value="in_stock" ${(p.stockStatus || (p.inStock === false ? 'out_of_stock' : 'in_stock')) === 'in_stock' ? 'selected' : ''}>✅ Còn hàng</option>
@@ -795,10 +793,9 @@
         el.querySelector(`[data-p-publication="${idx}"]`).textContent = productPublication(PRODUCTS[idx]);
         updateProductPublication();
       }
-      pushPreview();
     });
-    el.querySelectorAll('[data-p-name]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pName].name = inp.value; pushPreview(); });
-    el.querySelectorAll('[data-p-brand]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pBrand].brand = inp.value; pushPreview(); });
+    el.querySelectorAll('[data-p-name]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pName].name = inp.value; });
+    el.querySelectorAll('[data-p-brand]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pBrand].brand = inp.value; });
     el.querySelectorAll('[data-p-spec]').forEach(inp => inp.oninput = () => {
       const p = PRODUCTS[+inp.dataset.pSpec];
       if (p.category === 'accessory') { p.specText = inp.value; }
@@ -806,7 +803,6 @@
         const v = Math.max(0.1, Number(inp.value) || 0);
         if (p.category === 'inverter') p.powerKw = v; else if (p.category === 'panel') p.wattWp = v; else p.capacityKwh = v;
       }
-      pushPreview();
     });
     el.querySelectorAll('[data-p-war]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pWar].warranty = inp.value; });
     el.querySelectorAll('[data-p-stock]').forEach(sel => sel.onchange = () => {
@@ -821,7 +817,6 @@
         el.querySelector(`[data-p-publication="${idx}"]`).textContent = productPublication(PRODUCTS[idx]);
         updateProductPublication();
       }
-      pushPreview();
     });
     el.querySelectorAll('[data-p-note]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pNote].note = inp.value; });
     el.querySelectorAll('[data-p-desc]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pDesc].description = inp.value; });
@@ -862,7 +857,7 @@
       PRODUCTS[pi].attachments.splice(ai, 1);
       renderProdList();
     });
-    el.querySelectorAll('[data-p-price]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pPrice].price = Math.max(0, Number(inp.value) || 0); pushPreview(); });
+    el.querySelectorAll('[data-p-price]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pPrice].price = Math.max(0, Number(inp.value) || 0); });
     el.querySelectorAll('[data-p-img]').forEach(inp => {
       inp.onchange = () => {
         const file = inp.files[0]; if (!file) return;
@@ -872,14 +867,14 @@
           try {
             const res = await api('/api/admin/upload-product-image', { method: 'POST', body: JSON.stringify({ dataUrl: reader.result }) });
             PRODUCTS[idx].imageUrl = res.imageUrl;
-            renderProdList(); pushPreview();
+            renderProdList();
             toast('Đã cập nhật ảnh sản phẩm! Nhớ bấm Lưu danh mục sản phẩm.');
           } catch (err) { toast(err.message); }
         };
         reader.readAsDataURL(file);
       };
     });
-    el.querySelectorAll('[data-p-del]').forEach(btn => btn.onclick = () => { PRODUCTS.splice(+btn.dataset.pDel, 1); renderProdList(); pushPreview(); });
+    el.querySelectorAll('[data-p-del]').forEach(btn => btn.onclick = () => { PRODUCTS.splice(+btn.dataset.pDel, 1); renderProdList(); });
   }
 
   if ($('prodFilterTabs')) {
@@ -918,7 +913,6 @@
     selectedProducts.clear();
     $('productBulkAction').value = '';
     renderProdList();
-    pushPreview();
     toast(`Đã chỉnh ${count} sản phẩm. Bấm Lưu danh mục sản phẩm để áp dụng.`);
   };
 
@@ -953,7 +947,7 @@
       else item.specText = specRaw;
       PRODUCTS.unshift(item);
       $('np_name').value = ''; $('np_spec').value = ''; $('np_price').value = ''; if ($('np_desc')) $('np_desc').value = '';
-      renderProdList(); pushPreview();
+      renderProdList();
       toast('Đã thêm sản phẩm. Bấm "Lưu danh mục sản phẩm" để ghi lên máy chủ.');
     };
   }
@@ -967,7 +961,7 @@
       try {
         const res = await api('/api/admin/products', { method: 'PUT', body: JSON.stringify({ products: PRODUCTS }) });
         setLoadedProducts(res.products);
-        renderProdList(); pushPreview();
+        renderProdList();
         toast(`Đã lưu ${PRODUCTS.length} sản phẩm lên máy chủ!`);
       } catch (err) { toast(err.message); }
       finally { pane.inert = false; pane.removeAttribute('aria-busy'); }
@@ -980,7 +974,7 @@
       try {
         const res = await api('/api/admin/products/reset', { method: 'POST' });
         setLoadedProducts(res.products);
-        renderProdList(); pushPreview();
+        renderProdList();
         toast('Đã khôi phục kho sản phẩm mẫu.');
       } catch (err) { toast(err.message); }
     };
@@ -1007,7 +1001,7 @@
           }
           const res = await api('/api/admin/products/import', { method: 'POST', body: JSON.stringify(payload) });
           setLoadedProducts(res.products);
-          renderProdList(); pushPreview();
+          renderProdList();
           toast(`Đã cập nhật ${res.count} sản phẩm từ tệp ${file.name}!`);
         } catch (err) { toast(err.message || 'Tệp Excel/CSV/JSON không hợp lệ.'); }
         e.target.value = '';
@@ -1182,11 +1176,11 @@
     const phoneQuery = /^[+\d .()-]+$/.test(q) ? q.replace(/\D/g, '') : '';
     return LEADS.filter(lead => {
       if (leadRecordId && lead.id !== leadRecordId) return false;
-      if (status !== 'all' && (lead.status || 'new') !== status) return false;
+      if (status === 'quote_requested' ? !lead.quoteRequestedAt : status !== 'all' && (lead.status || 'new') !== status) return false;
       if (assignee !== 'all' && (lead.assignedTo || 'admin') !== assignee) return false;
       if (days && !(Date.parse(lead.createdAt || lead.updatedAt) >= cutoff)) return false;
       if (!q) return true;
-      const text = normalizeSearch([lead.customerName, lead.customerPhone, lead.customerAddress, lead.selectedCombo?.title, lead.adminNote].join(' '));
+      const text = normalizeSearch([lead.customerName, lead.customerPhone, lead.customerAddress, lead.adminNote].join(' '));
       return text.includes(q) || Boolean(phoneQuery && String(lead.customerPhone || '').replace(/\D/g, '').includes(phoneQuery));
     });
   }
@@ -1215,7 +1209,6 @@
     $('btnExportLeads').disabled = !datasetReady.leads || !list.length;
 
     el.innerHTML = list.map(l => {
-      const c = l.selectedCombo;
       const phoneClean = String(l.customerPhone || '').replace(/[^\d+]/g, '');
       const zaloClean = phoneClean.replace(/[^\d]/g, '');
       const st = l.status || 'new';
@@ -1236,13 +1229,9 @@
           <div>⚡ Hóa đơn: <b>${nfLead.format(l.billTotal || 0)} đ/tháng</b> (${nfLead.format(l.kwhUsed || 0)} kWh)</div>
           <div>🔋 Pin lưu trữ cần: <b>${Number(l.batNeededKwh || 0).toFixed(1)} kWh</b> (${l.modulesCount || 0} × ${l.moduleKwh || 5.12} kWh · tối ${l.evePct ?? 70}%)</div>
         </div>
-        ${c ? `<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:7px 9px;font-size:12px;color:#9A3412">
-          <div style="font-weight:800;margin-bottom:2px">★ Combo đã chọn: ${escapeAttr(c.title || '')} ${c.badge ? '(' + escapeAttr(c.badge) + ')' : ''}</div>
-          ${c.inverterName ? `<div>• Inverter: ${escapeAttr(c.inverterName)}</div>` : ''}
-          ${c.panelSummary ? `<div>• Tấm pin: ${escapeAttr(c.panelSummary)}</div>` : ''}
-          ${c.batterySummary ? `<div>• Pin lưu trữ: ${escapeAttr(c.batterySummary)}</div>` : ''}
-          ${c.accessoriesSummary ? `<div style="font-size:11px;color:#7C2D12">• Phụ kiện: ${escapeAttr(c.accessoriesSummary)}</div>` : ''}
-        </div>` : '<div style="font-size:11.5px;color:#94A3B8;font-style:italic">Khách chưa bấm chọn Combo cụ thể.</div>'}
+        ${l.quoteRequestedAt ? `<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:7px 9px;font-size:12px;color:#9A3412">
+          <strong>Khách yêu cầu báo giá</strong> · ${escapeAttr(fmtLeadTime(l.quoteRequestedAt))}
+        </div>` : ''}
         ${(!CURRENT_USER || CURRENT_USER.role === 'admin') ? `<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;font-size:11.5px">
           <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
             <span style="font-weight:700;color:#475569">👤 Phụ trách:</span>
@@ -1479,7 +1468,7 @@
         const res = await api('/api/admin/products/sync-sheet', { method: 'POST', body: JSON.stringify({ url }) });
         if (Array.isArray(res.products)) setLoadedProducts(res.products);
         if (res.config) CONFIG.sheetSync = res.config.sheetSync;
-        renderProdList(); pushPreview();
+        renderProdList();
         if ($('gs_status')) $('gs_status').innerHTML = `✅ Đồng bộ xong (${escapeAttr(fmtLeadTime(res.lastSyncedAt))}): <b>${escapeAttr(res.summary)}</b>`;
         toast('Đồng bộ Google Sheet thành công: ' + res.summary);
       } catch (err) {
@@ -1662,7 +1651,7 @@
       try {
         toast('Đang kéo Kho sản phẩm từ Google Sheets...');
         const res = await api('/api/admin/gsheet/pull-products', { method: 'POST' });
-        if (Array.isArray(res.products)) { setLoadedProducts(res.products); renderProdList(); pushPreview(); }
+        if (Array.isArray(res.products)) { setLoadedProducts(res.products); renderProdList(); }
         renderGsheetStatus(res.status);
         toast(`Đã kéo ${res.count} sản phẩm từ Google Sheets!`);
       } catch (err) {
@@ -1909,8 +1898,7 @@
           body: JSON.stringify({
             enabled: $('tg_enabled').checked,
             botToken: $('tg_botToken').value.trim(),
-            chatId: $('tg_chatId').value.trim(),
-            onlyWithContactOrCombo: $('tg_onlyContact') ? $('tg_onlyContact').checked : true
+            chatId: $('tg_chatId').value.trim()
           })
         });
         toast('Đã lưu cấu hình Telegram Bot!');
@@ -2002,17 +1990,17 @@
   [
     'showCustomerName', 'showCustomerPhone', 'showCustomerAddress', 'showQuickChips',
     'showSliders', 'showAdvancedSettings', 'showDayNightBar', 'showCalcSteps',
-    'showTierTable', 'showScenarioTable', 'showComboSection', 'showComboPrices',
-    'showContactCta', 'showPrintButton', 'showFooterNotes'
+    'showTierTable', 'showScenarioTable',
+    'showContactCta', 'showFooterNotes'
   ].forEach(k => bind('s_' + k, el => { CONFIG.sections[k] = el.checked; }));
 
   [
     'card1Title', 'card2Title', 'resultTitle', 'tierTableTitle',
-    'scenarioTableTitle', 'comboTitle', 'printTitle', 'printButtonText'
+    'scenarioTableTitle'
   ].forEach(k => bind('s_' + k, el => { CONFIG.sections[k] = el.value; }));
 
   bind('d_mode', el => { CONFIG.defaults.mode = el.value; });
-  ['bill', 'kwh', 'mod', 'eve', 'dod', 'eff', 'vat', 'days', 'sunHours'].forEach(k => {
+  ['bill', 'kwh', 'mod', 'eve', 'dod', 'eff', 'vat', 'days'].forEach(k => {
     bind('d_' + k, el => { CONFIG.defaults[k] = Number(el.value) || 0; });
   });
   function parseNumList(str) {

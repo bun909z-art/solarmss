@@ -368,12 +368,10 @@ body.coordinated-theme .topbar { background: var(--theme-band); }
   background: linear-gradient(135deg, var(--theme-band), var(--theme-band-raised));
 }
 .coordinated-theme:has(.home-main) .site-footer { background: var(--theme-band); }
-.coordinated-theme :is(.chip:hover, .mix-btn:hover, .doc-dl-btn:not(.secondary):hover,
-  .combo-btn:hover, .combo-item.featured .combo-btn, .cta-btn.call) {
+.coordinated-theme :is(.chip:hover, .doc-dl-btn:not(.secondary):hover,
+  .cta-btn.call) {
   color: var(--theme-on-primary);
 }
-.coordinated-theme .combo-item.selected .combo-btn { color: #fff; }
-.coordinated-theme .combo-item.featured .combo-badge { background: var(--theme-band); }
 .coordinated-theme .home-main .cta-btn.call { color: #211708; }
 .coordinated-theme :focus-visible { outline-color: var(--ink); }
 .coordinated-theme .topbar :focus-visible { outline-color: var(--solar-gold); }

@@ -337,9 +337,6 @@
           <div class="toggle-row"><span>Các bước tính chi tiết</span><input type="checkbox" id="s_showCalcSteps"></div>
           <div class="toggle-row"><span>Bảng chi tiết hóa đơn 5 bậc EVN</span><input type="checkbox" id="s_showTierTable"></div>
           <div class="toggle-row"><span>Bảng so sánh tỷ lệ buổi tối</span><input type="checkbox" id="s_showScenarioTable"></div>
-          <div class="toggle-row"><span>Mục Gợi ý Combo lắp đặt</span><input type="checkbox" id="s_showComboSection"></div>
-          <div class="toggle-row"><span>Hiển thị giá sản phẩm trong Combo</span><input type="checkbox" id="s_showComboPrices"></div>
-          <div class="toggle-row"><span>Nút In PDF &amp; Copy kết quả</span><input type="checkbox" id="s_showPrintButton"></div>
           <div class="toggle-row"><span>Mục "Liên hệ ngay" (Gọi + Zalo)</span><input type="checkbox" id="s_showContactCta"></div>
           <div class="toggle-row"><span>Lưu ý sử dụng ở chân trang</span><input type="checkbox" id="s_showFooterNotes"></div>
 
@@ -350,9 +347,6 @@
           <div class="field-row"><label class="f-lbl">Tiêu đề Thẻ kết quả</label><input type="text" id="s_resultTitle" class="f-input"></div>
           <div class="field-row"><label class="f-lbl">Tiêu đề Bảng bậc thang EVN</label><input type="text" id="s_tierTableTitle" class="f-input"></div>
           <div class="field-row"><label class="f-lbl">Tiêu đề Bảng so sánh buổi tối</label><input type="text" id="s_scenarioTableTitle" class="f-input"></div>
-          <div class="field-row"><label class="f-lbl" for="s_comboTitle">Tiêu đề mục gợi ý combo</label><input type="text" id="s_comboTitle" class="f-input"></div>
-          <div class="field-row"><label class="f-lbl">Tiêu đề Phiếu in PDF</label><input type="text" id="s_printTitle" class="f-input"></div>
-          <div class="field-row"><label class="f-lbl">Nhãn nút In PDF</label><input type="text" id="s_printButtonText" class="f-input"></div>
         </section>
 
         <!-- TAB 4: DEFAULTS & EVN TARIFFS -->
@@ -397,10 +391,6 @@
             <div class="field-row">
               <label class="f-lbl">Số ngày / tháng</label>
               <input type="number" id="d_days" class="f-input" min="1" max="31">
-            </div>
-            <div class="field-row">
-              <label class="f-lbl" for="d_sunHours">Giờ nắng đỉnh / ngày</label>
-              <input type="number" id="d_sunHours" class="f-input" min="2" max="7" step="0.1">
             </div>
           </div>
 
@@ -637,6 +627,7 @@
             <input type="search" id="leadSearch" class="f-input" aria-label="Tìm khách hàng" placeholder="Tìm tên, SĐT, địa chỉ">
             <select id="leadStatusFilter" class="f-input" aria-label="Trạng thái khách hàng">
               <option value="all">Tất cả trạng thái</option>
+              <option value="quote_requested">📋 Khách yêu cầu báo giá</option>
               <option value="new">🆕 Mới</option>
               <option value="contacted">📞 Đã liên hệ</option>
               <option value="quoted">📋 Đã báo giá</option>
@@ -739,6 +730,7 @@
           <hr class="sep">
           <h3>Mã kết nối Google Apps Script (1 phút cài đặt)</h3>
           <p class="hint">Mở Google Sheets → <b>Tiện ích mở rộng → Apps Script</b> → dán mã dưới đây → <b>Triển khai → Ứng dụng web</b> (Quyền truy cập: <i>Bất kỳ ai</i>) → dán URL nhận được vào ô phía trên.</p>
+          <p class="hint">Nếu đã kết nối Google Sheets, cập nhật và triển khai lại mã Apps Script để đồng bộ cột thời điểm khách yêu cầu báo giá.</p>
           <button type="button" class="btn-ghost full" id="btnCopyAppsScript" style="margin-top:6px">📋 Sao chép mã Google Apps Script</button>
 
           <hr class="sep">
@@ -918,7 +910,7 @@
           <hr class="sep">
           <h3>🤖 Thông báo khách hàng qua Telegram Bot</h3>
           <div class="toggle-row">
-            <span>Tự động gửi thông tin khách &amp; Combo về Telegram</span>
+            <span>Tự động gửi thông tin khách và yêu cầu báo giá qua Telegram</span>
             <input type="checkbox" id="tg_enabled">
           </div>
           <div class="field-row">
@@ -928,10 +920,6 @@
           <div class="field-row">
             <label class="f-lbl">Chat ID / Group ID (nhiều ID cách nhau dấu phẩy)</label>
             <input type="text" id="tg_chatId" class="f-input" placeholder="-1001234567890 hoặc 987654321">
-          </div>
-          <div class="toggle-row">
-            <span>Chỉ gửi khi khách có SĐT hoặc đã chọn Combo</span>
-            <input type="checkbox" id="tg_onlyContact" checked>
           </div>
           <div class="two-col" style="margin-top:6px">
             <button type="button" class="btn-primary full" id="btnSaveTelegram">💾 Lưu Telegram</button>
@@ -961,6 +949,6 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="/js/admin.js?v=44"></script>
+<script src="/js/admin.js?v=45"></script>
 </body>
 </html>

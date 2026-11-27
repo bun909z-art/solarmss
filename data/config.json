@@ -61,19 +61,13 @@
     "showCalcSteps": true,
     "showTierTable": true,
     "showScenarioTable": true,
-    "showComboSection": true,
-    "showComboPrices": false,
-    "showPrintButton": true,
     "showFooterNotes": true,
     "showContactCta": true,
     "card1Title": "Mức tiêu thụ điện của khách",
     "card2Title": "Thông số tính pin lưu trữ",
     "resultTitle": "Dung lượng pin cần lưu trữ",
     "tierTableTitle": "Chi tiết hóa đơn theo bậc thang (biểu giá 5 bậc từ 01/11/2026)",
-    "scenarioTableTitle": "So sánh theo tỷ lệ dùng điện buổi tối",
-    "comboTitle": "Gợi ý Combo lắp đặt trọn bộ (Inverter + Pin mặt trời + Pin lưu trữ)",
-    "printTitle": "PHIẾU TƯ VẤN PIN LƯU TRỮ HYBRID",
-    "printButtonText": "In / Lưu PDF phiếu tư vấn"
+    "scenarioTableTitle": "So sánh theo tỷ lệ dùng điện buổi tối"
   },
   "defaults": {
     "mode": "bill",
@@ -85,7 +79,6 @@
     "mod": 5.12,
     "vat": 8,
     "days": 30,
-    "sunHours": 4,
     "billChips": [
       1000000,
       2000000,

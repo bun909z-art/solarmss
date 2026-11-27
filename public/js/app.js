@@ -8,9 +8,6 @@
   const LOCAL_KEY = 'hq_pin_tuvan_node_v1';
 
   let CFG = null;
-  let PRODUCTS = [];
-  let selectedCombo = null;
-  let comboMixSeeds = [0, 0, 0];
   const S = {
     name: '',
     phone: '',
@@ -98,9 +95,6 @@
     $('stepsWrap').hidden = sec.showCalcSteps === false;
     $('tierCard').hidden = sec.showTierTable === false;
     $('scenarioCard').hidden = sec.showScenarioTable === false;
-    if ($('comboCard')) $('comboCard').hidden = sec.showComboSection === false;
-    if ($('comboTitle') && sec.comboTitle) $('comboTitle').textContent = sec.comboTitle;
-    $('actionsWrap').hidden = sec.showPrintButton === false;
     $('footerNotesWrap').hidden = sec.showFooterNotes === false;
 
     $('card1Title').textContent = sec.card1Title || 'Mức tiêu thụ điện của khách';
@@ -108,8 +102,6 @@
     $('resultTitle').textContent = sec.resultTitle || 'Dung lượng pin cần lưu trữ';
     $('tierTableTitle').textContent = sec.tierTableTitle || 'Chi tiết hóa đơn theo bậc thang';
     $('scenarioTableTitle').textContent = sec.scenarioTableTitle || 'So sánh theo tỷ lệ dùng điện buổi tối';
-    $('pTitle').textContent = sec.printTitle || 'PHIẾU TƯ VẤN PIN LƯU TRỮ HYBRID';
-    $('printBtnText').textContent = sec.printButtonText || 'In / Lưu PDF phiếu tư vấn';
 
     // Chips
     const billChips = Array.isArray(def.billChips) ? def.billChips : [1000000, 2000000, 3000000, 5000000, 8000000];
@@ -220,9 +212,6 @@
     setRange('eve', 'eveOut');
     setRange('dod', 'dodOut');
     setRange('eff', 'effOut');
-    $('pName').textContent = S.name || '—';
-    if ($('pPhone')) $('pPhone').textContent = S.phone || '—';
-    if ($('pAddress')) $('pAddress').textContent = S.address || '—';
 
     const vat = S.vat / 100;
     const dod = S.dod / 100;
@@ -309,13 +298,12 @@
     }).join('');
 
     window._hqLastResult = { kwhUsed, billTotal, bat, modules, eveDay };
-    renderCombos(kwhUsed, bat);
-    scheduleLeadSave(false);
+    scheduleLeadSave();
   }
 
 
   
-  // ---------- AUTO-SAVE CUSTOMER DATA & COMBO ----------
+  // ---------- CUSTOMER DATA AND QUOTE REQUEST ----------
   let leadSessionId = '';
   try {
     leadSessionId = sessionStorage.getItem('hq_lead_sid') || '';
@@ -329,18 +317,10 @@
   let leadSaveTimer = null;
   let lastLeadSig = '';
   let leadSaveQueue = Promise.resolve();
-
-  function summarizeCombo(c) {
-    return {
-      key: c.key,
-      badge: c.badge,
-      title: c.title,
-      inverterName: c.inverter ? c.inverter.name : '',
-      panelSummary: c.panel ? `${c.panelCount} tấm × ${c.panel.name} (${nf2.format(c.solarKwp)} kWp)` : '',
-      batterySummary: c.battery ? `${c.batCount} module × ${c.battery.name} (${nf2.format(c.batTotalKwh)} kWh)` : '',
-      accessoriesSummary: (c.accessories && c.accessories.length) ? c.accessories.map(a => a.name).join(' · ') : ''
-    };
-  }
+  let quoteRequestedAt = '';
+  let quoteSaving = false;
+  const quoteButton = $('requestQuote');
+  const quoteFeedback = $('quoteFeedback');
 
   function buildLeadPayload(contact = S) {
     const r = window._hqLastResult || {};
@@ -354,8 +334,7 @@
       evePct: S.eve,
       batNeededKwh: Number((r.bat || 0).toFixed(2)),
       modulesCount: r.modules || 0,
-      moduleKwh: S.mod,
-      selectedCombo
+      moduleKwh: S.mod
     };
   }
 
@@ -373,7 +352,11 @@
           keepalive: true,
           signal: controller.signal
         });
-        if (!response.ok || (await response.json()).ok !== true) throw new Error('Không thể lưu thông tin tư vấn.');
+        const result = await response.json();
+        if (!response.ok || result.ok !== true || (payload.requestQuote && !result.lead?.quoteRequestedAt)) {
+          throw new Error(result.error || 'Không thể lưu thông tin tư vấn.');
+        }
+        if (result.lead?.quoteRequestedAt) quoteRequestedAt = result.lead.quoteRequestedAt;
       } finally {
         clearTimeout(timer);
       }
@@ -381,9 +364,10 @@
       try {
         sessionStorage.setItem('hq_cust_info', JSON.stringify({
           name: payload.customerName, phone: payload.customerPhone, address: payload.customerAddress,
-          selectedCombo: payload.selectedCombo
+          quoteRequestedAt
         }));
       } catch {}
+      if (quoteRequestedAt) renderQuote();
     });
     leadSaveQueue = request.catch(() => {});
     return request;
@@ -400,101 +384,33 @@
     }, 1200);
   }
 
-  function renderCombos(kwhUsed, bat) {
-    const grid = $('comboGrid');
-    if (!grid || !window.HQCombo) return;
-    if (!kwhUsed || kwhUsed <= 0) {
-      grid.innerHTML = '<p class="note">Nhập hóa đơn hoặc số kWh để hệ thống gợi ý Combo lắp đặt phù hợp.</p>';
-      return;
-    }
-    const sunHours = (CFG && CFG.defaults && Number(CFG.defaults.sunHours)) || 4.0;
-    const showPrices = Boolean(CFG && CFG.sections && CFG.sections.showComboPrices === true);
-    const combos = window.HQCombo.recommendCombos({
-      kwhMonth: kwhUsed,
-      batNeededKwh: bat,
-      days: S.days,
-      sunHours,
-      products: PRODUCTS,
-      mixSeeds: comboMixSeeds
-    });
-    window._hqCombos = combos;
-    if (!combos.length) {
-      grid.innerHTML = '<p class="note">Chưa đủ dữ liệu 3 nhóm sản phẩm (Inverter, Tấm pin, Pin lưu trữ) đang kích hoạt. Hãy tải lên danh mục sản phẩm tại trang Quản trị.</p>';
-      return;
-    }
-    grid.innerHTML = combos.map((c, idx) => {
-      const isSel = selectedCombo?.key === c.key && JSON.stringify(selectedCombo) === JSON.stringify(summarizeCombo(c));
-      const isFeat = c.key === 'recommended';
-      return `<div class="combo-item${isFeat ? ' featured' : ''}${isSel ? ' selected' : ''}">
-        <div class="combo-top">
-          <span class="combo-badge">${escapeHtml(c.badge)}</span>
-          <span style="font-size:12px;font-weight:700;color:var(--ink-3)">${nf2.format(c.solarKwp)} kWp · ${nf2.format(c.batTotalKwh)} kWh</span>
-        </div>
-        <div>
-          <h3 class="combo-title">${escapeHtml(c.title)}</h3>
-          <p class="combo-desc">${escapeHtml(c.desc)}</p>
-        </div>
-        <div class="combo-price">
-          ${showPrices ? nf0.format(c.totalPrice) + ' đ' : 'Liên hệ để báo giá'}
-          <small>Trọn bộ thiết bị (Inverter + Tấm pin + Pin lưu trữ + Phụ kiện lắp đặt)</small>
-        </div>
-        <div class="combo-gallery${c.accessory ? ' cols-4' : ''}">
-          <div class="combo-thumb"><img src="${escapeHtml(c.inverter.imageUrl || '/assets/prod-inverter.jpg')}" alt="Inverter"><span>Inverter ${c.inverter.powerKw}kW</span></div>
-          <div class="combo-thumb"><img src="${escapeHtml(c.panel.imageUrl || '/assets/prod-panel.jpg')}" alt="Pin mặt trời"><span>${c.panelCount} tấm pin</span></div>
-          <div class="combo-thumb"><img src="${escapeHtml(c.battery.imageUrl || '/assets/prod-battery.jpg')}" alt="Pin lưu trữ"><span>${c.batCount} pin lưu trữ</span></div>
-          ${c.accessory ? `<div class="combo-thumb"><img src="${escapeHtml(c.accessory.imageUrl || '/assets/prod-accessory.jpg')}" alt="Phụ kiện lắp đặt"><span>Phụ kiện (${c.accessories.length})</span></div>` : ''}
-        </div>
-        <ul class="combo-specs">
-          <li class="combo-spec-row">
-            <img src="${escapeHtml(c.inverter.imageUrl || '/assets/prod-inverter.jpg')}" alt="Inverter">
-            <div><span class="sp-cat">Inverter Hybrid</span><span class="sp-name">1 × ${escapeHtml(c.inverter.name)}</span><span class="sp-meta">${c.inverter.powerKw} kW (${escapeHtml(c.inverter.phase || '1 pha')})${showPrices ? ' · ' + nf0.format(c.invTotal) + ' đ' : ''}</span></div>
-          </li>
-          <li class="combo-spec-row">
-            <img src="${escapeHtml(c.panel.imageUrl || '/assets/prod-panel.jpg')}" alt="Pin mặt trời">
-            <div><span class="sp-cat">Pin năng lượng mặt trời</span><span class="sp-name">${c.panelCount} tấm × ${escapeHtml(c.panel.name)}</span><span class="sp-meta">Tổng ${nf2.format(c.solarKwp)} kWp${showPrices ? ' · ' + nf0.format(c.panelTotal) + ' đ' : ''}</span></div>
-          </li>
-          <li class="combo-spec-row">
-            <img src="${escapeHtml(c.battery.imageUrl || '/assets/prod-battery.jpg')}" alt="Pin lưu trữ">
-            <div><span class="sp-cat">Pin lưu trữ</span><span class="sp-name">${c.batCount} module × ${escapeHtml(c.battery.name)}</span><span class="sp-meta">Tổng ${nf2.format(c.batTotalKwh)} kWh${showPrices ? ' · ' + nf0.format(c.batTotal) + ' đ' : ''}</span></div>
-          </li>
-          ${(c.accessories && c.accessories.length) ? `<li class="combo-spec-row">
-            <img src="${escapeHtml(c.accessory.imageUrl || '/assets/prod-accessory.jpg')}" alt="Phụ kiện lắp đặt">
-            <div><span class="sp-cat">Phụ kiện thi công &amp; lắp đặt</span><span class="sp-name">Trọn bộ phụ kiện (${c.accessories.length} hạng mục)</span><span class="sp-meta">${escapeHtml(c.accessories.map(a => a.name).join(' · '))}</span></div>
-          </li>` : ''}
-        </ul>
-        <div class="combo-card-actions noprint">
-          <button type="button" class="combo-btn" data-select-combo="${c.key}">${isSel ? '✓ Đã chọn' : 'Chọn gói này'}</button>
-          <button type="button" class="combo-mix-one" data-mix-idx="${idx}" title="Phối ghép ngẫu nhiên riêng gói này">🔀 Mix</button>
-        </div>
-      </div>`;
-    }).join('');
-    grid.querySelectorAll('[data-select-combo]').forEach(btn => {
-      btn.onclick = async () => {
-        const choice = combos.find(combo => combo.key === btn.dataset.selectCombo);
-        selectedCombo = summarizeCombo(choice);
-        renderCombos(kwhUsed, bat);
-        if (isPreview) return;
-        clearTimeout(leadSaveTimer);
-        try {
-          await saveLead(buildLeadPayload());
-          showToast('Đã chọn gói Combo và lưu thông tin tư vấn!');
-        } catch {
-          showToast('Chưa lưu được gói đã chọn. Vui lòng thử lại.');
-        }
-      };
-    });
-    grid.querySelectorAll('[data-mix-idx]').forEach(btn => {
-      btn.onclick = () => {
-        const i = +btn.dataset.mixIdx;
-        comboMixSeeds[i] = (comboMixSeeds[i] || 0) + 1 + Math.floor(Math.random() * 97);
-        renderCombos(kwhUsed, bat);
-        showToast(`Đã Mix lại Combo #${i + 1}!`);
-      };
-    });
+  function renderQuote(error = '') {
+    quoteButton.disabled = isPreview || quoteSaving || Boolean(quoteRequestedAt);
+    quoteButton.textContent = quoteRequestedAt ? 'Đã gửi yêu cầu' : quoteSaving ? 'Đang gửi…' : 'Yêu cầu báo giá';
+    quoteFeedback.hidden = !quoteRequestedAt && !error;
+    quoteFeedback.dataset.error = String(Boolean(error));
+    quoteFeedback.textContent = quoteRequestedAt
+      ? 'Cảm ơn quý khách đã để lại thông tin. Bộ phận kinh doanh sẽ liên hệ với quý khách.'
+      : error;
   }
 
+  quoteButton.onclick = async () => {
+    if (isPreview || !isLeadUnlocked || quoteSaving || quoteRequestedAt) return;
+    quoteSaving = true;
+    renderQuote();
+    clearTimeout(leadSaveTimer);
+    let error = '';
+    try {
+      await saveLead({ ...buildLeadPayload(), requestQuote: true });
+    } catch {
+      error = 'Chưa gửi được yêu cầu báo giá. Vui lòng kiểm tra thông tin liên hệ và thử lại.';
+    } finally {
+      quoteSaving = false;
+      renderQuote(error);
+    }
+  };
+
   // Event bindings
-  $('pDate').textContent = new Date().toLocaleDateString('vi-VN');
 
   $('bill').addEventListener('input', e => {
     const el = e.target;
@@ -556,43 +472,18 @@
     }
   };
 
-  $('print').onclick = () => window.print();
-
-  $('copySummary').onclick = async () => {
-    const r = window._hqLastResult || {};
-    const company = (CFG && CFG.branding && CFG.branding.companyName) || 'Công Ty TNHH Mai Sơn Solar';
-    const lines = [
-      `[${company}] TƯ VẤN PIN LƯU TRỮ HYBRID`,
-      S.name ? `• Khách hàng: ${S.name}` : null,
-      S.phone ? `• Điện thoại: ${S.phone}` : null,
-      S.address ? `• Địa chỉ: ${S.address}` : null,
-      `• Hóa đơn điện: ${nf0.format(r.billTotal || 0)} đ/tháng (≈ ${nf0.format(r.kwhUsed || 0)} kWh)`,
-      `• Tỷ lệ dùng buổi tối: ${S.eve}% (≈ ${nf2.format(r.eveDay || 0)} kWh/tối)`,
-      `• Dung lượng pin cần: ${nf1.format(r.bat || 0)} kWh (DoD ${S.dod}%, hiệu suất ${S.eff}%)`,
-      r.modules ? `• Gợi ý cấu hình pin: ${r.modules} module × ${nf2.format(S.mod)} kWh = ${nf2.format(r.modules * S.mod)} kWh` : null,
-      ...(function(){ const c = (window._hqCombos || []).find(x => x.key === (selectedCombo?.key || 'recommended')); if (!c) return []; const sp = Boolean(CFG && CFG.sections && CFG.sections.showComboPrices === true); return [`• Combo đề xuất (${c.badge}):`, `  - Inverter: 1 × ${c.inverter.name}`, `  - Pin MT: ${c.panelCount} tấm × ${c.panel.name} (${nf2.format(c.solarKwp)} kWp)`, `  - Lưu trữ: ${c.batCount} × ${c.battery.name} (${nf2.format(c.batTotalKwh)} kWh)`, sp ? `  - Dự kiến thiết bị: ${nf0.format(c.totalPrice)} đ` : '  - Giá bán: Liên hệ để báo giá']; })()
-    ].filter(Boolean).join('\n');
-    try {
-      await navigator.clipboard.writeText(lines);
-      showToast('Đã sao chép kết quả tư vấn!');
-    } catch {
-      showToast('Không thể sao chép tự động trên trình duyệt này.');
-    }
-  };
 
   // Live preview listener from Admin iframe
   let receivedPreview = false;
   window.addEventListener('message', ev => {
     if (isPreview && ev.origin === location.origin && ev.source === window.parent && ev.data?.type === 'HQ_PREVIEW_CONFIG' && ev.data.config) {
       receivedPreview = true;
-      if (Array.isArray(ev.data.products)) PRODUCTS = ev.data.products;
       applyConfig(ev.data.config, true);
     }
   });
 
-  HQLive.watch(['config', 'products'], ({ config, products }, changed) => {
+  HQLive.watch(['config'], ({ config }, changed) => {
     if (receivedPreview) return;
-    if (changed.has('products')) PRODUCTS = products;
     if (changed.has('config')) {
       let restored = false;
       if (!CFG && !isPreview) {
@@ -608,10 +499,6 @@
         } catch {}
       }
       applyConfig(config, !CFG && !restored);
-    } else if (window._hqLastResult) {
-      const { kwhUsed, bat } = window._hqLastResult;
-      renderCombos(kwhUsed, bat);
-      scheduleLeadSave(false);
     }
   }, (failures, snapshot) => {
     if (failures.includes('config') && !snapshot.config && !receivedPreview && !window._hqLastResult) {
@@ -635,12 +522,13 @@
       const saved = JSON.parse(sessionStorage.getItem('hq_cust_info') || 'null');
       if (saved && saved.name && String(saved.phone || '').replace(/\D/g, '').length >= 9 && saved.address) {
         S.name = saved.name; S.phone = saved.phone; S.address = saved.address;
-        selectedCombo = saved.selectedCombo || null;
+        quoteRequestedAt = saved.quoteRequestedAt || '';
         syncInputs();
         unlockConsultation();
       }
     } catch {}
   }
+  renderQuote();
   if ($('leadGateForm')) {
     $('leadGateForm').addEventListener('submit', async e => {
       e.preventDefault();

@@ -6,7 +6,7 @@
 <title id="docTitle">Tư vấn Pin lưu trữ Hybrid – Công Ty TNHH Mai Sơn Solar</title>
 <meta name="theme-color" content="#F26A1B" id="metaTheme">
 <link rel="icon" type="image/png" href="/assets/favicon.png?v=mss" id="docFavicon">
-<link rel="stylesheet" href="/css/app.css?v=39">
+<link rel="stylesheet" href="/css/app.css?v=40">
 </head>
 <body>
 
@@ -45,15 +45,6 @@
 </section>
 
 <main class="wrap main-wrap consult-workspace" id="mainWrap">
-  <div class="print-sheet-head print-only">
-    <div>
-      <strong id="pTitle">PHIẾU TƯ VẤN PIN LƯU TRỮ HYBRID</strong>
-      <div class="print-meta">Khách hàng: <span id="pName">—</span> · SĐT: <span id="pPhone">—</span> · Địa chỉ: <span id="pAddress">—</span> · Ngày lập: <span id="pDate"></span></div>
-    </div>
-  </div>
-
-
-  <!-- MANDATORY CUSTOMER INFO GATE -->
   <section class="card lead-gate-card" id="leadGateCard" aria-labelledby="leadGateTitle">
     <div class="card-head">
       <div>
@@ -304,37 +295,15 @@
             </li>
           </ul>
 
-          <div class="actions noprint" id="actionsWrap">
-            <button type="button" class="btn primary" id="print">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-              <span id="printBtnText">In / Lưu PDF phiếu tư vấn</span>
-            </button>
-            <button type="button" class="btn ghost icon-btn" id="copySummary" title="Sao chép nhanh kết quả gửi khách">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-              <span>Copy</span>
-            </button>
+          <div class="actions noprint">
+            <button type="button" class="btn primary" id="requestQuote">Yêu cầu báo giá</button>
           </div>
+          <p class="quote-feedback noprint" id="quoteFeedback" role="status" hidden></p>
         </div>
       </section>
     </div>
   </div>
 
-
-  <!-- Combo Recommendations -->
-  <section class="card combo-section" id="comboCard" style="margin-top:22px">
-    <div class="card-head combo-head-bar">
-      <div style="display:flex;align-items:center;gap:12px">
-        <span class="step-num">⚡</span>
-        <div>
-          <h2 id="comboTitle">Gợi ý Combo lắp đặt trọn bộ (Inverter + Pin mặt trời + Pin lưu trữ)</h2>
-          <p class="combo-sub" id="comboSubtitle">Tự động phối ghép từ danh mục sản phẩm theo hóa đơn và nhu cầu lưu trữ.</p>
-        </div>
-      </div>
-      
-    </div>
-    <div class="combo-grid" id="comboGrid"></div>
-    <p class="note" id="comboNote">Chọn 1 gói Combo phù hợp để đính kèm khi Copy hoặc In phiếu tư vấn. Liên hệ trực tiếp hoặc nhắn Zalo để nhận báo giá trọn gói.</p>
-  </section>
 
   <!-- Analytical Tables -->
   <div class="col tables-stack">
@@ -410,11 +379,10 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="/js/calculator.js"></script>
-<script src="/js/combo.js?v=33"></script>
 <script src="/js/site-theme.js?v=37"></script>
 <script src="/js/site-contact.js"></script>
 <script src="/js/live-updates.js?v=1"></script>
-<script src="/js/app.js?v=43"></script>
-<script src="/js/img-protect.js?v=33"></script>
+<script src="/js/app.js?v=44"></script>
+<script src="/js/img-protect.js?v=34"></script>
 </body>
 </html>
