@@ -99,6 +99,7 @@ private struct SolarWorkspace: View {
         .sheet(isPresented: $settingsVisible) {
             SiteSettings(initialAddress: browser.site?.absoluteString ?? "", adminURL: adminURL) { url in
                 savedSite = url.absoluteString
+                guard browser.site != url else { return }
                 tab = .home
                 browser.connect(url)
             }
