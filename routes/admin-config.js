@@ -4,15 +4,46 @@ const store = require('../lib/store');
 const productStore = require('../lib/products');
 const newsStore = require('../lib/news');
 const path = require('path');
+const { isDeepStrictEqual } = require('node:util');
 const leadStore = require('../lib/leads');
 const updater = require('../lib/updater');
 const { sendJson, readJsonBody, requireAdmin } = require('../lib/http-helpers');
+
+function configHasConflict(current, patch, expected) {
+  return Object.entries(expected).some(([section, fields]) => {
+    const update = patch[section];
+    if (!update || !fields || typeof fields !== 'object') return false;
+    return Object.entries(fields).some(([field, previous]) => {
+      if (!Object.hasOwn(update, field)) return false;
+      const currentValue = current[section]?.[field];
+      return !isDeepStrictEqual(currentValue, previous) && !isDeepStrictEqual(currentValue, update[field]);
+    });
+  });
+}
+
+function salesContactsError(footer, current) {
+  if (!footer || !Object.hasOwn(footer, 'salesContacts')) return '';
+  const contacts = footer.salesContacts;
+  if (!Array.isArray(contacts)) return 'Danh sách tư vấn bán hàng không hợp lệ.';
+  if (isDeepStrictEqual(contacts, current.footer?.salesContacts)) return '';
+  const invalid = contacts.findIndex(contact => {
+    const number = String(contact?.number || '').trim();
+    if (!number && !String(contact?.label || '').trim() && !String(contact?.zalo || '').trim()) return false;
+    const digits = number.replace(/\D/g, '').length;
+    return !/^\+?[\d\s().-]+$/.test(number) || digits < 9 || digits > 15;
+  });
+  return invalid < 0 ? '' : `Số điện thoại của liên hệ bán hàng #${invalid + 1} không hợp lệ. Vui lòng nhập từ 9 đến 15 chữ số.`;
+}
 
 async function handleAdminConfig(req, res, pathname, method, authState) {
   if (pathname === '/api/admin/config' && (method === 'PUT' || method === 'POST')) {
     const user = requireAdmin(req, res, authState, ['branding', 'home', 'theme', 'layout', 'tariffs', 'footer']);
     if (!user) return true;
-    const body = await readJsonBody(req, 1024 * 1024);
+    const input = await readJsonBody(req, 1024 * 1024);
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+      return sendJson(res, 400, { error: 'Dữ liệu cấu hình không hợp lệ.' }), true;
+    }
+    const { expectedConfig, ...body } = input;
     let patch = body;
     if (user.role !== 'admin') {
       const perms = Array.isArray(user.permissions) ? user.permissions : [];
@@ -28,6 +59,12 @@ async function handleAdminConfig(req, res, pathname, method, authState) {
       }
       if (perms.includes('footer') && body.footer) patch.footer = body.footer;
     }
+    const current = store.loadConfig();
+    if (expectedConfig && configHasConflict(current, patch, expectedConfig)) {
+      return sendJson(res, 409, { error: 'Mục bạn đang lưu đã được thay đổi ở phiên Admin khác. Hãy tải lại trang để xem bản mới trước khi sửa tiếp.' }), true;
+    }
+    const contactError = salesContactsError(patch.footer, current);
+    if (contactError) return sendJson(res, 400, { error: contactError }), true;
     const updated = store.saveConfig(patch);
     return sendJson(res, 200, { ok: true, config: store.getPublicConfig(updated) }), true;
   }
@@ -106,6 +143,8 @@ async function handleAdminConfig(req, res, pathname, method, authState) {
       productStore.saveProducts(body);
       updatedSections.push(`Kho sản phẩm (${body.length})`);
     } else if (body && typeof body === 'object') {
+      const contactError = salesContactsError(body.config?.footer || body.footer, store.loadConfig());
+      if (contactError) return sendJson(res, 400, { error: contactError }), true;
       if (body.config && typeof body.config === 'object') {
         store.saveConfig(body.config);
         updatedSections.push('Cấu hình giao diện');

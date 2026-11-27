@@ -22,6 +22,7 @@
   };
 
   let CONFIG = null;
+  let savedEditorConfig = null;
   let PRESETS = {};
   let PRODUCTS = [];
   let savedProductStates = new Map();
@@ -67,6 +68,25 @@
 
   function editorConfig() {
     return Object.fromEntries(EDITOR_KEYS.map(key => [key, CONFIG[key]]));
+  }
+
+  function snapshotEditorConfig() {
+    const snapshot = JSON.parse(JSON.stringify(editorConfig()));
+    delete snapshot.sections.showSolarDemo;
+    return snapshot;
+  }
+
+  function configChanges(before, after) {
+    const patch = {}, expectedConfig = {};
+    for (const key of EDITOR_KEYS) {
+      for (const [field, value] of Object.entries(after[key] || {})) {
+        const previous = before[key]?.[field];
+        if (JSON.stringify(value) === JSON.stringify(previous)) continue;
+        (patch[key] ||= {})[field] = value;
+        (expectedConfig[key] ||= {})[field] = previous;
+      }
+    }
+    return { patch, expectedConfig };
   }
 
   function authHeaders(headers = {}) {
@@ -289,6 +309,7 @@
         isSuper ? api('/api/admin/telegram').catch(() => ({ telegram: {} })) : Promise.resolve({ telegram: {} })
       ]);
       CONFIG = data.config;
+      savedEditorConfig = snapshotEditorConfig();
       const brand = CONFIG.branding;
       document.title = `Quản trị website – ${brand.companyName || 'Công Ty TNHH Mai Sơn Solar'}`;
       $('adminBrandLogo').src = brand.logoUrl || '/assets/logo-default.jpg?v=mss';
@@ -311,6 +332,14 @@
       if ($('nn_date') && !$('nn_date').value) $('nn_date').value = new Date().toISOString().slice(0, 10);
       renderPresets();
       populateForm();
+      renderProdList();
+      renderNewsList();
+      renderLeadsList();
+      const gs = CONFIG.sheetSync || {};
+      setVal('gs_url', gs.url || '');
+      if (gs.lastSummary) {
+        $('gs_status').innerHTML = `✅ Lần đồng bộ gần nhất (${escapeAttr(fmtLeadTime(gs.lastSyncedAt))}): <b>${escapeAttr(gs.lastSummary)}</b>`;
+      }
       populateMaintForm();
       setDirty(false);
       pushPreview();
@@ -480,17 +509,7 @@
     setVal('hm_productsCount', String(hm.productsCount || 4));
     setChk('hm_showContactCta', hm.showContactCta !== false);
     renderHomeQuickEditor();
-    const gs = CONFIG.sheetSync || {};
-    setVal('gs_url', gs.url || '');
-    if ($('gs_status') && gs.lastSummary) {
-      $('gs_status').innerHTML = `✅ Lần đồng bộ gần nhất (${escapeAttr(fmtLeadTime(gs.lastSyncedAt))}): <b>${escapeAttr(gs.lastSummary)}</b>`;
-    }
-
-
     renderNotesEditor();
-    renderProdList();
-    renderNewsList();
-    renderLeadsList();
   }
 
   
@@ -2024,6 +2043,7 @@
           body: JSON.stringify({ dataUrl: reader.result, filename: file.name })
         });
         CONFIG.branding.logoUrl = res.logoUrl;
+        savedEditorConfig.branding.logoUrl = res.logoUrl;
         $('logoPreview').src = res.logoUrl;
         pushPreview();
         toast('Đã tải lên logo mới!');
@@ -2066,25 +2086,34 @@
 
   $('btnSave').onclick = async () => {
     if (!CONFIG || configSaving || !dirty) return;
+    const baseConfig = savedEditorConfig;
+    const sentConfig = snapshotEditorConfig();
+    const { patch, expectedConfig } = configChanges(baseConfig, sentConfig);
+    if (!Object.keys(patch).length) {
+      setDirty(false);
+      return;
+    }
     const revision = editRevision;
     configSaving = true;
     $('btnSave').disabled = true;
     $('btnSave').textContent = 'Đang lưu…';
     renderDemoStatus();
     try {
-      const payload = editorConfig();
-      payload.sections = { ...payload.sections };
-      delete payload.sections.showSolarDemo;
-      const res = await api('/api/admin/config', { method: 'PUT', body: JSON.stringify(payload) });
-      if (editRevision === revision) {
-        CONFIG = res.config;
-        renderHotlineEditor();
-        renderSalesContacts();
-        setDirty(false);
-      } else {
-        CONFIG.sections.showSolarDemo = res.config.sections.showSolarDemo;
-        CONFIG.updatedAt = res.config.updatedAt;
+      const res = await api('/api/admin/config', {
+        method: 'PUT', body: JSON.stringify({ ...patch, expectedConfig })
+      });
+      const pending = editRevision === revision ? {} : configChanges(sentConfig, snapshotEditorConfig()).patch;
+      CONFIG = res.config;
+      savedEditorConfig = snapshotEditorConfig();
+      for (const [key, fields] of Object.entries(pending)) {
+        Object.assign(CONFIG[key], fields);
+        for (const field of Object.keys(fields)) {
+          if (!Object.hasOwn(patch[key] || {}, field)) savedEditorConfig[key][field] = baseConfig[key]?.[field];
+        }
       }
+      renderPresets();
+      populateForm();
+      setDirty(Object.keys(pending).length > 0);
       pushPreview();
       toast(dirty ? 'Đã lưu bản trước. Bạn vẫn có thay đổi chưa lưu.' : 'Đã lưu cấu hình giao diện.');
     } catch (err) { toast(err.message); }
@@ -2101,6 +2130,7 @@
     try {
       const res = await api('/api/admin/reset', { method: 'POST' });
       CONFIG = res.config;
+      savedEditorConfig = snapshotEditorConfig();
       $('adminMore').open = false;
       renderPresets(); populateForm(); setDirty(false); pushPreview();
       toast('Đã khôi phục cấu hình mặc định.');

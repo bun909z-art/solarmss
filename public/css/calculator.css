@@ -569,13 +569,14 @@ td.dim { opacity: 0.45; }
 .contact-cta {
   background: linear-gradient(135deg, var(--primary-soft) 0%, var(--card) 65%);
   border: 1.5px solid var(--primary-line);
+  overflow-wrap: anywhere;
 }
 .cta-head h2 { margin: 0; font-size: 20px; font-weight: 800; color: var(--ink); }
 .cta-head p { margin: 6px 0 0; font-size: 14px; color: var(--ink-2); }
 .cta-addr { font-weight: 700; color: var(--ink); margin-top: 8px !important; }
 .cta-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr));
   gap: 12px;
   margin: 16px 0 0;
   padding: 0;
@@ -583,6 +584,7 @@ td.dim { opacity: 0.45; }
 }
 .cta-row {
   display: flex;
+  min-width: 0;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -592,7 +594,7 @@ td.dim { opacity: 0.45; }
   padding: 14px 16px;
   flex-wrap: wrap;
 }
-.cta-info { display: flex; flex-direction: column; gap: 2px; }
+.cta-info { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
 .cta-role { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-3); }
 .cta-phone { font-size: 19px; font-weight: 900; color: var(--primary-deep); text-decoration: none; letter-spacing: -0.01em; }
 .cta-btns { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -609,6 +611,7 @@ td.dim { opacity: 0.45; }
   transition: transform 0.12s, opacity 0.15s;
 }
 .cta-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+.cta-row .cta-btn { min-width: 0; white-space: normal; }
 .cta-btn.call { background: var(--primary); color: #FFFFFF; }
 .cta-btn.zalo { background: #0068FF; color: #FFFFFF; }
 
