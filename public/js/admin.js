@@ -452,6 +452,7 @@
     setVal('f_ctaAddress', f.ctaAddress || '');
     setVal('f_callBtnText', f.callBtnText || 'Gọi ngay');
     setVal('f_zaloBtnText', f.zaloBtnText || 'Chat Zalo');
+    renderSalesContacts();
     
     const hm = CONFIG.home || (CONFIG.home = {
       showSlider: true, sliderKicker: '★ Nổi bật', sliderTitle: 'Tin tức & Dự án nổi bật',
@@ -472,6 +473,7 @@
     setVal('hm_sliderHeight', hm.sliderHeight || 430);
     if ($('hmSliderHVal')) $('hmSliderHVal').textContent = hm.sliderHeight || 430;
     setChk('hm_showQuickCards', hm.showQuickCards !== false);
+    setChk('hm_showQuickDemo', hm.showQuickDemo === true);
     setChk('hm_showFeaturedProducts', hm.showFeaturedProducts !== false);
     setVal('hm_productsKicker', hm.productsKicker || 'Thiết bị chính hãng');
     setVal('hm_productsTitle', hm.productsTitle || 'Sản phẩm tiêu biểu');
@@ -513,48 +515,68 @@
   }
 
   // ---------- DYNAMIC LIST EDITORS ----------
-  function renderHotlineEditor() {
-    const el = $('hotlineEditor');
-    if (!el) return;
-    const list = CONFIG.branding.hotlines || [];
-    el.innerHTML = list.map((h, i) => `
-      <div class="list-item" style="flex-direction:column;align-items:stretch;gap:6px">
+  function renderContactEditor(id, contacts, namePlaceholder) {
+    const editor = $(id);
+    editor.innerHTML = contacts.map((contact, i) => `
+      <div class="list-item" style="flex-direction:column;align-items:stretch;gap:6px" data-contact-index="${i}">
         <div style="display:flex;gap:6px">
-          <input type="text" class="f-input" data-hl-lbl="${i}" value="${escapeAttr(h.label || '')}" placeholder="Nhãn (VD: Tư vấn kỹ thuật)">
-          <button type="button" class="del-btn" data-del-hl="${i}" title="Xóa">×</button>
+          <input type="text" class="f-input" data-contact-field="label" value="${escapeAttr(contact.label)}" aria-label="Tên hoặc vai trò" placeholder="${namePlaceholder}">
+          <button type="button" class="del-btn" data-delete-contact aria-label="Xóa liên hệ ${i + 1}">×</button>
         </div>
-        <div style="display:flex;gap:6px">
-          <input type="text" class="f-input" data-hl="${i}" value="${escapeAttr(h.number)}" placeholder="SĐT (VD: 0913 350 597)">
-          <input type="text" class="f-input" data-hl-zalo="${i}" value="${escapeAttr(h.zalo !== undefined ? h.zalo : (h.tel || ''))}" placeholder="Số Zalo (trống = ẩn)">
+        <div class="two-col">
+          <input type="tel" class="f-input" data-contact-field="number" value="${escapeAttr(contact.number)}" aria-label="Số điện thoại" placeholder="Số điện thoại">
+          <input type="tel" class="f-input" data-contact-field="zalo" value="${escapeAttr(contact.zalo ?? contact.tel)}" aria-label="Số Zalo" placeholder="Số Zalo (tùy chọn)">
         </div>
       </div>
     `).join('');
-    el.querySelectorAll('[data-hl]').forEach(inp => {
-      inp.oninput = () => {
-        const cur = CONFIG.branding.hotlines[+inp.dataset.hl];
-        cur.number = inp.value;
-        cur.tel = inp.value.replace(/[^\d+]/g, '');
-        setDirty(true); pushPreview();
-      };
-    });
-    el.querySelectorAll('[data-hl-lbl]').forEach(inp => {
-      inp.oninput = () => { CONFIG.branding.hotlines[+inp.dataset.hlLbl].label = inp.value; setDirty(true); pushPreview(); };
-    });
-    el.querySelectorAll('[data-hl-zalo]').forEach(inp => {
-      inp.oninput = () => { CONFIG.branding.hotlines[+inp.dataset.hlZalo].zalo = inp.value.replace(/[^\d]/g, ''); setDirty(true); pushPreview(); };
-    });
-    el.querySelectorAll('[data-del-hl]').forEach(btn => {
-      btn.onclick = () => {
-        CONFIG.branding.hotlines.splice(+btn.dataset.delHl, 1);
-        renderHotlineEditor(); setDirty(true); pushPreview();
+
+    editor.querySelectorAll('[data-contact-index]').forEach(row => {
+      const index = Number(row.dataset.contactIndex);
+      row.querySelectorAll('[data-contact-field]').forEach(input => {
+        input.oninput = () => {
+          const contact = contacts[index];
+          const field = input.dataset.contactField;
+          contact[field] = field === 'zalo' ? input.value.replace(/\D/g, '') : input.value;
+          if (field === 'number') contact.tel = input.value.replace(/[^\d+]/g, '');
+          setDirty(true);
+          pushPreview();
+        };
+      });
+      row.querySelector('[data-delete-contact]').onclick = () => {
+        contacts.splice(index, 1);
+        renderContactEditor(id, contacts, namePlaceholder);
+        setDirty(true);
+        pushPreview();
       };
     });
   }
 
+  function renderHotlineEditor() {
+    if (!Array.isArray(CONFIG.branding.hotlines)) CONFIG.branding.hotlines = [];
+    renderContactEditor('hotlineEditor', CONFIG.branding.hotlines, 'VD: Tư vấn kỹ thuật');
+  }
+
+  function renderSalesContacts() {
+    if (!Array.isArray(CONFIG.footer.salesContacts)) CONFIG.footer.salesContacts = [];
+    renderContactEditor('salesContactEditor', CONFIG.footer.salesContacts, 'VD: Mai – Báo giá & lắp đặt');
+  }
+
   $('btnAddHotline').onclick = () => {
-    CONFIG.branding.hotlines.push({ number: '0900 000 000', tel: '0900000000', zalo: '0900000000', label: 'Tư vấn viên' });
-    renderHotlineEditor(); setDirty(true); pushPreview();
+    CONFIG.branding.hotlines.push({ number: '', tel: '', zalo: '', label: '' });
+    renderHotlineEditor();
+    $('hotlineEditor').lastElementChild.querySelector('input').focus();
+    setDirty(true);
+    pushPreview();
   };
+
+  $('btnAddSalesContact').onclick = () => {
+    CONFIG.footer.salesContacts.push({ number: '', tel: '', zalo: '', label: '' });
+    renderSalesContacts();
+    $('salesContactEditor').lastElementChild.querySelector('input').focus();
+    setDirty(true);
+    pushPreview();
+  };
+
 
   function renderTierEditor() {
     const el = $('tierEditor');
@@ -1944,6 +1966,7 @@
   bind('hm_sliderIntervalSec', el => { CONFIG.home.sliderIntervalSec = Math.max(2, Number(el.value) || 4.5); });
   bind('hm_sliderHeight', el => { CONFIG.home.sliderHeight = Number(el.value) || 430; if ($('hmSliderHVal')) $('hmSliderHVal').textContent = el.value; });
   bind('hm_showQuickCards', el => { CONFIG.home.showQuickCards = el.checked; });
+  bind('hm_showQuickDemo', el => { CONFIG.home.showQuickDemo = el.checked; });
   bind('hm_showFeaturedProducts', el => { CONFIG.home.showFeaturedProducts = el.checked; });
   bind('hm_productsKicker', el => { CONFIG.home.productsKicker = el.value; });
   bind('hm_productsTitle', el => { CONFIG.home.productsTitle = el.value; });
@@ -2055,6 +2078,8 @@
       const res = await api('/api/admin/config', { method: 'PUT', body: JSON.stringify(payload) });
       if (editRevision === revision) {
         CONFIG = res.config;
+        renderHotlineEditor();
+        renderSalesContacts();
         setDirty(false);
       } else {
         CONFIG.sections.showSolarDemo = res.config.sections.showSolarDemo;
@@ -2110,7 +2135,8 @@
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        CONFIG = { ...CONFIG, ...JSON.parse(reader.result) };
+        const imported = JSON.parse(reader.result);
+        CONFIG = { ...CONFIG, ...imported, footer: { ...CONFIG.footer, ...imported.footer } };
         renderPresets(); populateForm(); setDirty(true); pushPreview();
         toast('Đã nạp cấu hình từ tệp JSON. Bấm "Lưu cấu hình" để áp dụng.');
       } catch { toast('Tệp JSON không hợp lệ.'); }

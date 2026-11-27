@@ -88,30 +88,7 @@
     if ($('customerPhoneWrap')) $('customerPhoneWrap').hidden = sec.showCustomerPhone === false;
     if ($('customerAddressWrap')) $('customerAddressWrap').hidden = sec.showCustomerAddress === false;
     if ($('customerExtraWrap')) $('customerExtraWrap').hidden = (sec.showCustomerPhone === false && sec.showCustomerAddress === false);
-    if ($('contactCtaCard')) {
-      $('contactCtaCard').hidden = sec.showContactCta === false || !hotlines.length;
-      $('ctaTitle').textContent = ft.ctaTitle || 'Liên hệ ngay để được tư vấn & khảo sát miễn phí';
-      $('ctaSubtitle').textContent = ft.ctaSubtitle || '';
-      const hasAddr = Boolean((ft.ctaAddress || '').trim());
-      $('ctaAddress').hidden = !hasAddr;
-      $('ctaAddress').textContent = hasAddr ? '📍 ' + ft.ctaAddress : '';
-      const callLbl = ft.callBtnText || 'Gọi ngay';
-      const zaloLbl = ft.zaloBtnText || 'Chat Zalo';
-      $('ctaList').innerHTML = hotlines.map(item => {
-        const tel = escapeHtml(item.tel || String(item.number || '').replace(/[^\d+]/g, ''));
-        const zalo = escapeHtml(item.zalo !== undefined ? item.zalo : tel.replace(/[^\d]/g, ''));
-        return `<div class="cta-row">
-          <div class="cta-info">
-            ${item.label ? `<span class="cta-role">${escapeHtml(item.label)}</span>` : ''}
-            <a class="cta-phone" href="tel:${tel}">${escapeHtml(item.number)}</a>
-          </div>
-          <div class="cta-btns">
-            <a class="cta-btn call" href="tel:${tel}">📞 ${escapeHtml(callLbl)}</a>
-            ${zalo ? `<a class="cta-btn zalo" href="https://zalo.me/${zalo}" target="_blank" rel="noopener">💬 ${escapeHtml(zaloLbl)}</a>` : ''}
-          </div>
-        </div>`;
-      }).join('');
-    }
+    renderSiteContact(ft, sec.showContactCta !== false);
     $('billChips').hidden = sec.showQuickChips === false;
     $('kwhChips').hidden = sec.showQuickChips === false;
     $('modChips').hidden = sec.showQuickChips === false;

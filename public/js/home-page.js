@@ -8,6 +8,11 @@
     battery: 'Pin lưu trữ',
     accessory: 'Phụ kiện lắp đặt'
   };
+  const DEMO_CARD = {
+    icon: '🏡', title: 'Thiết kế điện mặt trời 3D',
+    desc: 'Tự bố trí tấm pin trên mái, chọn thiết bị và mô phỏng lượng điện theo giờ.',
+    cta: 'Mở Demo 3D', href: '/demo'
+  };
 
   let CFG = null;
   let ALL_PRODUCTS = [];
@@ -54,7 +59,7 @@
     document.querySelectorAll('.home-hero-actions a, a.home-quick-card, a.home-more-link').forEach(el => {
       const href = el.getAttribute('href');
       if (href && ['/', '/tuvan', '/products', '/news', '/demo'].includes(href)) {
-        el.hidden = isRestrict && !allowed.includes(href);
+        el.hidden = (isRestrict && !allowed.includes(href)) || (href === '/demo' && cfg.sections?.showSolarDemo === false);
       }
     });
     const quickGrid = $('homeQuickGrid');
@@ -76,27 +81,7 @@
     const hotlines = Array.isArray(b.hotlines) ? b.hotlines : [];
     $('hotlineList').innerHTML = hotlines.map(x => `<a href="tel:${esc(x.tel || x.number)}">${esc(x.number)}</a>`).join('');
 
-    $('ctaTitle').textContent = f.ctaTitle || 'Liên hệ ngay để được tư vấn & khảo sát miễn phí';
-    $('ctaSubtitle').textContent = f.ctaSubtitle || '';
-    const hasAddr = Boolean((f.ctaAddress || '').trim());
-    $('ctaAddress').hidden = !hasAddr;
-    $('ctaAddress').textContent = hasAddr ? '📍 ' + f.ctaAddress : '';
-    const callLbl = f.callBtnText || 'Gọi ngay';
-    const zaloLbl = f.zaloBtnText || 'Chat Zalo';
-    $('ctaList').innerHTML = hotlines.map(item => {
-      const tel = esc(item.tel || String(item.number || '').replace(/[^\d+]/g, ''));
-      const zalo = esc(item.zalo !== undefined ? item.zalo : tel.replace(/[^\d]/g, ''));
-      return `<div class="cta-row">
-        <div class="cta-info">
-          ${item.label ? `<span class="cta-role">${esc(item.label)}</span>` : ''}
-          <a class="cta-phone" href="tel:${tel}">${esc(item.number)}</a>
-        </div>
-        <div class="cta-btns">
-          <a class="cta-btn call" href="tel:${tel}">📞 ${esc(callLbl)}</a>
-          ${zalo ? `<a class="cta-btn zalo" href="https://zalo.me/${zalo}" target="_blank" rel="noopener">💬 ${esc(zaloLbl)}</a>` : ''}
-        </div>
-      </div>`;
-    }).join('');
+    renderSiteContact(f, cfg.home?.showContactCta !== false);
     $('footerCompany').textContent = f.companyLine || b.companyName || '';
 
     const hm = cfg.home || {};
@@ -104,23 +89,22 @@
     slider.hidden = hm.showSlider === false || SLIDES.length === 0;
     if ($('homeSliderKicker')) $('homeSliderKicker').textContent = hm.sliderKicker || '★ Nổi bật';
     if ($('homeSliderTitle')) $('homeSliderTitle').textContent = hm.sliderTitle || 'Tin tức & Dự án nổi bật';
-    if ($('homeQuickGrid')) {
-      $('homeQuickGrid').hidden = hm.showQuickCards === false;
-      if (Array.isArray(hm.quickCards) && hm.quickCards.length) {
-        $('homeQuickGrid').innerHTML = hm.quickCards.map((c, idx) => `
-          <a href="${esc(c.href || (idx === 0 ? '/tuvan' : idx === 1 ? '/products' : '/news'))}" class="card home-quick-card">
-            <div class="hq-icon" aria-hidden="true">${esc(c.icon || '⚡')}</div>
-            <h3>${esc(c.title || '')}</h3>
-            <p>${esc(c.desc || '')}</p>
-            <span class="news-readmore">${esc((c.cta || 'Xem ngay').replace(/\s*→\s*$/, ''))}</span>
-          </a>
-        `).join('');
-      }
-    }
+    const quickGrid = $('homeQuickGrid');
+    const cards = Array.isArray(hm.quickCards) ? hm.quickCards : [];
+    const showDemoCard = hm.showQuickDemo === true && cfg.sections?.showSolarDemo !== false;
+    const quickCards = showDemoCard && !cards.some(card => card.href === '/demo') ? [...cards, DEMO_CARD] : cards;
+    quickGrid.hidden = hm.showQuickCards === false;
+    quickGrid.innerHTML = quickCards.map((c, idx) => `
+      <a href="${esc(c.href || (idx === 0 ? '/tuvan' : idx === 1 ? '/products' : '/news'))}" class="card home-quick-card">
+        <div class="hq-icon" aria-hidden="true">${esc(c.icon || '⚡')}</div>
+        <h3>${esc(c.title || '')}</h3>
+        <p>${esc(c.desc || '')}</p>
+        <span class="news-readmore">${esc((c.cta || 'Xem ngay').replace(/\s*→\s*$/, ''))}</span>
+      </a>
+    `).join('');
     if ($('homeProdsSection')) $('homeProdsSection').hidden = hm.showFeaturedProducts === false;
     if ($('homeProdsKicker')) $('homeProdsKicker').textContent = hm.productsKicker || 'Thiết bị chính hãng';
     if ($('homeProdsTitle')) $('homeProdsTitle').textContent = hm.productsTitle || 'Sản phẩm tiêu biểu';
-    if ($('contactCtaCard')) $('contactCtaCard').hidden = hm.showContactCta === false;
     applyMaintenanceNav(cfg);
   }
 

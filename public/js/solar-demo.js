@@ -501,7 +501,7 @@
     const brand = config.branding || {};
     const company = brand.companyName || 'Công Ty TNHH Mai Sơn Solar';
     document.title = 'Demo mô phỏng điện mặt trời 3D – ' + company;
-    $('demoCompany').textContent = company;
+    $('demoCompany').textContent = config.footer?.companyLine || company;
     $('brandLogo').alt = company;
     $('brandLogo').src = brand.logoUrl || '/assets/logo-default.jpg?v=mss';
     $('docFavicon').href = brand.faviconUrl || '/assets/favicon.png?v=mss';
@@ -514,6 +514,7 @@
       return link;
     });
     $('hotlineList').replaceChildren(...links);
+    renderSiteContact(config.footer || {});
   }
 
   let hasCatalog = false;

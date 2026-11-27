@@ -145,7 +145,7 @@
           <p class="hint" id="adminLinkHint">Nút này dẫn đến trang đăng nhập quản trị. Khi ẩn nút, bạn vẫn có thể truy cập bằng địa chỉ /admin.</p>
 
           <hr class="sep">
-          <h3>Hotline tư vấn</h3>
+          <h3>Hotline đầu trang</h3>
           <div class="toggle-row">
             <span>Hiển thị Hotline trên đầu trang</span>
             <input type="checkbox" id="b_showHotline">
@@ -192,11 +192,16 @@
           </div>
 
           <hr class="sep">
-          <h3>3 Thẻ giải pháp nhanh</h3>
-          <div class="toggle-row">
-            <span>Hiển thị khối 3 thẻ giải pháp</span>
+          <h3>Thẻ giải pháp nhanh</h3>
+          <label class="toggle-row">
+            <span>Hiển thị khối thẻ giải pháp</span>
             <input type="checkbox" id="hm_showQuickCards">
-          </div>
+          </label>
+          <label class="toggle-row">
+            <span>Thêm thẻ Demo 3D vào khối giải pháp nhanh</span>
+            <input type="checkbox" id="hm_showQuickDemo" aria-describedby="homeQuickDemoHint">
+          </label>
+          <p class="hint" id="homeQuickDemoHint">Thẻ xuất hiện khi khối giải pháp nhanh và Demo 3D đều đang bật.</p>
           <div id="homeQuickEditor" class="list-editor"></div>
 
           <hr class="sep">
@@ -668,7 +673,10 @@
             <div class="field-row"><label class="f-lbl">Nhãn nút gọi</label><input type="text" id="f_callBtnText" class="f-input"></div>
             <div class="field-row"><label class="f-lbl">Nhãn nút Zalo</label><input type="text" id="f_zaloBtnText" class="f-input"></div>
           </div>
-          <p class="hint">Danh sách số điện thoại &amp; số Zalo được chỉnh trong tab <b>Thương hiệu → Hotline tư vấn</b>.</p>
+          <h3>Danh sách tư vấn bán hàng</h3>
+          <p class="hint">Thêm tên hoặc vai trò, số điện thoại và số Zalo cho từng người. Bỏ trống số Zalo để ẩn nút chat.</p>
+          <div id="salesContactEditor" class="list-editor"></div>
+          <button type="button" class="btn-ghost small full" id="btnAddSalesContact">+ Thêm liên hệ bán hàng</button>
 
         </section>
 
@@ -953,6 +961,6 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="/js/admin.js?v=42"></script>
+<script src="/js/admin.js?v=43"></script>
 </body>
 </html>

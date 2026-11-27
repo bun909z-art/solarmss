@@ -92,27 +92,7 @@
     const hotlines = Array.isArray(b.hotlines) ? b.hotlines : [];
     $('hotlineList').innerHTML = hotlines.map(x => `<a href="tel:${esc(x.tel || x.number)}">${esc(x.number)}</a>`).join('');
 
-    $('ctaTitle').textContent = f.ctaTitle || 'Liên hệ ngay để được tư vấn & khảo sát miễn phí';
-    $('ctaSubtitle').textContent = f.ctaSubtitle || '';
-    const hasAddr = Boolean((f.ctaAddress || '').trim());
-    $('ctaAddress').hidden = !hasAddr;
-    $('ctaAddress').textContent = hasAddr ? '📍 ' + f.ctaAddress : '';
-    const callLbl = f.callBtnText || 'Gọi ngay';
-    const zaloLbl = f.zaloBtnText || 'Chat Zalo';
-    $('ctaList').innerHTML = hotlines.map(item => {
-      const tel = esc(item.tel || String(item.number || '').replace(/[^\d+]/g, ''));
-      const zalo = esc(item.zalo !== undefined ? item.zalo : tel.replace(/[^\d]/g, ''));
-      return `<div class="cta-row">
-        <div class="cta-info">
-          ${item.label ? `<span class="cta-role">${esc(item.label)}</span>` : ''}
-          <a class="cta-phone" href="tel:${tel}">${esc(item.number)}</a>
-        </div>
-        <div class="cta-btns">
-          <a class="cta-btn call" href="tel:${tel}">📞 ${esc(callLbl)}</a>
-          ${zalo ? `<a class="cta-btn zalo" href="https://zalo.me/${zalo}" target="_blank" rel="noopener">💬 ${esc(zaloLbl)}</a>` : ''}
-        </div>
-      </div>`;
-    }).join('');
+    renderSiteContact(f);
     $('footerCompany').textContent = f.companyLine || b.companyName || '';
   }
 

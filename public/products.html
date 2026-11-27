@@ -6,7 +6,7 @@
 <title id="docTitle">Sản phẩm tham khảo – Công Ty TNHH Mai Sơn Solar</title>
 <meta name="theme-color" content="#F26A1B" id="metaTheme">
 <link rel="icon" type="image/png" href="/assets/favicon.png?v=mss" id="docFavicon">
-<link rel="stylesheet" href="/css/app.css?v=37">
+<link rel="stylesheet" href="/css/app.css?v=38">
 </head>
 <body>
 
@@ -134,14 +134,14 @@
   </main>
 </div>
 
-<section class="wrap subpage-contact">
-  <div class="card contact-cta" id="contactCtaCard">
+<section class="wrap subpage-contact" id="contactCtaCard" aria-labelledby="ctaTitle" hidden>
+  <div class="card contact-cta">
     <div class="cta-head">
       <h2 id="ctaTitle">Liên hệ ngay để được tư vấn &amp; khảo sát miễn phí</h2>
       <p id="ctaSubtitle">Gọi trực tiếp hoặc kết nối qua Zalo để nhận báo giá chi tiết và phương án lắp đặt phù hợp nhất.</p>
       <p class="cta-addr" id="ctaAddress" hidden></p>
     </div>
-    <div class="cta-list" id="ctaList"></div>
+    <ul class="cta-list" id="ctaList" hidden></ul>
   </div>
 </section>
 
@@ -152,8 +152,9 @@
 </footer>
 
 <script src="/js/site-theme.js?v=37"></script>
+<script src="/js/site-contact.js"></script>
 <script src="/js/live-updates.js?v=1"></script>
-<script src="/js/products-page.js?v=40"></script>
+<script src="/js/products-page.js?v=41"></script>
 <script src="/js/img-protect.js?v=33"></script>
 </body>
 </html>
