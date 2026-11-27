@@ -7,7 +7,6 @@ final class SolarBrowser: NSObject, ObservableObject, WKNavigationDelegate, WKUI
     @Published private(set) var site: URL?
     @Published private(set) var page: SolarPage = .home
     @Published private(set) var loading = false
-    @Published private(set) var canGoBack = false
     @Published private(set) var failure: String?
     @Published private(set) var finishedCount = 0
 
@@ -49,10 +48,6 @@ final class SolarBrowser: NSObject, ObservableObject, WKNavigationDelegate, WKUI
         } else {
             open(requestedPage)
         }
-    }
-
-    func back() {
-        navigation = webView.goBack()
     }
 
     func capturePlan() async throws -> PlanSnapshot {
@@ -118,7 +113,6 @@ final class SolarBrowser: NSObject, ObservableObject, WKNavigationDelegate, WKUI
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         guard navigation === self.navigation else { return }
         loading = false
-        canGoBack = webView.canGoBack
         if let url = webView.url, let page = SolarPage.at(url) { self.page = page }
         finishedCount += 1
     }
@@ -139,7 +133,6 @@ final class SolarBrowser: NSObject, ObservableObject, WKNavigationDelegate, WKUI
     private func finishFailed(_ navigation: WKNavigation?, error: Error) {
         guard navigation === self.navigation, (error as NSError).code != NSURLErrorCancelled else { return }
         loading = false
-        canGoBack = webView.canGoBack
         failure = "Không mở được website. Kiểm tra mạng và địa chỉ máy chủ rồi thử tải lại."
     }
 }

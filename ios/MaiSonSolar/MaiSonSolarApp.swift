@@ -43,11 +43,9 @@ private enum WorkspaceTab: CaseIterable {
 
 private struct SolarWorkspace: View {
     @Environment(\.dynamicTypeSize) private var textSize
-    @AppStorage("solar.site.address") private var savedSite = ""
     @StateObject private var browser = SolarBrowser()
     @StateObject private var library = PlanLibrary()
     @State private var tab: WorkspaceTab = .home
-    @State private var settingsVisible = false
     @State private var snapshot: PlanSnapshot?
     @State private var planToOpen: SolarPlan?
     @State private var operationInProgress = false
@@ -57,7 +55,6 @@ private struct SolarWorkspace: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            header
             ZStack {
                 if browser.site != nil {
                     WebsiteSurface(browser: browser)
@@ -68,13 +65,7 @@ private struct SolarWorkspace: View {
                 if tab == .plans {
                     PlanLibraryView(library: library, openPlan: openPlan, reportError: { notice = $0 })
                 } else if browser.site == nil {
-                    ContentUnavailableView {
-                        Label("Kết nối Mai Sơn Solar", systemImage: "bolt.circle")
-                    } description: {
-                        Text("Nhập địa chỉ HTTPS của website để mở công cụ tư vấn và mô phỏng.")
-                    } actions: {
-                        Button("Nhập địa chỉ website") { settingsVisible = true }.buttonStyle(.borderedProminent)
-                    }
+                    ContentUnavailableView("Chưa kết nối được website", systemImage: "wifi.exclamationmark")
                 } else if let failure = browser.failure {
                     ContentUnavailableView {
                         Label("Mất kết nối", systemImage: "wifi.exclamationmark")
@@ -86,24 +77,31 @@ private struct SolarWorkspace: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            if tab == .demo && browser.page == .demo && !browser.loading && browser.failure == nil {
+                HStack {
+                    Spacer()
+                    Button(action: saveDraft) {
+                        Label("Lưu phương án", systemImage: "bookmark")
+                            .frame(minHeight: 36)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(operationInProgress)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 4)
+                .background(.bar)
+            }
             navigationBar
         }
         .background(Color(uiColor: .systemBackground))
         .tint(solarTint)
+        .statusBarHidden(true)
         .onAppear {
-            if browser.site == nil, let site = SiteAddress.parse(savedSite) ?? bundledSite {
+            if browser.site == nil, let site = bundledSite {
                 browser.connect(site)
             }
         }
         .onChange(of: browser.finishedCount) { _, _ in pageFinished() }
-        .sheet(isPresented: $settingsVisible) {
-            SiteSettings(initialAddress: browser.site?.absoluteString ?? "", adminURL: adminURL) { url in
-                savedSite = url.absoluteString
-                guard browser.site != url else { return }
-                tab = .home
-                browser.connect(url)
-            }
-        }
         .sheet(item: $snapshot) { captured in
             SavePlanSheet(metrics: captured.summary) { name in
                 try library.add(captured, name: name)
@@ -116,48 +114,6 @@ private struct SolarWorkspace: View {
 
     private var bundledSite: URL? {
         (Bundle.main.object(forInfoDictionaryKey: "MaiSonSolarSiteURL") as? String).flatMap(SiteAddress.parse)
-    }
-
-    private var adminURL: URL? { browser.site?.appending(path: "admin") }
-
-    private var header: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 10) {
-                if browser.canGoBack && tab != .plans {
-                    Button(action: browser.back) { Image(systemName: "chevron.left") }
-                        .accessibilityLabel("Trang trước")
-                        .frame(minWidth: 28, minHeight: 44)
-                }
-                Image(systemName: "sun.max.fill")
-                    .foregroundStyle(.yellow)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Mai Sơn Solar").font(.headline).lineLimit(1)
-                    Text(tab == .plans ? "Phương án của bạn" : browser.page.title)
-                        .font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                }
-                Spacer(minLength: 4)
-                if tab != .plans && browser.page == .demo && !browser.loading && browser.failure == nil {
-                    Button(action: saveDraft) { Label("Lưu", systemImage: "bookmark") }
-                        .labelStyle(.iconOnly).accessibilityLabel("Lưu phương án Demo 3D")
-                        .frame(minWidth: 38, minHeight: 44)
-                        .disabled(operationInProgress)
-                }
-                Menu {
-                    Button("Tin tức", systemImage: "newspaper") { navigate(.news) }
-                        .disabled(browser.site == nil)
-                    Button("Tải lại", systemImage: "arrow.clockwise", action: browser.reload)
-                        .disabled(browser.site == nil)
-                    Button("Cài đặt", systemImage: "gearshape") { settingsVisible = true }
-                } label: {
-                    Image(systemName: "ellipsis.circle").font(.title3).frame(minWidth: 44, minHeight: 44)
-                }.accessibilityLabel("Menu ứng dụng")
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 5)
-            if browser.loading && tab != .plans { ProgressView().progressViewStyle(.linear) }
-            else { Divider() }
-        }.background(.regularMaterial)
     }
 
     private var navigationBar: some View {
@@ -182,7 +138,10 @@ private struct SolarWorkspace: View {
         }
         .padding(.horizontal, 7)
         .background(.bar)
-        .overlay(alignment: .top) { Divider() }
+        .overlay(alignment: .top) {
+            if browser.loading && tab != .plans { ProgressView().progressViewStyle(.linear) }
+            else { Divider() }
+        }
     }
 
     private func navigate(_ page: SolarPage) {
@@ -200,7 +159,7 @@ private struct SolarWorkspace: View {
     }
 
     private func openPlan(_ plan: SolarPlan) {
-        guard browser.site != nil else { settingsVisible = true; return }
+        guard browser.site != nil else { notice = "Chưa kết nối được website để mở phương án."; return }
         planToOpen = plan
         navigate(.demo)
     }
@@ -219,41 +178,6 @@ private struct SolarWorkspace: View {
                 let warning = try await browser.restorePlan(plan)
                 if !warning.isEmpty { notice = warning }
             } catch { notice = error.localizedDescription }
-        }
-    }
-}
-
-private struct SiteSettings: View {
-    @Environment(\.dismiss) private var dismiss
-    @State var initialAddress: String
-    let adminURL: URL?
-    let connect: (URL) -> Void
-    @State private var invalidAddress = false
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("Website sử dụng chung dữ liệu") {
-                    TextField("Địa chỉ HTTPS", text: $initialAddress)
-                        .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
-                    if invalidAddress { Text("Nhập địa chỉ website HTTPS, ví dụ solarmss.onrender.com.").foregroundStyle(.red) }
-                }
-                if let adminURL {
-                    Section("Quản trị") { Link("Mở Admin trong Safari", destination: adminURL) }
-                }
-            }
-            .navigationTitle("Cài đặt")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Đóng") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Kết nối") {
-                        guard let url = SiteAddress.parse(initialAddress) else { invalidAddress = true; return }
-                        connect(url)
-                        dismiss()
-                    }
-                }
-            }
         }
     }
 }

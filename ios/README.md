@@ -1,6 +1,6 @@
 # Mai Sơn Solar cho iPhone
 
-Ứng dụng iOS 17 trở lên dùng SwiftUI và WebKit. Địa chỉ mặc định là `https://solarmss.onrender.com/`. Trang chủ, tư vấn tính pin, yêu cầu báo giá, kho thiết bị, tin tức, liên hệ và Demo 3D dùng dữ liệu từ website. Bộ phận kinh doanh tiếp tục nhận yêu cầu ở mục **Khách hàng** trong Admin. Có thể mở Admin bằng Safari từ mục **Cài đặt** của app.
+Ứng dụng iOS 17 trở lên dùng SwiftUI và WebKit. App mở thẳng trang chủ `https://solarmss.onrender.com/`. Tư vấn tính pin, yêu cầu báo giá, kho thiết bị, tin tức, liên hệ và Demo 3D dùng dữ liệu từ website. Bộ phận kinh doanh tiếp tục nhận yêu cầu ở mục **Khách hàng** trong Admin trên Safari.
 
 ## Dùng trên iPhone
 
@@ -10,7 +10,7 @@
 
 Để tải gói dành cho iPhone thật, mở lượt chạy **iOS Builds** và tải artifact **MaiSonSolar-iPhone-IPA-unsigned**. Giải nén tệp tải xuống để lấy `MaiSonSolar-unsigned.ipa`. Gói này chứa bản Release arm64 và cần được ký trước khi cài lên iPhone.
 
-App tải website qua HTTPS. Để lưu và mở phương án, máy chủ phải chạy bản web có `MaiSonSolarPlans` trong Demo 3D. Sau khi mở Demo và bố trí xong, bấm biểu tượng lưu ở thanh trên. Mục **Đã lưu** giữ các phương án trên thiết bị và cho phép chọn hai phương án để so sánh. App báo lại nếu một thiết bị trong phương án đã thay đổi khỏi danh mục khi mở lại.
+App tải website qua HTTPS. Để lưu và mở phương án, máy chủ phải chạy bản web có `MaiSonSolarPlans` trong Demo 3D. Sau khi mở Demo và bố trí xong, bấm **Lưu phương án** ngay trên thanh điều hướng dưới cùng. Mục **Đã lưu** giữ các phương án trên thiết bị và cho phép chọn hai phương án để so sánh. App báo lại nếu một thiết bị trong phương án đã thay đổi khỏi danh mục khi mở lại.
 
 ## Phát hành
 

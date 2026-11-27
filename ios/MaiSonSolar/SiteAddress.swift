@@ -27,16 +27,6 @@ enum SolarPage: String, CaseIterable {
     case news = "/news"
     case demo = "/demo"
 
-    var title: String {
-        switch self {
-        case .home: "Trang chủ"
-        case .consultation: "Tính pin & báo giá"
-        case .products: "Thiết bị"
-        case .news: "Tin tức"
-        case .demo: "Mô phỏng 3D"
-        }
-    }
-
     static func at(_ url: URL) -> SolarPage? {
         switch url.path {
         case "", "/", "/home", "/home.html": .home
