@@ -6,7 +6,7 @@
 <title>Quản trị website – Công Ty TNHH Mai Sơn Solar</title>
 <link rel="icon" type="image/png" href="/assets/favicon.png?v=mss" id="adminFavicon">
 <link rel="stylesheet" href="/css/admin.css?v=32">
-<link rel="stylesheet" href="/css/admin-workspace.css?v=38">
+<link rel="stylesheet" href="/css/admin-workspace.css?v=39">
 </head>
 <body>
 
@@ -14,7 +14,7 @@
 <div class="login-screen" id="loginScreen">
   <div class="login-layout">
     <div class="login-visual" aria-hidden="true">
-      <img src="/assets/solar-home.jpg" alt="" width="1536" height="1024" fetchpriority="high">
+      <img src="/assets/solar-installation.jpg" alt="" width="1536" height="1024" fetchpriority="high">
       <span>Công Ty TNHH Mai Sơn Solar</span>
     </div>
     <main class="login-card" aria-labelledby="loginTitle">
@@ -58,13 +58,10 @@
           <p role="presentation">Vận hành</p>
           <button type="button" class="tab-btn active" data-tab="overview">Tổng quan</button>
           <button type="button" class="tab-btn" data-tab="leads">Khách hàng <span id="leadsTabCount">0</span></button>
-          <button type="button" class="tab-btn" data-tab="products">Kho sản phẩm</button>
-          <button type="button" class="tab-btn" data-tab="news">Tin tức</button>
         </div>
         <div class="adm-nav-group" role="presentation">
           <p role="presentation">Giao diện</p>
           <button type="button" class="tab-btn" data-tab="branding">Thương hiệu</button>
-          <button type="button" class="tab-btn" data-tab="home">Trang chủ</button>
           <button type="button" class="tab-btn" data-tab="theme">Màu sắc &amp; banner</button>
           <button type="button" class="tab-btn" data-tab="layout">Bố cục &amp; tiêu đề</button>
           <button type="button" class="tab-btn" data-tab="tariffs">Thông số &amp; biểu giá</button>
@@ -86,7 +83,7 @@
         <div class="adm-workspace-head">
           <div>
             <h1 id="workspaceTitle">Tổng quan</h1>
-            <p id="workspaceDescription">Mở nhanh khách hàng cần theo dõi, thiết bị hết hàng và bài chưa công khai.</p>
+            <p id="workspaceDescription">Theo dõi khách mới và yêu cầu báo giá.</p>
           </div>
           <div class="adm-workspace-actions" id="workspaceActions" hidden>
             <span class="dirty-pill" id="dirtyPill" role="status" hidden>Chưa lưu</span>
@@ -139,7 +136,7 @@
           </div>
 
           <label class="toggle-row">
-            <span>Hiển thị nút Quản trị trên đầu các trang khách</span>
+            <span>Hiển thị nút Quản trị trên đầu trang tư vấn</span>
             <input type="checkbox" id="b_showAdminLink" aria-describedby="adminLinkHint">
           </label>
           <p class="hint" id="adminLinkHint">Nút này dẫn đến trang đăng nhập quản trị. Khi ẩn nút, bạn vẫn có thể truy cập bằng địa chỉ /admin.</p>
@@ -159,79 +156,6 @@
         </section>
 
         <!-- TAB 2: THEME & HERO -->
-                <!-- TAB HOME -->
-        <section class="tab-pane" id="tab-home">
-          <h3>Thanh trượt Bài viết nổi bật</h3>
-          <label class="toggle-row">
-            <span>Hiển thị slider bài viết nổi bật</span>
-            <input type="checkbox" id="hm_showSlider" aria-describedby="homeSliderHint">
-          </label>
-          <p class="hint" id="homeSliderHint">Trong tab <b>Tin tức</b>, đăng bài và chọn <b>⭐ Nổi bật Trang chủ</b> để đưa bài lên slider.</p>
-          <label class="toggle-row">
-            <span>Tự động trượt ngang</span>
-            <input type="checkbox" id="hm_autoSlide" aria-describedby="homeAutoSlideHint">
-          </label>
-          <p class="hint" id="homeAutoSlideHint">Cần ít nhất 2 bài nổi bật đã đăng để tự trượt. Khách vẫn có thể chuyển bài bằng tay khi tắt tùy chọn này.</p>
-          <div class="two-col">
-            <div class="field-row">
-              <label class="f-lbl">Nhãn nhỏ trên tiêu đề</label>
-              <input type="text" id="hm_sliderKicker" class="f-input" placeholder="★ Nổi bật">
-            </div>
-            <div class="field-row">
-              <label class="f-lbl" for="hm_sliderIntervalSec">Thời gian giữa hai lần tự trượt (giây)</label>
-              <input type="number" id="hm_sliderIntervalSec" class="f-input" min="2" max="15" step="0.5">
-            </div>
-          </div>
-          <div class="field-row">
-            <label class="f-lbl">Tiêu đề mục bài viết nổi bật</label>
-            <input type="text" id="hm_sliderTitle" class="f-input">
-          </div>
-          <div class="field-row">
-            <label class="f-lbl">Chiều cao banner ảnh (<span id="hmSliderHVal">430</span>px)</label>
-            <input type="range" id="hm_sliderHeight" min="300" max="560" step="10">
-          </div>
-
-          <hr class="sep">
-          <h3>Thẻ giải pháp nhanh</h3>
-          <label class="toggle-row">
-            <span>Hiển thị khối thẻ giải pháp</span>
-            <input type="checkbox" id="hm_showQuickCards">
-          </label>
-          <label class="toggle-row">
-            <span>Thêm thẻ Demo 3D vào khối giải pháp nhanh</span>
-            <input type="checkbox" id="hm_showQuickDemo" aria-describedby="homeQuickDemoHint">
-          </label>
-          <p class="hint" id="homeQuickDemoHint">Thẻ xuất hiện khi khối giải pháp nhanh và Demo 3D đều đang bật.</p>
-          <div id="homeQuickEditor" class="list-editor"></div>
-
-          <hr class="sep">
-          <h3>Sản phẩm tiêu biểu &amp; Liên hệ</h3>
-          <div class="toggle-row">
-            <span>Hiển thị mục Sản phẩm tiêu biểu</span>
-            <input type="checkbox" id="hm_showFeaturedProducts">
-          </div>
-          <div class="two-col">
-            <div class="field-row">
-              <label class="f-lbl">Nhãn nhỏ</label>
-              <input type="text" id="hm_productsKicker" class="f-input">
-            </div>
-            <div class="field-row">
-              <label class="f-lbl">Số sản phẩm hiển thị</label>
-              <select id="hm_productsCount" class="f-input">
-                <option value="4">4 sản phẩm (1 hàng)</option>
-                <option value="8">8 sản phẩm (2 hàng)</option>
-              </select>
-            </div>
-          </div>
-          <div class="field-row">
-            <label class="f-lbl">Tiêu đề mục Sản phẩm tiêu biểu</label>
-            <input type="text" id="hm_productsTitle" class="f-input">
-          </div>
-          <div class="toggle-row">
-            <span>Hiển thị khung "Liên hệ ngay" cuối Trang chủ</span>
-            <input type="checkbox" id="hm_showContactCta">
-          </div>
-        </section>
 
         <section class="tab-pane" id="tab-theme">
           <h3>Bộ giao diện mẫu (Presets)</h3>
@@ -418,185 +342,8 @@
         </section>
 
 
-        <!-- TAB PRODUCTS & CATALOG UPLOAD -->
-        <section class="tab-pane" id="tab-products">
-          <details class="adm-disclosure">
-          <summary>Nhập danh mục hoặc thêm sản phẩm</summary>
-          <h3>Tải lên danh mục sản phẩm bán</h3>
-          <p class="hint" style="margin-bottom:10px">Tải lên trực tiếp tệp <b>Excel (.xlsx)</b>, <b>CSV</b> hoặc <b>JSON</b> chứa danh sách Inverter, Tấm pin mặt trời và Pin lưu trữ. <b>Tự động lấy luôn hình ảnh bạn chèn trong từng dòng file Excel!</b></p>
-          <div class="two-col" style="margin-bottom:8px">
-            <select id="importProdMode" class="f-input">
-              <option value="replace">Thay thế toàn bộ kho</option>
-              <option value="append">Thêm vào kho hiện tại</option>
-            </select>
-            <a class="btn-ghost full" href="/api/admin/products/template.xlsx" download>Tải file mẫu Excel (.xlsx)</a>
-          </div>
-          <label class="btn-primary full" style="cursor:pointer;margin-bottom:12px">
-            ↑ Tải lên file Excel (.xlsx) / CSV / JSON
-            <input type="file" id="prodUploadFile" accept=".xlsx,.csv,.json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,application/json" hidden>
-          </label>
-
-          <hr class="sep">
-          <h3>Thêm nhanh sản phẩm</h3>
-          <div class="two-col">
-            <div class="field-row">
-              <label class="f-lbl">Loại sản phẩm</label>
-              <select id="np_cat" class="f-input">
-                <option value="inverter">Inverter Hybrid (kW)</option>
-                <option value="panel">Tấm pin mặt trời (Wp)</option>
-                <option value="battery">Pin lưu trữ (kWh)</option>
-                <option value="accessory">Phụ kiện lắp đặt</option>
-              </select>
-            </div>
-            <div class="field-row">
-              <label class="f-lbl">Hãng sản xuất</label>
-              <input type="text" id="np_brand" class="f-input" placeholder="VD: Deye, Jinko...">
-            </div>
-          </div>
-          <div class="field-row">
-            <label class="f-lbl">Tên sản phẩm</label>
-            <input type="text" id="np_name" class="f-input" placeholder="VD: Deye Hybrid 8kW 1 Pha">
-          </div>
-          <div class="two-col">
-            <div class="field-row">
-              <label class="f-lbl">Công suất / Quy cách</label>
-              <input type="text" id="np_spec" class="f-input" placeholder="kW / Wp / kWh hoặc Quy cách">
-            </div>
-            <div class="field-row">
-              <label class="f-lbl">Đơn giá (VNĐ)</label>
-              <input type="number" id="np_price" class="f-input" step="100000" placeholder="20000000">
-            </div>
-          </div>
-          <div class="field-row"><label class="f-lbl">Mô tả sản phẩm (hiển thị trang Sản phẩm tham khảo)</label><textarea id="np_desc" class="f-input" rows="2" placeholder="Nhập mô tả nổi bật về sản phẩm..."></textarea></div>
-          <div class="two-col">
-            <div class="field-row">
-              <label class="f-lbl">Pha (Inverter) / Bảo hành</label>
-              <input type="text" id="np_phase" class="f-input" placeholder="1 pha / 10 năm">
-            </div>
-            <div class="field-row">
-              <label class="f-lbl">Trạng thái sản phẩm</label>
-              <select id="np_stock" class="f-input">
-                <option value="in_stock">Còn hàng</option>
-                <option value="contact">Liên hệ</option>
-                <option value="out_of_stock">Hết hàng</option>
-              </select>
-            </div>
-          </div>
-          <div class="field-row">
-            <button type="button" class="btn-primary full" id="btnAddProd">+ Thêm vào kho</button>
-          </div>
-          </details>
-
-          <hr class="sep">
-          <div class="adm-list-bar">
-            <h3 style="margin:0">Kho sản phẩm (<span id="prodCount">0</span>)</h3>
-            <div class="adm-action-group">
-              <button type="button" class="btn-ghost small" id="btnResetProds">Khôi phục kho mẫu</button>
-              <button type="button" class="btn-primary small" id="btnSaveProds">Lưu danh mục sản phẩm</button>
-            </div>
-          </div>
-          <div class="adm-product-summary">
-            <p class="hint" id="prodPublicationSummary" role="status"></p>
-            <button type="button" class="btn-ghost small" id="btnHiddenInStock" hidden>Xem hàng còn nhưng đang ẩn</button>
-          </div>
-          <div class="adm-tabs" style="padding:6px;margin-bottom:8px;border-radius:8px" id="prodFilterTabs" role="group" aria-label="Nhóm sản phẩm">
-            <button type="button" class="tab-btn active" data-pcat="all" aria-pressed="true">Tất cả</button>
-            <button type="button" class="tab-btn" data-pcat="inverter" aria-pressed="false">Inverter</button>
-            <button type="button" class="tab-btn" data-pcat="panel" aria-pressed="false">Pin MT</button>
-            <button type="button" class="tab-btn" data-pcat="battery" aria-pressed="false">Lưu trữ</button>
-            <button type="button" class="tab-btn" data-pcat="accessory" aria-pressed="false">Phụ kiện</button>
-          </div>
-          <div class="adm-filter-grid">
-            <input type="search" class="f-input" id="prodSearch" aria-label="Tìm sản phẩm" placeholder="Tên, mã hoặc hãng">
-            <select class="f-input" id="prodStockFilter" aria-label="Tình trạng tồn kho"><option value="all">Mọi tình trạng kho</option><option value="in_stock">Còn hàng</option><option value="contact">Liên hệ</option><option value="out_of_stock">Hết hàng</option></select>
-            <select class="f-input" id="prodVisibility" aria-label="Hiển thị sản phẩm"><option value="all">Mọi trạng thái hiển thị</option><option value="visible">Đang hiển thị</option><option value="hidden">Đã ẩn</option></select>
-          </div>
-          <div class="adm-list-bar adm-bulk-tools">
-            <p id="prodResults" role="status"></p>
-            <div class="adm-action-group">
-              <button type="button" class="btn-ghost small" id="btnSelectProducts">Chọn kết quả</button>
-              <button type="button" class="btn-ghost small" id="btnClearProducts" disabled>Bỏ chọn</button>
-            </div>
-          </div>
-          <div class="adm-bulk-tools adm-bulk-update" id="productBulkBar" hidden>
-            <span id="productSelectionCount" role="status"></span>
-            <select class="f-input" id="productBulkAction" aria-label="Thao tác cho sản phẩm đã chọn">
-              <option value="">Chọn thao tác</option><option value="in_stock">Đánh dấu còn hàng</option><option value="contact">Chuyển sang liên hệ</option><option value="out_of_stock">Đánh dấu hết hàng</option><option value="hide">Ẩn khỏi website</option><option value="show">Hiển thị trên website</option>
-            </select>
-            <button type="button" class="btn-primary small" id="btnApplyProductBulk" disabled>Áp dụng</button>
-            <p class="hint">Bấm Lưu danh mục sản phẩm để cập nhật website.</p>
-          </div>
-          <div id="prodListEditor" class="list-editor"></div>
-        </section>
 
         
-        <!-- TAB NEWS -->
-        <section class="tab-pane" id="tab-news">
-          <details class="adm-disclosure">
-          <summary>Soạn bài viết mới</summary>
-          <h3>Đăng bài viết tin tức mới</h3>
-          <div class="field-row">
-            <label class="f-lbl">Tiêu đề bài viết</label>
-            <input type="text" id="nn_title" class="f-input" placeholder="VD: Kinh nghiệm chọn pin lưu trữ Lithium...">
-          </div>
-          <div class="two-col">
-            <div class="field-row">
-              <label class="f-lbl">Chuyên mục</label>
-              <select id="nn_cat" class="f-input">
-                <option value="Kiến thức Hybrid">Kiến thức Hybrid</option>
-                <option value="Dự án thực tế">Dự án thực tế</option>
-                <option value="Tin ngành điện">Tin ngành điện</option>
-                <option value="Khuyến mãi">Khuyến mãi</option>
-              </select>
-            </div>
-            <div class="field-row">
-              <label class="f-lbl">Ngày đăng</label>
-              <input type="date" id="nn_date" class="f-input">
-            </div>
-          </div>
-          <div class="two-col">
-            <div class="field-row">
-              <label class="f-lbl">Tác giả</label>
-              <input type="text" id="nn_author" class="f-input" value="Kỹ thuật Mai Sơn Solar">
-            </div>
-            <div class="field-row">
-              <label class="f-lbl">Ảnh bìa bài viết</label>
-              <label class="btn-ghost full" style="text-align:center;cursor:pointer">
-                ↑ Chọn ảnh bìa
-                <input type="file" id="nn_img_file" accept="image/*" hidden>
-              </label>
-            </div>
-          </div>
-          <div class="field-row">
-            <label class="f-lbl">Mô tả ngắn (tóm tắt)</label>
-            <textarea id="nn_summary" class="f-input" rows="2" placeholder="Tóm tắt nội dung chính hiển thị trên thẻ tin tức..."></textarea>
-          </div>
-          <div class="field-row">
-            <label class="f-lbl">Nội dung bài viết đầy đủ</label>
-            <textarea id="nn_content" class="f-input" rows="5" placeholder="Nhập nội dung chi tiết bài viết (ngắt đoạn bằng phím Enter)..."></textarea>
-          </div>
-          <div class="field-row">
-            <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;margin-bottom:8px"><input type="checkbox" id="nn_featured" checked> ⭐ Hiển thị ở thanh trượt Nổi bật Trang chủ</label>
-            <label class="adm-check"><input type="checkbox" id="nn_draft"> Lưu dưới dạng bản nháp</label>
-            <button type="button" class="btn-primary full" id="btnAddNews">+ Thêm bài viết</button>
-          </div>
-          </details>
-
-          <hr class="sep">
-          <div class="adm-list-bar">
-            <h3 style="margin:0">Danh sách bài viết (<span id="newsCount">0</span>)</h3>
-            <div class="adm-action-group">
-              <button type="button" class="btn-ghost small" id="btnResetNews">Bài mẫu</button>
-              <button type="button" class="btn-primary small" id="btnSaveNews">Lưu danh sách tin tức</button>
-            </div>
-          </div>
-          <div class="adm-filter-grid">
-            <input type="search" class="f-input" id="newsSearch" aria-label="Tìm bài viết" placeholder="Tiêu đề, tác giả, chuyên mục">
-            <select class="f-input" id="newsStateFilter" aria-label="Trạng thái bài viết"><option value="all">Mọi trạng thái</option><option value="published">Đã công khai</option><option value="draft">Chưa công khai</option><option value="featured">Đang nổi bật</option></select>
-          </div>
-          <p class="adm-filter-results" id="newsResults" role="status"></p>
-          <div id="newsListEditor" class="list-editor"></div>
-        </section>
 
         
         <!-- TAB LEADS (CUSTOMER CRM) -->
@@ -701,30 +448,16 @@
             <label class="f-lbl">Mã bảo mật (Secret Token — tùy chọn)</label>
             <input type="password" id="gs_secretKey" class="f-input" autocomplete="off" placeholder="Để trống hoặc nhập mã khớp với Apps Script">
           </div>
-          <div class="field-row">
-            <label class="f-lbl">Dữ liệu tự động đẩy real-time lên Google Sheets:</label>
-            <div style="display:flex;flex-direction:column;gap:5px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:9px">
-              <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700"><input type="checkbox" id="gs_syncLeads"> Dữ liệu khách hàng (tab KhachHang)</label>
-              <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700"><input type="checkbox" id="gs_syncProducts"> Kho sản phẩm &amp; Phụ kiện (tab SanPham)</label>
-              <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700"><input type="checkbox" id="gs_syncNews"> Bài viết Tin tức (tab TinTuc)</label>
-            </div>
-          </div>
-          <div class="toggle-row">
-            <span>Tự động kéo Kho sản phẩm từ Sheet</span>
-            <input type="checkbox" id="gs_autoPullProducts">
-          </div>
-          <div class="field-row">
-            <label class="f-lbl">Chu kỳ tự kéo sản phẩm (giây)</label>
-            <input type="number" id="gs_pullIntervalSec" class="f-input" min="15" max="3600" value="60">
-          </div>
+          <label class="toggle-row">
+            <span>Tự động đồng bộ hồ sơ tư vấn</span><input type="checkbox" id="gs_syncLeads">
+          </label>
 
           <div class="two-col" style="margin-bottom:8px">
             <button type="button" class="btn-primary full" id="btnSaveGsheet">💾 Lưu cài đặt</button>
             <button type="button" class="btn-ghost full" id="btnTestGsheet">🔌 Kiểm tra kết nối</button>
           </div>
           <div class="two-col" style="margin-bottom:10px">
-            <button type="button" class="btn-ghost full" id="btnPushAllGsheet">⬆ Đẩy toàn bộ lên Sheet</button>
-            <button type="button" class="btn-ghost full" id="btnPullProdGsheet">⬇ Kéo Sản phẩm từ Sheet</button>
+            <button type="button" class="btn-ghost full" id="btnPushAllGsheet">⬆ Đồng bộ toàn bộ hồ sơ</button>
           </div>
 
           <hr class="sep">
@@ -739,102 +472,24 @@
         </section>
 
         <section class="tab-pane" id="tab-security">
-          <div id="securityPrivilegedWrap">
-          <h3>Chế độ Bảo trì trang web</h3>
-          <div id="maintStatusBox" style="padding:10px 12px;border-radius:10px;font-size:12.5px;font-weight:800;margin-bottom:10px;background:#ECFDF5;color:#047857;border:1px solid #A7F3D0">
-            🟢 Website đang hoạt động bình thường
-          </div>
-          <div class="field-row">
-            <label class="f-lbl">Hành vi khi bật bảo trì</label>
-            <select id="m_mode" class="f-input">
-              <option value="error404">Báo lỗi 404 — Đang bảo trì toàn bộ trang khách</option>
-              <option value="allow_page">Chỉ mở các mục được chọn (ẩn các mục khác)</option>
-            </select>
-          </div>
-          <div class="field-row" id="mAllowedWrap" hidden>
-            <label class="f-lbl">Chọn các mục cho phép khách truy cập (các mục không chọn sẽ tự ẩn):</label>
-            <div id="mAllowedChecks" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px">
-              <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;cursor:pointer"><input type="checkbox" data-m-route="/"><span>Trang chủ</span></label>
-              <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;cursor:pointer"><input type="checkbox" data-m-route="/tuvan" checked><span>Tư vấn</span></label>
-              <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;cursor:pointer"><input type="checkbox" data-m-route="/products"><span>Sản phẩm</span></label>
-              <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;cursor:pointer"><input type="checkbox" data-m-route="/news"><span>Tin tức</span></label>
-              <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;cursor:pointer"><input type="checkbox" data-m-route="/demo"><span>Demo 3D</span></label>
-            </div>
-            <p class="hint">Để mở Demo 3D trong lúc bảo trì, chọn ô Demo 3D và bật tính năng ở bên dưới.</p>
-          </div>
-          <div class="two-col" style="margin-bottom:12px">
-            <button type="button" class="btn-primary full" id="btnToggleMaint">🔧 Bật bảo trì ngay</button>
-            <button type="button" class="btn-ghost full" id="btnSaveMaint">💾 Lưu cài đặt bảo trì</button>
-          </div>
+          <h3>Bảo trì trang tư vấn</h3>
+          <p id="maintStatusBox" class="hint" role="status"></p>
+          <button type="button" class="btn-primary" id="btnToggleMaint">Bật bảo trì</button>
 
           <hr class="sep">
-
-          <div class="adm-demo-header">
-            <h3>Demo 3D</h3>
-            <span class="adm-demo-status" id="maintenanceDemoStatus" role="status">Đang tải</span>
+          <h3>Sao lưu hồ sơ và cấu hình</h3>
+          <div class="two-col">
+            <button type="button" class="btn-primary" id="btnFullBackup">Tải bản sao lưu</button>
+            <label class="btn-ghost">Khôi phục bản sao lưu<input type="file" id="fullRestoreFile" accept=".json,application/json" hidden></label>
           </div>
-          <p class="hint">Bật hoặc tắt riêng trang mô phỏng điện mặt trời. Thay đổi áp dụng ngay cho khách đang mở website.</p>
-          <div class="adm-demo-actions">
-            <button type="button" class="btn-primary" id="btnToggleMaintenanceDemo" disabled>Bật / Tắt Demo 3D</button>
-            <a class="btn-ghost" id="adminDemoLink" href="/demo" hidden>Mở trang Demo</a>
-          </div>
-
           <hr class="sep">
-
-          <div id="siteUpdateSection">
-            <h3>🚀 Cập nhật trang web (Gói .zip)</h3>
-            <p class="hint" style="margin-bottom:8px">Hệ thống tạo bản sao lưu dữ liệu trước khi giải nén và cập nhật các tệp mã nguồn có trong gói <b>.zip</b>. Tài khoản và tệp tải lên được giữ nguyên trên máy chủ.</p>
-            <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;margin-bottom:8px;cursor:pointer">
-              <input type="checkbox" id="updAutoRestart" checked>
-              <span>Tự động khởi động lại server sau khi cập nhật (PM2 / Docker / Cloud)</span>
-            </label>
-            <label class="btn-primary full" style="text-align:center;cursor:pointer;display:block">
-              ⬆ Tải gói .zip &amp; Cập nhật trang web
-              <input type="file" id="siteUpdateZipFile" accept=".zip,application/zip" hidden>
-            </label>
-                        <div id="updateProgressBox" hidden style="margin-top:10px;padding:12px;border-radius:12px;background:#F8FAFC;border:1px solid #E2E8F0">
-              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
-                <span id="updFileName" style="font-size:12px;font-weight:800;color:#0F172A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
-                <span id="updPercent" style="font-size:13.5px;font-weight:900;color:#EA580C;flex:none">0%</span>
-              </div>
-              <div style="height:10px;border-radius:999px;background:#E2E8F0;overflow:hidden">
-                <div id="updBarFill" style="height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,#F26A1B,#FFB400);transition:width .22s ease"></div>
-              </div>
-              <div id="updStatusText" style="margin-top:6px;font-size:12px;font-weight:700;color:#475569">Đang chuẩn bị...</div>
-            </div>
-            <div id="updateStatusBox" hidden style="margin-top:8px;padding:10px 12px;border-radius:10px;font-size:12px;line-height:1.5;font-weight:700;background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE"></div>
-            <hr class="sep">
-          </div>
-
-          <h3>Sao lưu &amp; Khôi phục toàn bộ dữ liệu</h3>
-          <p class="hint">Xuất 1 tệp JSON duy nhất chứa toàn bộ: Giao diện, Trang chủ, Biểu giá EVN, Kho sản phẩm, Tin tức và Dữ liệu khách hàng.</p>
-          <div class="two-col" style="margin-top:10px">
-            <button type="button" class="btn-primary full" id="btnFullBackup">⬇ Sao lưu toàn bộ</button>
-            <label class="btn-ghost full" style="text-align:center;cursor:pointer">
-              ⬆ Khôi phục toàn bộ
-              <input type="file" id="fullRestoreFile" accept="application/json" hidden>
-            </label>
-          </div>
-
-          <hr class="sep">
-          </div>
-          <div id="jsonBackupPrivilegedWrap">
-          <div id="adminOnlyJsonBackup">
-          <hr class="sep">
-          <h3>Sao lưu &amp; Khôi phục cấu hình JSON</h3>
-          <p class="hint">Xuất toàn bộ cấu hình giao diện và biểu giá hiện tại thành tệp JSON để sao lưu hoặc chuyển sang máy chủ khác.</p>
-          <div class="two-col" style="margin-top:10px">
-            <button type="button" class="btn-ghost full" id="btnExport">Tải xuống JSON</button>
-            <label class="btn-ghost full" style="text-align:center;cursor:pointer">
-              Nhập từ JSON
-              <input type="file" id="importFile" accept="application/json" hidden>
-            </label>
-          </div>
-          </div>
+          <h3>Cấu hình giao diện tư vấn</h3>
+          <div class="two-col">
+            <button type="button" class="btn-ghost" id="btnExport">Xuất cấu hình</button>
+            <label class="btn-ghost">Nhập cấu hình<input type="file" id="importFile" accept=".json,application/json" hidden></label>
           </div>
         </section>
 
-        
         <!-- TAB MY ACCOUNT (STAFF & ADMIN SELF PASSWORD CHANGE) -->
         <section class="tab-pane" id="tab-account">
           <h3>Thông tin tài khoản của tôi</h3>
@@ -863,16 +518,6 @@
 
         <!-- TAB USERS (SUPER ADMIN ONLY) -->
         <section class="tab-pane" id="tab-users">
-          <h3>Cơ sở dữ liệu sản phẩm (Đồng bộ Google Sheet)</h3>
-          <div class="field-row">
-            <label class="f-lbl">Link Google Sheet (đặt quyền "Bất kỳ ai có liên kết đều xem được")</label>
-            <input type="url" id="gs_url" class="f-input" placeholder="https://docs.google.com/spreadsheets/d/...">
-          </div>
-          <button type="button" class="btn-primary full" id="btnSyncSheet" style="margin-bottom:8px">🔄 Đồng bộ sản phẩm từ Google Sheet</button>
-          <div id="gs_status" class="hint" style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:8px 10px;margin-bottom:10px">
-            Các cột hỗ trợ: <b>Tên sản phẩm</b>, <b>Phân loại</b>, <b>Ảnh</b>, <b>Mô tả</b>, <b>Giá</b>. Sản phẩm bị xóa khỏi Sheet lần 1 tự chuyển <b>Liên hệ</b>, vắng tiếp lần 2 tự chuyển <b>Hết hàng</b> (ưu tiên cao nhất vẫn là chỉnh tay trong <b>Kho sản phẩm</b>).
-          </div>
-          <hr class="sep">
           <h3>Tạo tài khoản người dùng mới</h3>
           <div class="two-col">
             <div class="field-row">
@@ -932,7 +577,6 @@
     <!-- Right Live Preview -->
     <section class="adm-preview" id="adminPreview" aria-label="Xem trước giao diện" hidden>
       <div class="preview-bar">
-        <div class="viewport-btns" role="group" aria-label="Trang xem trước"><button type="button" class="vp-btn active" data-preview-page="/?preview=home" aria-pressed="true">Trang chủ</button><button type="button" class="vp-btn" data-preview-page="/?preview=1" aria-pressed="false">Tư vấn</button></div>
         <div class="viewport-btns" role="group" aria-label="Kích thước xem trước">
           <button type="button" class="vp-btn active" data-vp="100%" aria-pressed="true">Máy tính</button>
           <button type="button" class="vp-btn" data-vp="820px" aria-pressed="false">Tablet</button>
@@ -949,6 +593,6 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="/js/admin.js?v=45"></script>
+<script src="/js/admin.js?v=46"></script>
 </body>
 </html>

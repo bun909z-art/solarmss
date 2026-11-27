@@ -1,0 +1,50 @@
+body {
+  --subpage-forest: #193932;
+  --subpage-outline: #74918466;
+  --subpage-anchor: max(96px, calc(var(--logo-h) + 32px));
+}
+
+.consult-workspace .contact-cta { border-color: var(--line); }
+.consult-workspace .cta-head h2 { font-size: clamp(1.35rem, 3vw, 2.1rem); letter-spacing: -.032em; line-height: 1.24; }
+
+/* Consultation workspace */
+.consult-workspace .lead-gate-card { max-width: 1000px; }
+.consult-workspace .lead-gate-card .card-head { background: radial-gradient(ellipse at 100% 100%, #35594b, transparent 78%), #122c26; }
+.consult-process { display: grid; gap: 12px; margin: 20px 0 0; padding: 17px 0 0; border-top: 1px solid var(--subpage-outline); list-style-position: inside; font-size: .875rem; }
+.consult-process li::marker { color: var(--solar-gold); font-weight: 750; }
+.consult-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+.consult-toolbar h2 { width: fit-content; margin: 0; padding: 9px 14px; background: var(--card); border-radius: 8px; font-size: clamp(1.1rem, 2.4vw, 1.55rem); letter-spacing: -.025em; }
+.consult-toolbar a { display: none; min-height: 44px; }
+.consult-workspace .sticky-col.is-sticky { top: var(--subpage-anchor); }
+.consult-workspace .grid > .col { gap: 14px; }
+.consult-workspace .grid .card, .consult-workspace .tables-stack .card { box-shadow: none; border-color: var(--line); }
+.consult-workspace .step-num { background: var(--subpage-forest); color: var(--solar-light); }
+.consult-workspace .result-card { padding: 0; }
+.consult-workspace .result-hero { padding-block: 24px; background: radial-gradient(ellipse at 88% 0%, #456b56, transparent 64%), #102721; }
+.consult-workspace .result-v { font-size: clamp(2.65rem, 6vw, 4.25rem); font-weight: 810; }
+.consult-workspace .result-k { letter-spacing: .105em; }
+.consult-workspace .result-sub b { white-space: normal; }
+.consult-workspace .result-body .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.consult-workspace .result-body .stat { min-width: 0; overflow-wrap: anywhere; }
+.consult-workspace .stat .a, .consult-workspace .bar-hint { font-size: .8125rem; }
+.consult-workspace .steps li { overflow-wrap: anywhere; }
+#calcResult, #calcWorkspaceTitle { scroll-margin-top: var(--subpage-anchor); }
+
+.coordinated-theme {
+  --subpage-forest: var(--theme-band-raised);
+  --subpage-outline: var(--line);
+}
+.coordinated-theme .consult-workspace .lead-gate-card .card-head,
+.coordinated-theme .consult-workspace .result-hero {
+  background: linear-gradient(135deg, var(--theme-band), var(--theme-band-raised));
+}
+
+@media (max-width: 920px) {
+  .consult-toolbar a { display: inline-flex; }
+}
+
+@media (max-width: 520px) {
+  .consult-process { gap: 6px; margin-top: 12px; padding-top: 9px; }
+  .consult-toolbar { margin-bottom: 10px; }
+  .consult-toolbar h2 { padding: 6px 8px; }
+}

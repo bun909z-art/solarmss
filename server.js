@@ -4,18 +4,14 @@ const http = require('http');
 const { URL } = require('url');
 
 const store = require('./lib/store');
-const productStore = require('./lib/products');
-const newsStore = require('./lib/news');
 const leadStore = require('./lib/leads');
-const updater = require('./lib/updater');
-const gsheet = require('./lib/gsheet');
 const { sendJson } = require('./lib/http-helpers');
 
 const { handlePublicApi } = require('./routes/public-api');
 const { handleAdminAuth } = require('./routes/admin-auth');
 const { handleAdminConfig } = require('./routes/admin-config');
-const { handleAdminCatalog } = require('./routes/admin-catalog');
-const { handleAdminGsheet, refreshGsheetAutoPull } = require('./routes/admin-gsheet');
+const { handleAdminData } = require('./routes/admin-data');
+const { handleAdminGsheet } = require('./routes/admin-gsheet');
 const { handlePagesAndStatic } = require('./routes/pages');
 
 const PORT = Number(process.env.PORT) || 3000;
@@ -30,7 +26,7 @@ const server = http.createServer(async (req, res) => {
     const authState = store.loadAuth();
     if (await handleAdminAuth(req, res, pathname, method, authState)) return;
     if (await handleAdminConfig(req, res, pathname, method, authState)) return;
-    if (await handleAdminCatalog(req, res, pathname, method, authState)) return;
+    if (await handleAdminData(req, res, pathname, method, authState)) return;
     if (await handleAdminGsheet(req, res, pathname, method, authState)) return;
     if (handlePagesAndStatic(req, res, pathname, parsedUrl)) return;
 
@@ -47,16 +43,10 @@ const server = http.createServer(async (req, res) => {
 if (require.main === module) {
   store.loadAuth();
   store.loadConfig();
-  productStore.loadProducts();
-  newsStore.loadNews();
   leadStore.loadLeads();
-  refreshGsheetAutoPull();
   server.listen(PORT, HOST, () => {
     console.log(`Máy chủ Mai Sơn Solar đang chạy tại:`);
-    console.log(`  • Trang chủ:      http://localhost:${PORT}/`);
-    console.log(`  • Trang tư vấn:   http://localhost:${PORT}/tuvan`);
-    console.log(`  • Sản phẩm:       http://localhost:${PORT}/products`);
-    console.log(`  • Tin tức:        http://localhost:${PORT}/news`);
+    console.log(`  • Trang tư vấn: http://localhost:${PORT}/`);
     console.log(`  • Trang quản trị: http://localhost:${PORT}/admin`);
   });
 }

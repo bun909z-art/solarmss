@@ -2,50 +2,45 @@
 
 const fs = require('fs');
 const path = require('path');
+const auth = require('../lib/auth');
+const store = require('../lib/store');
 const { PUBLIC_DIR, checkMaintenanceGate, serveThemedHtml, serveFile } = require('../lib/http-helpers');
 
+const consultationPaths = new Set(['/', '/tuvan', '/tuvan/', '/index.html']);
+const adminPaths = new Set(['/admin', '/admin/', '/admin.html']);
+
 function handlePagesAndStatic(req, res, pathname, parsedUrl) {
-  if (pathname === '/' || pathname === '/home' || pathname === '/home.html') {
-    if (parsedUrl.searchParams.get('preview') === '1') {
-      return serveThemedHtml(res, path.join(PUBLIC_DIR, 'index.html')), true;
+  if (consultationPaths.has(pathname)) {
+    const preview = parsedUrl.searchParams.get('preview') === '1';
+    if (preview && !auth.getSessionUser(req, store.loadAuth())) {
+      res.writeHead(302, { Location: pathname, 'Cache-Control': 'no-store' });
+      res.end();
+      return true;
     }
-    if (parsedUrl.searchParams.get('preview') === 'home') {
-      return serveThemedHtml(res, path.join(PUBLIC_DIR, 'home.html')), true;
+    const config = store.loadConfig();
+    if (!preview && checkMaintenanceGate(res, config)) return true;
+    serveThemedHtml(res, path.join(PUBLIC_DIR, 'index.html'), config);
+    return true;
+  }
+
+  if (adminPaths.has(pathname)) {
+    serveFile(res, path.join(PUBLIC_DIR, 'admin.html'));
+    return true;
+  }
+
+  if (pathname.startsWith('/uploads/')) {
+    const { logoUrl, faviconUrl } = store.loadConfig().branding;
+    const brandAssets = [logoUrl, faviconUrl].map(url => String(url || '').split(/[?#]/, 1)[0]);
+    if (!brandAssets.includes(pathname)) return false;
+  }
+
+  if (/^\/(assets|css|js|uploads)\//.test(pathname)) {
+    const candidate = path.resolve(PUBLIC_DIR, '.' + pathname);
+    if (candidate.startsWith(PUBLIC_DIR + path.sep) && fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+      serveFile(res, candidate);
+      return true;
     }
-    if (checkMaintenanceGate(req, res, pathname, parsedUrl)) return true;
-    return serveThemedHtml(res, path.join(PUBLIC_DIR, 'home.html')), true;
   }
-
-  if (pathname === '/tuvan' || pathname === '/tuvan/' || pathname === '/index.html') {
-    if (checkMaintenanceGate(req, res, pathname, parsedUrl)) return true;
-    return serveThemedHtml(res, path.join(PUBLIC_DIR, 'index.html')), true;
-  }
-
-  if (pathname === '/products' || pathname === '/products/' || pathname === '/products.html') {
-    if (checkMaintenanceGate(req, res, pathname, parsedUrl)) return true;
-    return serveThemedHtml(res, path.join(PUBLIC_DIR, 'products.html')), true;
-  }
-
-  if (pathname === '/news' || pathname === '/news/' || pathname === '/news.html') {
-    if (checkMaintenanceGate(req, res, pathname, parsedUrl)) return true;
-    return serveThemedHtml(res, path.join(PUBLIC_DIR, 'news.html')), true;
-  }
-
-  if (pathname === '/demo' || pathname === '/demo/' || pathname === '/demo.html') {
-    if (checkMaintenanceGate(req, res, '/demo', parsedUrl)) return true;
-    return serveThemedHtml(res, path.join(PUBLIC_DIR, 'demo.html')), true;
-  }
-
-  if (pathname === '/admin' || pathname === '/admin/' || pathname === '/admin.html') {
-    return serveFile(res, path.join(PUBLIC_DIR, 'admin.html')), true;
-  }
-
-  const safeRel = pathname.replace(/^\/+/, '');
-  const candidate = path.join(PUBLIC_DIR, safeRel);
-  if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
-    return serveFile(res, candidate), true;
-  }
-
   return false;
 }
 

@@ -110,7 +110,6 @@
     document.body.classList.toggle('dark-mode', dark);
     document.body.classList.toggle('coordinated-theme', coordinated);
     document.body.classList.toggle('show-admin-link', cfg.branding?.showAdminLink === true);
-    document.body.classList.toggle('solar-demo-off', cfg.sections?.showSolarDemo === false);
     const meta = document.getElementById('metaTheme');
     if (meta) meta.content = coordinated ? variables['--theme-band'] : variables['--primary'];
   }

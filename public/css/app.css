@@ -1,7 +1,7 @@
-/* Entry stylesheet */
-@import url('./base.css?v=32');
-@import url('./calculator.css?v=36');
-@import url('./catalog.css?v=36');
-@import url('./effects.css?v=36');
-@import url('./site.css?v=38') screen;
-@import url('./subpages.css?v=37') screen;
+/* Styles for the consultation page. */
+@import url('./base.css?v=33');
+@import url('./calculator.css?v=37');
+@import url('./mobile.css?v=1');
+@import url('./effects.css?v=37');
+@import url('./site.css?v=39') screen;
+@import url('./consultation.css?v=1') screen;

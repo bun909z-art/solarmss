@@ -2,8 +2,6 @@
 
 const store = require('../lib/store');
 const calculator = require('../lib/calculator');
-const productStore = require('../lib/products');
-const newsStore = require('../lib/news');
 const leadStore = require('../lib/leads');
 const telegram = require('../lib/telegram');
 const liveUpdates = require('../lib/live-updates');
@@ -21,6 +19,10 @@ async function handlePublicApi(req, res, pathname, method) {
       config: store.getPublicConfig(),
       presets: store.THEME_PRESETS
     }), true;
+  }
+
+  if (method === 'POST' && ['/api/calculate', '/api/leads'].includes(pathname) && store.loadConfig().maintenance?.enabled) {
+    return sendJson(res, 503, { error: 'Trang tư vấn đang tạm bảo trì.' }), true;
   }
 
   if (pathname === '/api/calculate' && method === 'POST') {
@@ -61,15 +63,6 @@ async function handlePublicApi(req, res, pathname, method) {
     return sendJson(res, 200, result), true;
   }
 
-  if (pathname === '/api/products' && method === 'GET') {
-    return sendJson(res, 200, { products: productStore.loadProducts().filter(product => product.active !== false) }), true;
-  }
-
-  if (pathname === '/api/news' && method === 'GET') {
-    const all = newsStore.loadNews();
-    return sendJson(res, 200, { articles: all.filter(a => a.published !== false) }), true;
-  }
-
   if (pathname === '/api/leads' && method === 'POST') {
     const body = await readJsonBody(req, 64 * 1024);
     const saved = leadStore.upsertLead(body);
@@ -78,7 +71,7 @@ async function handlePublicApi(req, res, pathname, method) {
     }
     const tgCfg = (store.loadAuth().telegram) || (store.loadConfig().telegram);
     telegram.notifyLeadIfEnabled(tgCfg, saved).catch(() => {});
-    triggerRealtimeSheetPush('lead', saved);
+    triggerRealtimeSheetPush(saved);
     return sendJson(res, 200, { ok: true, lead: saved }), true;
   }
 

@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const IMG_WRAP_SEL = 'img, .prod-img-wrap, .pd-img-stage, .news-cover, .article-cover-full, .fslide-img, .brand';
+  const IMG_WRAP_SEL = 'img, .brand';
 
   function lockImages(root) {
     (root || document).querySelectorAll('img').forEach(img => {

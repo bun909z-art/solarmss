@@ -482,26 +482,24 @@
     }
   });
 
-  HQLive.watch(['config'], ({ config }, changed) => {
+  HQLive.watch(config => {
     if (receivedPreview) return;
-    if (changed.has('config')) {
-      let restored = false;
-      if (!CFG && !isPreview) {
-        try {
-          const raw = localStorage.getItem(LOCAL_KEY);
-          if (raw) {
-            const { name, phone, address, _cfgUpdatedAt, ...settings } = JSON.parse(raw);
-            if (_cfgUpdatedAt === config.updatedAt) {
-              Object.assign(S, settings);
-              restored = true;
-            }
+    let restored = false;
+    if (!CFG && !isPreview) {
+      try {
+        const raw = localStorage.getItem(LOCAL_KEY);
+        if (raw) {
+          const { name, phone, address, _cfgUpdatedAt, ...settings } = JSON.parse(raw);
+          if (_cfgUpdatedAt === config.updatedAt) {
+            Object.assign(S, settings);
+            restored = true;
           }
-        } catch {}
-      }
-      applyConfig(config, !CFG && !restored);
+        }
+      } catch {}
     }
-  }, (failures, snapshot) => {
-    if (failures.includes('config') && !snapshot.config && !receivedPreview && !window._hqLastResult) {
+    applyConfig(config, !CFG && !restored);
+  }, () => {
+    if (!CFG && !receivedPreview && !window._hqLastResult) {
       buildPriceGrid();
       syncInputs();
       update();

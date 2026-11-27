@@ -12,10 +12,6 @@
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
 }
-@keyframes hqModalPop {
-  from { opacity: 0; transform: scale(0.95) translateY(10px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
-}
 @keyframes hqShimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
@@ -135,11 +131,11 @@ body.dark-mode .card {
   animation: hqEnergyFlow 2.2s linear infinite;
 }
 
-/* Springy Chips & Category Filter Pills */
-.chip, .cat-pill {
+/* Springy Chips */
+.chip {
   transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.chip:hover, .cat-pill:hover {
+.chip:hover {
   transform: translateY(-2px);
   border-color: var(--primary);
   color: var(--primary-deep);
@@ -151,30 +147,6 @@ body.dark-mode .card {
   border-color: transparent !important;
   box-shadow: 0 6px 16px var(--primary-glow, rgba(242, 106, 27, 0.3));
   transform: translateY(-1px);
-}
-
-/* Product Showcase & News Cards Hover Magic */
-.prod-card, .news-card {
-  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.28s ease, border-color 0.28s ease;
-}
-.prod-card:hover, .news-card:hover {
-  transform: translateY(-7px);
-  border-color: var(--primary-line);
-  box-shadow: 0 20px 44px rgba(15, 23, 42, 0.12), 0 4px 14px var(--primary-soft, rgba(242, 106, 27, 0.1));
-}
-.prod-img-wrap img, .news-cover img {
-  transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.prod-card:hover .prod-img-wrap img, .news-card:hover .news-cover img {
-  transform: scale(1.07);
-}
-.news-readmore {
-  display: inline-flex; align-items: center; gap: 4px;
-  transition: gap 0.2s ease, color 0.2s ease;
-}
-.news-card:hover .news-readmore {
-  gap: 9px;
-  color: var(--primary);
 }
 
 /* Sheen Hover Effect on Primary & CTA Buttons */
@@ -218,16 +190,6 @@ body.dark-mode .card {
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
 }
 
-/* Modal Pop-in Animation */
-.modal-backdrop:not([hidden]) .modal-card {
-  animation: hqModalPop 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-/* Smooth Article Reveal */
-.article-full {
-  animation: hqFadeUp 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
 /* Respect Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -237,63 +199,6 @@ body.dark-mode .card {
   }
 }
 
-/* Standalone Product Detail Page */
-.prod-detail-wrap { max-width: 1060px; margin: 0 auto; }
-.prod-breadcrumb { font-size: 13px; font-weight: 700; color: var(--ink-3); }
-.prod-detail-card { padding: 28px; animation: hqFadeUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
-.pd-hero-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
-  gap: 28px;
-  align-items: start;
-}
-.pd-img-stage {
-  position: relative;
-  aspect-ratio: 1 / 1;
-  background: #F8FAFC;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-.pd-img-stage img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-}
-.pd-summary { display: flex; flex-direction: column; gap: 12px; }
-.pd-title { margin: 0; font-size: 25px; font-weight: 900; line-height: 1.3; color: var(--ink); }
-.pd-desc { margin: 0; font-size: 14.5px; line-height: 1.65; color: var(--ink-2); }
-.pd-price-box {
-  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
-  padding: 14px 16px; border-radius: 12px;
-  background: var(--primary-soft); border: 1px solid var(--primary-line);
-}
-.pd-price-box span { font-size: 13px; font-weight: 700; color: var(--ink-2); }
-.pd-price-box strong { font-size: 20px; font-weight: 900; color: var(--primary-deep); }
-.pd-cta-row { display: flex; gap: 10px; flex-wrap: wrap; }
-.pd-details-grid {
-  margin-top: 26px;
-  padding-top: 22px;
-  border-top: 1px solid var(--line);
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-@media (max-width: 760px) {
-  .prod-detail-card { padding: 18px 16px; }
-  .pd-hero-grid { grid-template-columns: 1fr; gap: 18px; }
-  .pd-title { font-size: 20px; }
-}
-
-/* V15 Nav & Header Polish */
-.main-nav { max-width: 100%; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
-.main-nav::-webkit-scrollbar { display: none; }
-
 /* ==================== IMAGE COPY PROTECTION ==================== */
 img {
   -webkit-user-drag: none;
@@ -302,20 +207,6 @@ img {
   user-select: none;
   -webkit-touch-callout: none;
 }
-.prod-img-wrap img,
-.pd-img-stage img,
-.news-cover img,
-.article-cover-full img,
-.fslide-img img,
 .brand img {
   pointer-events: none;
-}
-
-/* Balanced header layout when Maintenance restricts to a single allowed page */
-body.maint-single-page .topbar-inner {
-  justify-content: space-between;
-  gap: 16px;
-}
-body.maint-single-page .main-nav[hidden] {
-  display: none !important;
 }

@@ -1,12 +1,8 @@
 'use strict';
 
 const store = require('../lib/store');
-const productStore = require('../lib/products');
-const newsStore = require('../lib/news');
-const path = require('path');
 const { isDeepStrictEqual } = require('node:util');
 const leadStore = require('../lib/leads');
-const updater = require('../lib/updater');
 const { sendJson, readJsonBody, requireAdmin } = require('../lib/http-helpers');
 
 function configHasConflict(current, patch, expected) {
@@ -37,7 +33,7 @@ function salesContactsError(footer, current) {
 
 async function handleAdminConfig(req, res, pathname, method, authState) {
   if (pathname === '/api/admin/config' && (method === 'PUT' || method === 'POST')) {
-    const user = requireAdmin(req, res, authState, ['branding', 'home', 'theme', 'layout', 'tariffs', 'footer']);
+    const user = requireAdmin(req, res, authState, ['branding', 'theme', 'layout', 'tariffs', 'footer']);
     if (!user) return true;
     const input = await readJsonBody(req, 1024 * 1024);
     if (!input || typeof input !== 'object' || Array.isArray(input)) {
@@ -49,7 +45,6 @@ async function handleAdminConfig(req, res, pathname, method, authState) {
       const perms = Array.isArray(user.permissions) ? user.permissions : [];
       patch = {};
       if (perms.includes('branding') && body.branding) patch.branding = body.branding;
-      if (perms.includes('home') && body.home) patch.home = body.home;
       if (perms.includes('theme') && body.theme) patch.theme = body.theme;
       if ((perms.includes('theme') || perms.includes('layout')) && body.hero) patch.hero = body.hero;
       if (perms.includes('layout') && body.sections) patch.sections = body.sections;
@@ -78,21 +73,7 @@ async function handleAdminConfig(req, res, pathname, method, authState) {
   if (pathname === '/api/admin/maintenance' && (method === 'PUT' || method === 'POST')) {
     if (!requireAdmin(req, res, authState, ['security'])) return true;
     const body = await readJsonBody(req, 32 * 1024);
-    const valid = store.PUBLIC_SITE_ROUTES;
-    const allowedRoutes = Array.isArray(body.allowedRoutes)
-      ? body.allowedRoutes.filter(r => valid.includes(r))
-      : (valid.includes(body.allowedRoute) ? [body.allowedRoute] : []);
-    const mode = (body.mode === 'allow_page' && allowedRoutes.length > 0) ? 'allow_page' : 'error404';
-    const updated = store.saveConfig({
-      maintenance: {
-        enabled: Boolean(body.enabled),
-        mode,
-        allowedRoute: allowedRoutes[0] || '/tuvan',
-        allowedRoutes,
-        title: '404 — Hệ thống đang bảo trì',
-        message: 'Website đang được nâng cấp và bảo trì định kỳ. Quý khách vui lòng quay lại sau ít phút hoặc liên hệ hotline bên dưới để được hỗ trợ ngay.'
-      }
-    });
+    const updated = store.saveConfig({ maintenance: { enabled: Boolean(body?.enabled) } });
     return sendJson(res, 200, { ok: true, config: store.getPublicConfig(updated) }), true;
   }
 
@@ -102,8 +83,6 @@ async function handleAdminConfig(req, res, pathname, method, authState) {
       version: 'hoangquan-full-backup-v1',
       exportedAt: new Date().toISOString(),
       config: store.loadConfig(),
-      products: productStore.loadProducts(),
-      news: newsStore.loadNews(),
       leads: leadStore.loadLeads()
     };
     const buf = Buffer.from(JSON.stringify(payload, null, 2), 'utf8');
@@ -116,49 +95,18 @@ async function handleAdminConfig(req, res, pathname, method, authState) {
     return true;
   }
 
-  if (pathname === '/api/admin/update-package' && method === 'POST') {
-    if (!requireAdmin(req, res, authState, ['security'])) return true;
-    const body = await readJsonBody(req, 30 * 1024 * 1024);
-    if (!body || !body.base64) {
-      return sendJson(res, 400, { error: 'Thiếu dữ liệu tệp ZIP tải lên.' }), true;
-    }
-    try {
-      const appRoot = path.resolve(__dirname, '..');
-      const result = updater.applyZipUpdate(body.base64, appRoot, { store, productStore, newsStore, leadStore });
-      sendJson(res, 200, { ok: true, ...result });
-      if (body.autoRestart && result.needsRestart && process.env.HQ_DISABLE_AUTO_EXIT !== '1') {
-        setTimeout(() => { process.exit(0); }, 1200);
-      }
-      return true;
-    } catch (err) {
-      return sendJson(res, 400, { error: err.message || 'Gói ZIP không hợp lệ hoặc không thể giải nén.' }), true;
-    }
-  }
-
   if (pathname === '/api/admin/restore-full' && method === 'POST') {
     if (!requireAdmin(req, res, authState, ['security'])) return true;
     const body = await readJsonBody(req, 25 * 1024 * 1024);
     const updatedSections = [];
-    if (Array.isArray(body)) {
-      productStore.saveProducts(body);
-      updatedSections.push(`Kho sản phẩm (${body.length})`);
-    } else if (body && typeof body === 'object') {
-      const contactError = salesContactsError(body.config?.footer || body.footer, store.loadConfig());
+    if (body && typeof body === 'object' && !Array.isArray(body)) {
+      const config = body.config && typeof body.config === 'object' ? body.config : body;
+      const patch = Object.fromEntries(store.CONFIG_KEYS.filter(key => key !== 'updatedAt' && config[key]).map(key => [key, config[key]]));
+      const contactError = salesContactsError(patch.footer, store.loadConfig());
       if (contactError) return sendJson(res, 400, { error: contactError }), true;
-      if (body.config && typeof body.config === 'object') {
-        store.saveConfig(body.config);
-        updatedSections.push('Cấu hình giao diện');
-      } else if (body.branding || body.theme || body.hero || body.home || body.tariffs || body.sections || body.footer) {
-        store.saveConfig(body);
-        updatedSections.push('Cấu hình giao diện');
-      }
-      if (Array.isArray(body.products)) {
-        productStore.saveProducts(body.products);
-        updatedSections.push(`Kho sản phẩm (${body.products.length})`);
-      }
-      if (Array.isArray(body.news)) {
-        newsStore.saveNews(body.news);
-        updatedSections.push(`Tin tức (${body.news.length})`);
+      if (Object.keys(patch).length) {
+        store.saveConfig(patch);
+        updatedSections.push('Cấu hình tư vấn');
       }
       if (Array.isArray(body.leads)) {
         const restored = body.leads.filter(lead => leadStore.upsertLead(lead, { restoring: true })).length;
@@ -166,14 +114,12 @@ async function handleAdminConfig(req, res, pathname, method, authState) {
       }
     }
     if (!updatedSections.length) {
-      return sendJson(res, 400, { error: 'Tệp JSON không chứa dữ liệu cấu hình, sản phẩm, tin tức hay khách hàng hợp lệ.' }), true;
+      return sendJson(res, 400, { error: 'Tệp JSON không chứa dữ liệu cấu hình tư vấn hoặc khách hàng hợp lệ.' }), true;
     }
     return sendJson(res, 200, {
       ok: true,
       updatedSections,
-      config: store.loadConfig(),
-      productsCount: productStore.loadProducts().length,
-      newsCount: newsStore.loadNews().length,
+      config: store.getPublicConfig(),
       leadsCount: leadStore.loadLeads().length
     }), true;
   }

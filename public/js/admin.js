@@ -3,20 +3,17 @@
 
   const $ = id => document.getElementById(id);
   const TOKEN_KEY = 'hq_admin_token_v1';
-  const EDITOR_KEYS = ['branding', 'home', 'theme', 'hero', 'sections', 'defaults', 'tariffs', 'footer'];
+  const EDITOR_KEYS = ['branding', 'theme', 'hero', 'sections', 'defaults', 'tariffs', 'footer'];
   const TAB_INFO = {
-    overview: ['Tổng quan', 'Mở nhanh khách hàng cần theo dõi, thiết bị hết hàng và bài chưa công khai.'],
+    overview: ['Tổng quan', 'Theo dõi khách mới và yêu cầu báo giá.'],
     leads: ['Khách hàng', 'Theo dõi yêu cầu tư vấn và trạng thái chăm sóc.'],
-    products: ['Kho sản phẩm', 'Quản lý thiết bị, tồn kho và tài liệu kỹ thuật.'],
-    news: ['Tin tức', 'Soạn bài, cập nhật nội dung và chọn bài nổi bật.'],
     branding: ['Thương hiệu', 'Cập nhật logo, tên doanh nghiệp và thông tin liên hệ.', '/?preview=1'],
-    home: ['Trang chủ', 'Sắp xếp các mục nổi bật trên trang chủ.', '/?preview=home'],
     theme: ['Màu sắc & banner', 'Tùy chỉnh bảng màu, kiểu chữ và banner tư vấn.', '/?preview=1'],
     layout: ['Bố cục & tiêu đề', 'Chọn thông tin hiển thị trên công cụ tính pin.', '/?preview=1'],
     tariffs: ['Thông số & biểu giá', 'Thiết lập thông số tính pin và các bậc giá điện.', '/?preview=1'],
     footer: ['Chân trang', 'Sửa phần liên hệ và lưu ý cho khách hàng.', '/?preview=1'],
     gsheet: ['Google Sheets', 'Thiết lập đồng bộ và theo dõi các lần kết nối.'],
-    security: ['Sao lưu & bảo trì', 'Quản lý chế độ bảo trì, cập nhật và sao lưu.'],
+    security: ['Sao lưu & bảo trì', 'Bảo trì trang tư vấn và sao lưu hồ sơ.'],
     users: ['Phân quyền & dữ liệu', 'Cấp quyền cho nhân viên và quản lý kết nối hệ thống.'],
     account: ['Tài khoản của tôi', 'Xem thông tin và đổi mật khẩu.']
   };
@@ -24,29 +21,20 @@
   let CONFIG = null;
   let savedEditorConfig = null;
   let PRESETS = {};
-  let PRODUCTS = [];
-  let savedProductStates = new Map();
-  let NEWS = [];
   let LEADS = [];
   let USERS = [];
   let datasetReady = {};
   let CURRENT_USER = null;
   const PERM_LABELS = [
     ['branding', 'Thương hiệu'],
-    ['home', 'Trang chủ'],
     ['theme', 'Giao diện'],
     ['layout', 'Bố cục'],
     ['tariffs', 'EVN & Mặc định'],
-    ['products', 'Kho sản phẩm'],
-    ['news', 'Tin tức'],
     ['leads', 'Khách hàng'],
     ['footer', 'Chân trang'],
     ['gsheet', 'Google Sheets'],
-    ['security', 'Bảo trì & Cập nhật']
+    ['security', 'Sao lưu & Bảo trì']
   ];
-  let newNewsImgUrl = '';
-  let prodFilter = 'all';
-  const selectedProducts = new Set();
   let leadRecordId = '';
   let dirty = false;
   let editRevision = 0;
@@ -62,18 +50,12 @@
     return String(value ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/đ/g, 'd').trim();
   }
 
-  function productStock(product) {
-    return product.stockStatus || (product.inStock === false ? 'out_of_stock' : 'in_stock');
-  }
-
   function editorConfig() {
     return Object.fromEntries(EDITOR_KEYS.map(key => [key, CONFIG[key]]));
   }
 
   function snapshotEditorConfig() {
-    const snapshot = JSON.parse(JSON.stringify(editorConfig()));
-    delete snapshot.sections.showSolarDemo;
-    return snapshot;
+    return JSON.parse(JSON.stringify(editorConfig()));
   }
 
   function configChanges(before, after) {
@@ -103,25 +85,14 @@
     setTimeout(() => URL.revokeObjectURL(href), 1000);
   }
 
-  function openOverviewList(tab, filter, lead) {
-    if (tab === 'leads') {
-      leadRecordId = lead?.id || '';
-      $('leadSearch').value = lead?.customerName || '';
-      $('leadStatusFilter').value = filter;
-      $('leadAssigneeFilter').value = 'all';
-      $('leadAgeFilter').value = 'all';
-      renderLeadsList();
-    } else if (tab === 'products') {
-      $('prodSearch').value = '';
-      $('prodStockFilter').value = filter;
-      $('prodVisibility').value = 'all';
-      $('prodFilterTabs').querySelector('[data-pcat="all"]').click();
-    } else {
-      $('newsSearch').value = '';
-      $('newsStateFilter').value = filter;
-      renderNewsList();
-    }
-    const button = tabs.find(item => item.dataset.tab === tab);
+  function openOverviewList(filter, lead) {
+    leadRecordId = lead?.id || '';
+    $('leadSearch').value = lead?.customerName || '';
+    $('leadStatusFilter').value = filter;
+    $('leadAssigneeFilter').value = 'all';
+    $('leadAgeFilter').value = 'all';
+    renderLeadsList();
+    const button = tabs.find(item => item.dataset.tab === 'leads');
     selectTab(button);
     button.focus();
   }
@@ -130,8 +101,7 @@
     const cards = [
       ['leads', 'new', LEADS.filter(lead => !lead.status || lead.status === 'new').length, 'Khách mới', 'Chờ liên hệ'],
       ['leads', 'quoted', LEADS.filter(lead => lead.status === 'quoted').length, 'Đã báo giá', 'Theo dõi phản hồi'],
-      ['products', 'out_of_stock', PRODUCTS.filter(product => productStock(product) === 'out_of_stock').length, 'Thiết bị hết hàng', 'Xem tình trạng kho'],
-      ['news', 'draft', NEWS.filter(article => article.published === false).length, 'Bài chưa công khai', 'Mở danh sách bản nháp']
+      ['leads', 'quote_requested', LEADS.filter(lead => lead.quoteRequestedAt).length, 'Yêu cầu báo giá', 'Hồ sơ khách gửi']
     ];
     const actions = $('overviewActions');
     actions.innerHTML = cards.filter(([tab]) => can(tab)).map(([tab, filter, count, title, note]) => `
@@ -139,7 +109,7 @@
         <span>${title}</span><strong>${datasetReady[tab] ? count : '—'}</strong><small>${datasetReady[tab] ? note : 'Chưa tải được dữ liệu'}</small>
       </button>`).join('');
     actions.querySelectorAll('[data-overview-tab]').forEach(btn => {
-      btn.onclick = () => openOverviewList(btn.dataset.overviewTab, btn.dataset.overviewFilter);
+      btn.onclick = () => openOverviewList(btn.dataset.overviewFilter);
     });
 
     const recent = $('overviewRecent');
@@ -153,7 +123,7 @@
         <strong>${escapeAttr(lead.customerName)}</strong><span>${escapeAttr(fmtLeadTime(lead.updatedAt || lead.createdAt))}</span><span class="adm-tag">${statusNames[lead.status] || 'Mới'}</span>
       </button>`).join('') || `<p class="hint adm-empty">${datasetReady.leads ? 'Chưa có hồ sơ tư vấn.' : 'Không tải được hồ sơ tư vấn.'}</p>`;
     list.querySelectorAll('[data-overview-lead]').forEach(btn => {
-      btn.onclick = () => openOverviewList('leads', 'all', latest[Number(btn.dataset.overviewLead)]);
+      btn.onclick = () => openOverviewList('all', latest[Number(btn.dataset.overviewLead)]);
     });
   }
 
@@ -181,18 +151,6 @@
     if (val) editRevision++;
     $('dirtyPill').hidden = !val;
     $('btnSave').disabled = !dirty || configSaving;
-  }
-
-  function renderDemoStatus(updating = false) {
-    if (!CONFIG) return;
-    const enabled = CONFIG.sections.showSolarDemo !== false;
-    const status = $('maintenanceDemoStatus');
-    status.textContent = enabled ? 'Đang bật' : 'Đang tắt';
-    status.dataset.enabled = String(enabled);
-    $('adminDemoLink').hidden = !enabled;
-    const button = $('btnToggleMaintenanceDemo');
-    button.textContent = updating ? 'Đang cập nhật…' : (enabled ? 'Tắt Demo 3D' : 'Bật Demo 3D');
-    button.disabled = configSaving || !can('layout');
   }
 
   function escapeAttr(str) {
@@ -300,10 +258,8 @@
       }
       const isSuper = Boolean(CURRENT_USER && CURRENT_USER.role === 'admin');
 
-      const [data, prodData, newsData, leadsData, usersData, tgData] = await Promise.all([
+      const [data, leadsData, usersData, tgData] = await Promise.all([
         api('/api/config'),
-        api(can('products') ? '/api/admin/products' : '/api/products').catch(() => null),
-        can('news') ? api('/api/admin/news').catch(() => null) : null,
         can('leads') ? api('/api/admin/leads').catch(() => null) : null,
         isSuper ? api('/api/admin/users').catch(() => ({ users: [] })) : Promise.resolve({ users: [] }),
         isSuper ? api('/api/admin/telegram').catch(() => ({ telegram: {} })) : Promise.resolve({ telegram: {} })
@@ -316,30 +272,18 @@
       $('adminBrandLogo').alt = brand.companyName || 'Công Ty TNHH Mai Sơn Solar';
       $('adminFavicon').href = brand.faviconUrl || '/assets/favicon.png?v=mss';
       PRESETS = data.presets || {};
-      datasetReady = { products: Array.isArray(prodData?.products), news: Array.isArray(newsData?.articles), leads: Array.isArray(leadsData?.leads) };
-      setLoadedProducts(datasetReady.products ? prodData.products : []);
-      NEWS = datasetReady.news ? newsData.articles : [];
+      datasetReady = { leads: Array.isArray(leadsData?.leads) };
       LEADS = datasetReady.leads ? leadsData.leads : [];
-      $('btnSaveProds').disabled = !datasetReady.products;
-      $('btnSaveNews').disabled = !datasetReady.news;
       USERS = Array.isArray(usersData.users) ? usersData.users : [];
       const tg = (tgData && tgData.telegram) || {};
       setChk('tg_enabled', Boolean(tg.enabled));
       setVal('tg_botToken', tg.botToken || '');
       setVal('tg_chatId', tg.chatId || '');
       applyPermissionsUI();
-      if ($('nn_date') && !$('nn_date').value) $('nn_date').value = new Date().toISOString().slice(0, 10);
       renderPresets();
       populateForm();
-      renderProdList();
-      renderNewsList();
       renderLeadsList();
-      const gs = CONFIG.sheetSync || {};
-      setVal('gs_url', gs.url || '');
-      if (gs.lastSummary) {
-        $('gs_status').innerHTML = `✅ Lần đồng bộ gần nhất (${escapeAttr(fmtLeadTime(gs.lastSyncedAt))}): <b>${escapeAttr(gs.lastSummary)}</b>`;
-      }
-      populateMaintForm();
+      updateMaintUI();
       setDirty(false);
       pushPreview();
       if (can('gsheet')) {
@@ -407,7 +351,6 @@
 
   function populateForm() {
     const { branding: b, hero: h, theme: t, sections: s, defaults: d, tariffs: tar, footer: f } = CONFIG;
-    renderDemoStatus();
 
     if ($('logoPreview')) $('logoPreview').src = b.logoUrl || '/assets/logo-default.jpg?v=mss';
     setVal('b_logoHeight', b.logoHeight || 54);
@@ -481,56 +424,10 @@
     setVal('f_zaloBtnText', f.zaloBtnText || 'Chat Zalo');
     renderSalesContacts();
     
-    const hm = CONFIG.home || (CONFIG.home = {
-      showSlider: true, sliderKicker: '★ Nổi bật', sliderTitle: 'Tin tức & Dự án nổi bật',
-      autoSlide: true, sliderIntervalSec: 4.5, sliderHeight: 430, showQuickCards: true,
-      quickCards: [
-        { icon: '⚡', title: 'Tư vấn & Tính Pin Hybrid', desc: 'Nhập hóa đơn EVN hoặc số kWh để ước tính dung lượng pin lưu trữ và gửi yêu cầu báo giá.', cta: 'Tính ngay →', href: '/tuvan', primary: true },
-        { icon: '🔋', title: 'Sản phẩm & Phụ kiện chính hãng', desc: 'Khám phá Inverter Hybrid, Tấm pin mặt trời, Pin Lithium LFP và trọn bộ Phụ kiện lắp đặt kèm thông số, Datasheet.', cta: 'Xem sản phẩm →', href: '/products', primary: false },
-        { icon: '📰', title: 'Kiến thức & Dự án thực tế', desc: 'Cập nhật kinh nghiệm chọn cấu hình, quy định giá điện mới nhất và các công trình Hybrid đã bàn giao.', cta: 'Đọc tin tức →', href: '/news', primary: false }
-      ],
-      showFeaturedProducts: true, productsKicker: 'Thiết bị chính hãng', productsTitle: 'Sản phẩm tiêu biểu', productsCount: 4, showContactCta: true
-    });
-    setChk('hm_showSlider', hm.showSlider !== false);
-    setChk('hm_autoSlide', hm.autoSlide !== false);
-    syncSliderControls();
-    setVal('hm_sliderKicker', hm.sliderKicker || '★ Nổi bật');
-    setVal('hm_sliderTitle', hm.sliderTitle || 'Tin tức & Dự án nổi bật');
-    setVal('hm_sliderIntervalSec', hm.sliderIntervalSec || 4.5);
-    setVal('hm_sliderHeight', hm.sliderHeight || 430);
-    if ($('hmSliderHVal')) $('hmSliderHVal').textContent = hm.sliderHeight || 430;
-    setChk('hm_showQuickCards', hm.showQuickCards !== false);
-    setChk('hm_showQuickDemo', hm.showQuickDemo === true);
-    setChk('hm_showFeaturedProducts', hm.showFeaturedProducts !== false);
-    setVal('hm_productsKicker', hm.productsKicker || 'Thiết bị chính hãng');
-    setVal('hm_productsTitle', hm.productsTitle || 'Sản phẩm tiêu biểu');
-    setVal('hm_productsCount', String(hm.productsCount || 4));
-    setChk('hm_showContactCta', hm.showContactCta !== false);
-    renderHomeQuickEditor();
     renderNotesEditor();
   }
 
   
-  function renderHomeQuickEditor() {
-    const el = $('homeQuickEditor');
-    if (!el || !CONFIG || !CONFIG.home) return;
-    const cards = Array.isArray(CONFIG.home.quickCards) ? CONFIG.home.quickCards : [];
-    el.innerHTML = cards.map((c, idx) => `
-      <div class="list-item" style="flex-direction:column;align-items:stretch;gap:5px">
-        <div style="display:grid;grid-template-columns:56px 1fr;gap:5px">
-          <input type="text" class="f-input" data-hq-icon="${idx}" value="${escapeAttr(c.icon || '')}" placeholder="Icon" style="text-align:center">
-          <input type="text" class="f-input" data-hq-title="${idx}" value="${escapeAttr(c.title || '')}" placeholder="Tiêu đề thẻ">
-        </div>
-        <textarea class="f-input" rows="2" data-hq-desc="${idx}" placeholder="Mô tả ngắn...">${escapeAttr(c.desc || '')}</textarea>
-        <input type="text" class="f-input" data-hq-cta="${idx}" value="${escapeAttr(c.cta || '')}" placeholder="Nhãn nút (VD: Tính ngay →)">
-      </div>
-    `).join('');
-    el.querySelectorAll('[data-hq-icon]').forEach(inp => inp.oninput = () => { CONFIG.home.quickCards[+inp.dataset.hqIcon].icon = inp.value; setDirty(true); pushPreview(); });
-    el.querySelectorAll('[data-hq-title]').forEach(inp => inp.oninput = () => { CONFIG.home.quickCards[+inp.dataset.hqTitle].title = inp.value; setDirty(true); pushPreview(); });
-    el.querySelectorAll('[data-hq-desc]').forEach(inp => inp.oninput = () => { CONFIG.home.quickCards[+inp.dataset.hqDesc].desc = inp.value; setDirty(true); pushPreview(); });
-    el.querySelectorAll('[data-hq-cta]').forEach(inp => inp.oninput = () => { CONFIG.home.quickCards[+inp.dataset.hqCta].cta = inp.value; setDirty(true); pushPreview(); });
-  }
-
   // ---------- DYNAMIC LIST EDITORS ----------
   function renderContactEditor(id, contacts, namePlaceholder) {
     const editor = $(id);
@@ -663,500 +560,6 @@
     renderNotesEditor(); setDirty(true); pushPreview();
   };
 
-  // ---------- PRODUCT CATALOG MANAGER ----------
-  function setLoadedProducts(products) {
-    PRODUCTS = products;
-    savedProductStates = new Map(products.map(product => [product.id, {
-      active: product.active !== false, stock: productStock(product)
-    }]));
-  }
-
-  function publicationChanged(product, saved = savedProductStates.get(product.id)) {
-    return !saved || saved.active !== (product.active !== false) || saved.stock !== productStock(product);
-  }
-
-  function productPublication(product) {
-    const saved = savedProductStates.get(product.id);
-    if (!saved) return 'Sản phẩm mới · chờ lưu';
-    if (publicationChanged(product, saved)) return 'Có thay đổi · chờ lưu';
-    return saved.active ? 'Đã đăng' : 'Đang ẩn';
-  }
-
-  function updateProductPublication() {
-    if (!datasetReady.products) {
-      $('prodPublicationSummary').textContent = '';
-      $('btnHiddenInStock').hidden = true;
-      return;
-    }
-    const saved = [...savedProductStates.values()];
-    const published = saved.filter(state => state.active).length;
-    const hiddenInStock = saved.filter(state => !state.active && state.stock === 'in_stock').length;
-    const pending = savedProductStates.size !== PRODUCTS.length ||
-      PRODUCTS.some(product => publicationChanged(product));
-    $('prodPublicationSummary').textContent = `${published} đã đăng · ${hiddenInStock} còn hàng nhưng đang ẩn${pending ? ' · Bấm Lưu danh mục sản phẩm để áp dụng thay đổi' : ''}`;
-    $('btnHiddenInStock').hidden = !PRODUCTS.some(product => product.active === false && productStock(product) === 'in_stock');
-  }
-
-  function filteredProducts() {
-    const query = normalizeSearch($('prodSearch').value);
-    const stock = $('prodStockFilter').value;
-    const visibility = $('prodVisibility').value;
-    return PRODUCTS.map((p, idx) => ({ p, idx })).filter(({ p }) => (
-      (prodFilter === 'all' || p.category === prodFilter) &&
-      (stock === 'all' || productStock(p) === stock) &&
-      (visibility === 'all' || (p.active !== false) === (visibility === 'visible')) &&
-      normalizeSearch([p.name, p.brand, p.id].join(' ')).includes(query)
-    ));
-  }
-
-  function updateProductSelection() {
-    const count = selectedProducts.size;
-    $('productBulkBar').hidden = count === 0;
-    $('productSelectionCount').textContent = `Đã chọn ${count} sản phẩm`;
-    $('btnClearProducts').disabled = count === 0;
-    $('btnApplyProductBulk').disabled = !count || !$('productBulkAction').value;
-  }
-
-  function renderProdList() {
-    const el = $('prodListEditor');
-    if (!el) return;
-    updateProductPublication();
-    if ($('prodCount')) $('prodCount').textContent = PRODUCTS.length;
-    const filtered = filteredProducts();
-    const visible = new Set(filtered.map(({ p }) => p));
-    for (const product of selectedProducts) if (!visible.has(product)) selectedProducts.delete(product);
-    $('prodResults').textContent = datasetReady.products ? `${filtered.length} / ${PRODUCTS.length} sản phẩm` : 'Không tải được kho. Tải lại trang trước khi lưu.';
-    $('btnSelectProducts').disabled = filtered.length === 0;
-    updateProductSelection();
-    const catLabel = { inverter: 'Inverter', panel: 'Pin MT', battery: 'Lưu trữ', accessory: 'Phụ kiện' };
-
-    el.innerHTML = filtered.map(({ p, idx }) => `
-      <div class="list-item" style="flex-direction:column;align-items:stretch;gap:6px">
-        <label class="adm-check"><input type="checkbox" data-p-select="${idx}" aria-label="Chọn ${escapeAttr(p.name)}" ${selectedProducts.has(p) ? 'checked' : ''}> Chọn để cập nhật hàng loạt</label>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
-          <img src="${escapeAttr(p.imageUrl || '/assets/prod-' + p.category + '.jpg')}" alt="" style="width:36px;height:36px;border-radius:7px;object-fit:cover;border:1px solid #E2E8F0;flex:none">
-          <div style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;flex:1;min-width:0">
-            <span style="color:#D9560B;white-space:nowrap">[${catLabel[p.category] || p.category}]</span>
-            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeAttr(p.name)}</span>
-          </div>
-          <label class="btn-ghost small" style="padding:4px 7px;font-size:11px;cursor:pointer;white-space:nowrap" title="Tải ảnh sản phẩm">
-            Đổi ảnh<input type="file" accept="image/*" data-p-img="${idx}" hidden>
-          </label>
-          <button type="button" class="del-btn" data-p-del="${idx}" title="Xóa">×</button>
-        </div>
-        <div class="adm-product-publication">
-          <label><input type="checkbox" data-p-act="${idx}" aria-label="Hiện trên trang khách: ${escapeAttr(p.name)}" ${p.active !== false ? 'checked' : ''}> Hiện trên trang khách</label>
-          <span data-p-publication="${idx}">${productPublication(p)}</span>
-          ${savedProductStates.get(p.id)?.active ? `<a href="/products?id=${encodeURIComponent(p.id)}" target="_blank" rel="noopener">Xem trang khách</a>` : ''}
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
-          <input type="text" class="f-input" data-p-name="${idx}" value="${escapeAttr(p.name)}" placeholder="Tên sản phẩm">
-          <input type="text" class="f-input" data-p-brand="${idx}" value="${escapeAttr(p.brand || '')}" placeholder="Hãng">
-          ${p.category === 'accessory'
-            ? `<input type="text" class="f-input" data-p-spec="${idx}" value="${escapeAttr(p.specText || '')}" placeholder="Quy cách (VD: IP65, 4mm²...)" title="Quy cách / Thông số chính">`
-            : `<input type="number" class="f-input" data-p-spec="${idx}" value="${p.category === 'inverter' ? p.powerKw : p.category === 'panel' ? p.wattWp : p.capacityKwh}" step="0.01" title="Công suất / Dung lượng">`}
-          <input type="number" class="f-input" data-p-price="${idx}" value="${p.price || 0}" step="100000" title="Giá nội bộ">
-          <input type="text" class="f-input" data-p-war="${idx}" value="${escapeAttr(p.warranty || '')}" placeholder="Bảo hành">
-          <select class="f-input" data-p-stock="${idx}" style="font-weight:700;color:${(p.stockStatus || (p.inStock === false ? 'out_of_stock' : 'in_stock')) === 'out_of_stock' ? '#B91C1C' : (p.stockStatus === 'contact' ? '#B45309' : '#047857')}">
-            <option value="in_stock" ${(p.stockStatus || (p.inStock === false ? 'out_of_stock' : 'in_stock')) === 'in_stock' ? 'selected' : ''}>✅ Còn hàng</option>
-            <option value="contact" ${p.stockStatus === 'contact' ? 'selected' : ''}>📞 Liên hệ</option>
-            <option value="out_of_stock" ${(p.stockStatus || (p.inStock === false ? 'out_of_stock' : 'in_stock')) === 'out_of_stock' ? 'selected' : ''}>⛔ Hết hàng</option>
-          </select>
-          <input type="text" class="f-input" style="grid-column:1/-1" data-p-note="${idx}" value="${escapeAttr(p.note || '')}" placeholder="Ghi chú ngắn">
-          <textarea class="f-input" style="grid-column:1/-1" rows="2" data-p-desc="${idx}" placeholder="Mô tả chi tiết sản phẩm...">${escapeAttr(p.description || '')}</textarea>
-          <textarea class="f-input" style="grid-column:1/-1" rows="3" data-p-specs="${idx}" placeholder="Thông số kỹ thuật (mỗi dòng dạng Tên: Giá trị)">${escapeAttr(p.specs || '')}</textarea>
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding-top:4px;border-top:1px dashed #E2E8F0">
-          <input type="text" class="f-input" style="flex:1;min-width:140px;font-size:12px" data-p-ds-url="${idx}" value="${escapeAttr(p.datasheetUrl || '')}" placeholder="Link Datasheet (hoặc bấm tải lên)">
-          <label class="btn-ghost small" style="padding:5px 8px;font-size:11.5px;cursor:pointer">
-            📄 Tải Datasheet<input type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.zip" data-p-ds-file="${idx}" hidden>
-          </label>
-          <label class="btn-ghost small" style="padding:5px 8px;font-size:11.5px;cursor:pointer">
-            📎 + Tài liệu<input type="file" accept=".pdf,.doc,.docx,.xlsx,.png,.jpg,.jpeg,.zip" data-p-att-file="${idx}" hidden>
-          </label>
-        </div>
-        ${(Array.isArray(p.attachments) && p.attachments.length) ? `<div style="display:flex;flex-wrap:wrap;gap:5px">${p.attachments.map((a, ai) => `<span style="display:inline-flex;align-items:center;gap:4px;background:#EEF2FF;color:#3730A3;padding:3px 8px;border-radius:99px;font-size:11px;font-weight:700">📎 ${escapeAttr(a.name)} <button type="button" data-p-del-att="${idx}:${ai}" style="border:0;background:none;color:#DC2626;cursor:pointer;font-weight:900;padding:0">×</button></span>`).join('')}</div>` : ''}
-      </div>
-    `).join('') || '<p class="hint adm-empty">Không có sản phẩm phù hợp với bộ lọc.</p>';
-
-    el.querySelectorAll('[data-p-select]').forEach(cb => cb.onchange = () => {
-      const product = PRODUCTS[Number(cb.dataset.pSelect)];
-      if (cb.checked) selectedProducts.add(product);
-      else selectedProducts.delete(product);
-      updateProductSelection();
-    });
-    el.querySelectorAll('[data-p-act]').forEach(cb => cb.onchange = () => {
-      const idx = Number(cb.dataset.pAct);
-      PRODUCTS[idx].active = cb.checked;
-      if ($('prodVisibility').value !== 'all') renderProdList();
-      else {
-        el.querySelector(`[data-p-publication="${idx}"]`).textContent = productPublication(PRODUCTS[idx]);
-        updateProductPublication();
-      }
-    });
-    el.querySelectorAll('[data-p-name]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pName].name = inp.value; });
-    el.querySelectorAll('[data-p-brand]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pBrand].brand = inp.value; });
-    el.querySelectorAll('[data-p-spec]').forEach(inp => inp.oninput = () => {
-      const p = PRODUCTS[+inp.dataset.pSpec];
-      if (p.category === 'accessory') { p.specText = inp.value; }
-      else {
-        const v = Math.max(0.1, Number(inp.value) || 0);
-        if (p.category === 'inverter') p.powerKw = v; else if (p.category === 'panel') p.wattWp = v; else p.capacityKwh = v;
-      }
-    });
-    el.querySelectorAll('[data-p-war]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pWar].warranty = inp.value; });
-    el.querySelectorAll('[data-p-stock]').forEach(sel => sel.onchange = () => {
-      const st = sel.value;
-      PRODUCTS[+sel.dataset.pStock].stockStatus = st;
-      PRODUCTS[+sel.dataset.pStock].inStock = st !== 'out_of_stock';
-      PRODUCTS[+sel.dataset.pStock].manualStockOverride = true;
-      sel.style.color = st === 'out_of_stock' ? '#B91C1C' : (st === 'contact' ? '#B45309' : '#047857');
-      if ($('prodStockFilter').value !== 'all') renderProdList();
-      else {
-        const idx = Number(sel.dataset.pStock);
-        el.querySelector(`[data-p-publication="${idx}"]`).textContent = productPublication(PRODUCTS[idx]);
-        updateProductPublication();
-      }
-    });
-    el.querySelectorAll('[data-p-note]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pNote].note = inp.value; });
-    el.querySelectorAll('[data-p-desc]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pDesc].description = inp.value; });
-    el.querySelectorAll('[data-p-specs]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pSpecs].specs = inp.value; });
-    el.querySelectorAll('[data-p-ds-url]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pDsUrl].datasheetUrl = inp.value.trim(); });
-    el.querySelectorAll('[data-p-ds-file]').forEach(inp => inp.onchange = () => {
-      const f = inp.files[0]; if (!f) return;
-      const idx = +inp.dataset.pDsFile;
-      const rd = new FileReader();
-      rd.onload = async () => {
-        try {
-          const res = await api('/api/admin/upload-document', { method: 'POST', body: JSON.stringify({ dataUrl: rd.result, filename: f.name }) });
-          PRODUCTS[idx].datasheetUrl = res.url;
-          PRODUCTS[idx].datasheetName = 'Datasheet: ' + f.name;
-          renderProdList();
-          toast('Đã tải lên Datasheet! Bấm "Lưu danh mục sản phẩm" để ghi lại.');
-        } catch (err) { toast(err.message); }
-      };
-      rd.readAsDataURL(f);
-    });
-    el.querySelectorAll('[data-p-att-file]').forEach(inp => inp.onchange = () => {
-      const f = inp.files[0]; if (!f) return;
-      const idx = +inp.dataset.pAttFile;
-      const rd = new FileReader();
-      rd.onload = async () => {
-        try {
-          const res = await api('/api/admin/upload-document', { method: 'POST', body: JSON.stringify({ dataUrl: rd.result, filename: f.name }) });
-          if (!Array.isArray(PRODUCTS[idx].attachments)) PRODUCTS[idx].attachments = [];
-          PRODUCTS[idx].attachments.push({ name: f.name, url: res.url });
-          renderProdList();
-          toast('Đã đính kèm tài liệu! Bấm "Lưu danh mục sản phẩm" để ghi lại.');
-        } catch (err) { toast(err.message); }
-      };
-      rd.readAsDataURL(f);
-    });
-    el.querySelectorAll('[data-p-del-att]').forEach(btn => btn.onclick = () => {
-      const [pi, ai] = btn.dataset.pDelAtt.split(':').map(Number);
-      PRODUCTS[pi].attachments.splice(ai, 1);
-      renderProdList();
-    });
-    el.querySelectorAll('[data-p-price]').forEach(inp => inp.oninput = () => { PRODUCTS[+inp.dataset.pPrice].price = Math.max(0, Number(inp.value) || 0); });
-    el.querySelectorAll('[data-p-img]').forEach(inp => {
-      inp.onchange = () => {
-        const file = inp.files[0]; if (!file) return;
-        const idx = +inp.dataset.pImg;
-        const reader = new FileReader();
-        reader.onload = async () => {
-          try {
-            const res = await api('/api/admin/upload-product-image', { method: 'POST', body: JSON.stringify({ dataUrl: reader.result }) });
-            PRODUCTS[idx].imageUrl = res.imageUrl;
-            renderProdList();
-            toast('Đã cập nhật ảnh sản phẩm! Nhớ bấm Lưu danh mục sản phẩm.');
-          } catch (err) { toast(err.message); }
-        };
-        reader.readAsDataURL(file);
-      };
-    });
-    el.querySelectorAll('[data-p-del]').forEach(btn => btn.onclick = () => { PRODUCTS.splice(+btn.dataset.pDel, 1); renderProdList(); });
-  }
-
-  if ($('prodFilterTabs')) {
-    $('prodFilterTabs').querySelectorAll('[data-pcat]').forEach(btn => {
-      btn.onclick = () => {
-        prodFilter = btn.dataset.pcat;
-        highlightButton([...$('prodFilterTabs').querySelectorAll('[data-pcat]')], btn);
-        renderProdList();
-      };
-    });
-  }
-
-  $('prodSearch').oninput = renderProdList;
-  $('prodStockFilter').onchange = renderProdList;
-  $('prodVisibility').onchange = renderProdList;
-  $('btnHiddenInStock').onclick = () => {
-    $('prodSearch').value = '';
-    $('prodStockFilter').value = 'in_stock';
-    $('prodVisibility').value = 'hidden';
-    $('prodFilterTabs').querySelector('[data-pcat="all"]').click();
-  };
-  $('btnSelectProducts').onclick = () => {
-    for (const { p } of filteredProducts()) selectedProducts.add(p);
-    renderProdList();
-  };
-  $('btnClearProducts').onclick = () => { selectedProducts.clear(); renderProdList(); };
-  $('productBulkAction').onchange = updateProductSelection;
-  $('btnApplyProductBulk').onclick = () => {
-    const action = $('productBulkAction').value;
-    if (!action || !selectedProducts.size) return;
-    const count = selectedProducts.size;
-    for (const product of selectedProducts) {
-      if (action === 'show' || action === 'hide') product.active = action === 'show';
-      else Object.assign(product, { stockStatus: action, inStock: action !== 'out_of_stock', manualStockOverride: true });
-    }
-    selectedProducts.clear();
-    $('productBulkAction').value = '';
-    renderProdList();
-    toast(`Đã chỉnh ${count} sản phẩm. Bấm Lưu danh mục sản phẩm để áp dụng.`);
-  };
-
-  if ($('btnAddProd')) {
-    $('btnAddProd').onclick = () => {
-      const cat = $('np_cat').value;
-      const name = $('np_name').value.trim();
-      const specRaw = $('np_spec').value.trim();
-      const spec = Number(specRaw) || 0;
-      if (!name || (cat !== 'accessory' && spec <= 0)) return toast('Nhập tên sản phẩm và công suất/dung lượng hợp lệ.');
-      const item = {
-        id: `${cat}-${Date.now()}`,
-        category: cat,
-        brand: $('np_brand').value.trim(),
-        name,
-        price: Math.max(0, Number($('np_price').value) || 0),
-        warranty: cat === 'inverter' ? '5 năm' : ($('np_phase').value.trim() || (cat === 'accessory' ? '2 năm' : '10 năm')),
-        note: '',
-        description: $('np_desc') ? $('np_desc').value.trim() : '',
-        specs: '',
-        datasheetUrl: '',
-        datasheetName: '',
-        attachments: [],
-        imageUrl: `/assets/prod-${cat}.jpg`,
-        stockStatus: $('np_stock') ? $('np_stock').value : 'in_stock',
-        inStock: $('np_stock') ? $('np_stock').value !== 'out_of_stock' : true,
-        active: true
-      };
-      if (cat === 'inverter') { item.powerKw = spec; item.phase = $('np_phase').value.trim() || '1 pha'; }
-      else if (cat === 'panel') item.wattWp = spec;
-      else if (cat === 'battery') item.capacityKwh = spec;
-      else item.specText = specRaw;
-      PRODUCTS.unshift(item);
-      $('np_name').value = ''; $('np_spec').value = ''; $('np_price').value = ''; if ($('np_desc')) $('np_desc').value = '';
-      renderProdList();
-      toast('Đã thêm sản phẩm. Bấm "Lưu danh mục sản phẩm" để ghi lên máy chủ.');
-    };
-  }
-
-  if ($('btnSaveProds')) {
-    $('btnSaveProds').onclick = async () => {
-      const pane = $('tab-products');
-      if (!datasetReady.products || pane.inert) return;
-      pane.inert = true;
-      pane.setAttribute('aria-busy', 'true');
-      try {
-        const res = await api('/api/admin/products', { method: 'PUT', body: JSON.stringify({ products: PRODUCTS }) });
-        setLoadedProducts(res.products);
-        renderProdList();
-        toast(`Đã lưu ${PRODUCTS.length} sản phẩm lên máy chủ!`);
-      } catch (err) { toast(err.message); }
-      finally { pane.inert = false; pane.removeAttribute('aria-busy'); }
-    };
-  }
-
-  if ($('btnResetProds')) {
-    $('btnResetProds').onclick = async () => {
-      if (!confirm('Thay thế kho sản phẩm hiện tại bằng kho mẫu?')) return;
-      try {
-        const res = await api('/api/admin/products/reset', { method: 'POST' });
-        setLoadedProducts(res.products);
-        renderProdList();
-        toast('Đã khôi phục kho sản phẩm mẫu.');
-      } catch (err) { toast(err.message); }
-    };
-  }
-
-  if ($('prodUploadFile')) {
-    $('prodUploadFile').addEventListener('change', e => {
-      const file = e.target.files[0]; if (!file) return;
-      const lower = file.name.toLowerCase();
-      const mode = $('importProdMode').value;
-      const reader = new FileReader();
-      reader.onload = async () => {
-        try {
-          let payload;
-          if (lower.endsWith('.xlsx')) {
-            const bytes = new Uint8Array(reader.result);
-            let bin = '';
-            for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-            payload = { format: 'xlsx', mode, base64: btoa(bin) };
-          } else if (lower.endsWith('.csv')) {
-            payload = { format: 'csv', mode, content: reader.result };
-          } else {
-            payload = { format: 'json', mode, products: JSON.parse(reader.result) };
-          }
-          const res = await api('/api/admin/products/import', { method: 'POST', body: JSON.stringify(payload) });
-          setLoadedProducts(res.products);
-          renderProdList();
-          toast(`Đã cập nhật ${res.count} sản phẩm từ tệp ${file.name}!`);
-        } catch (err) { toast(err.message || 'Tệp Excel/CSV/JSON không hợp lệ.'); }
-        e.target.value = '';
-      };
-      if (lower.endsWith('.xlsx')) reader.readAsArrayBuffer(file);
-      else reader.readAsText(file, 'utf-8');
-    });
-  }
-
-  
-  // ---------- NEWS MANAGER ----------
-  function renderNewsList() {
-    const el = $('newsListEditor');
-    if (!el) return;
-    if ($('newsCount')) $('newsCount').textContent = NEWS.length;
-    const query = normalizeSearch($('newsSearch').value);
-    const state = $('newsStateFilter').value;
-    const filtered = NEWS.map((a, idx) => ({ a, idx })).filter(({ a }) => {
-      const published = a.published !== false;
-      return normalizeSearch([a.title, a.author, a.category].join(' ')).includes(query) &&
-        (state === 'all' || (state === 'draft' && !published) || (state === 'published' && published) ||
-          (state === 'featured' && published && a.featured !== false));
-    });
-    $('newsResults').textContent = datasetReady.news ? `${filtered.length} / ${NEWS.length} bài viết` : 'Không tải được tin tức. Tải lại trang trước khi lưu.';
-    el.innerHTML = filtered.map(({ a, idx }) => `
-      <div class="list-item" style="flex-direction:column;align-items:stretch;gap:6px">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
-          <img src="${escapeAttr(a.imageUrl || '/assets/prod-panel.jpg')}" alt="" style="width:42px;height:32px;border-radius:6px;object-fit:cover;border:1px solid #E2E8F0;flex:none">
-          <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;flex:1;min-width:0">
-            <input type="checkbox" data-n-pub="${idx}" ${a.published !== false ? 'checked' : ''} title="Hiển thị trên trang khách">
-            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeAttr(a.title)}</span>
-          </label>
-          <label class="btn-ghost small" style="padding:4px 7px;font-size:11px;cursor:pointer;white-space:nowrap">
-            Đổi ảnh<input type="file" accept="image/*" data-n-img="${idx}" hidden>
-          </label>
-          <button type="button" class="del-btn" data-n-del="${idx}" title="Xóa bài">×</button>
-        </div>
-        <span class="adm-tag ${a.published === false ? 'adm-tag-draft' : ''}">${a.published === false ? 'Chưa công khai' : 'Đã công khai'}</span>
-        <input type="text" class="f-input" data-n-title="${idx}" value="${escapeAttr(a.title)}" placeholder="Tiêu đề bài viết">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
-          <select class="f-input" data-n-cat="${idx}">
-            ${['Kiến thức Hybrid', 'Dự án thực tế', 'Tin ngành điện', 'Khuyến mãi'].map(c => `<option value="${c}" ${a.category === c ? 'selected' : ''}>${c}</option>`).join('')}
-          </select>
-          <input type="date" class="f-input" data-n-date="${idx}" value="${escapeAttr(a.publishedAt || '')}">
-        </div>
-        <input type="text" class="f-input" data-n-author="${idx}" value="${escapeAttr(a.author || '')}" placeholder="Tác giả">
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#B45309"><input type="checkbox" data-n-feat="${idx}" ${a.featured !== false ? 'checked' : ''}> ⭐ Nổi bật Trang chủ (trượt ngang)</label>
-        <textarea class="f-input" rows="2" data-n-sum="${idx}" placeholder="Mô tả ngắn...">${escapeAttr(a.summary || '')}</textarea>
-        <textarea class="f-input" rows="4" data-n-content="${idx}" placeholder="Nội dung bài viết đầy đủ...">${escapeAttr(a.content || '')}</textarea>
-      </div>
-    `).join('') || '<p class="hint adm-empty">Không có bài viết phù hợp với bộ lọc.</p>';
-
-    el.querySelectorAll('[data-n-pub]').forEach(cb => cb.onchange = () => { NEWS[+cb.dataset.nPub].published = cb.checked; renderNewsList(); });
-    el.querySelectorAll('[data-n-feat]').forEach(cb => cb.onchange = () => {
-      NEWS[+cb.dataset.nFeat].featured = cb.checked;
-      if (state === 'featured') renderNewsList();
-    });
-    el.querySelectorAll('[data-n-title]').forEach(inp => inp.oninput = () => { NEWS[+inp.dataset.nTitle].title = inp.value; });
-    el.querySelectorAll('[data-n-cat]').forEach(sel => sel.onchange = () => { NEWS[+sel.dataset.nCat].category = sel.value; });
-    el.querySelectorAll('[data-n-date]').forEach(inp => inp.oninput = () => { NEWS[+inp.dataset.nDate].publishedAt = inp.value; });
-    el.querySelectorAll('[data-n-author]').forEach(inp => inp.oninput = () => { NEWS[+inp.dataset.nAuthor].author = inp.value; });
-    el.querySelectorAll('[data-n-sum]').forEach(inp => inp.oninput = () => { NEWS[+inp.dataset.nSum].summary = inp.value; });
-    el.querySelectorAll('[data-n-content]').forEach(inp => inp.oninput = () => { NEWS[+inp.dataset.nContent].content = inp.value; });
-    el.querySelectorAll('[data-n-img]').forEach(inp => inp.onchange = () => {
-      const f = inp.files[0]; if (!f) return;
-      const idx = +inp.dataset.nImg;
-      const rd = new FileReader();
-      rd.onload = async () => {
-        try {
-          const res = await api('/api/admin/upload-product-image', { method: 'POST', body: JSON.stringify({ dataUrl: rd.result }) });
-          NEWS[idx].imageUrl = res.imageUrl;
-          renderNewsList();
-          toast('Đã cập nhật ảnh bìa! Bấm "Lưu danh sách tin tức" để lưu lại.');
-        } catch (err) { toast(err.message); }
-      };
-      rd.readAsDataURL(f);
-    });
-    el.querySelectorAll('[data-n-del]').forEach(btn => btn.onclick = () => {
-      NEWS.splice(+btn.dataset.nDel, 1);
-      renderNewsList();
-    });
-  }
-
-  $('newsSearch').oninput = renderNewsList;
-  $('newsStateFilter').onchange = renderNewsList;
-
-  if ($('nn_img_file')) {
-    $('nn_img_file').addEventListener('change', e => {
-      const f = e.target.files[0]; if (!f) return;
-      const rd = new FileReader();
-      rd.onload = async () => {
-        try {
-          const res = await api('/api/admin/upload-product-image', { method: 'POST', body: JSON.stringify({ dataUrl: rd.result }) });
-          newNewsImgUrl = res.imageUrl;
-          toast('Đã tải ảnh bìa sẵn sàng cho bài viết mới!');
-        } catch (err) { toast(err.message); }
-      };
-      rd.readAsDataURL(f);
-    });
-  }
-
-  if ($('btnAddNews')) {
-    $('btnAddNews').onclick = () => {
-      const title = $('nn_title').value.trim();
-      if (!title) return toast('Vui lòng nhập tiêu đề bài viết.');
-      NEWS.unshift({
-        id: 'news-' + Date.now(),
-        title,
-        category: $('nn_cat').value,
-        publishedAt: $('nn_date').value || new Date().toISOString().slice(0, 10),
-        author: $('nn_author').value.trim() || 'Mai Sơn Solar',
-        imageUrl: newNewsImgUrl || '/assets/prod-panel.jpg',
-        summary: $('nn_summary').value.trim(),
-        content: $('nn_content').value.trim(),
-        published: !$('nn_draft').checked,
-        featured: $('nn_featured') ? $('nn_featured').checked : true
-      });
-      $('nn_title').value = ''; $('nn_summary').value = ''; $('nn_content').value = '';
-      newNewsImgUrl = '';
-      $('newsSearch').value = '';
-      $('newsStateFilter').value = $('nn_draft').checked ? 'draft' : 'all';
-      renderNewsList();
-      toast('Đã thêm bài viết. Bấm Lưu danh sách tin tức để ghi lại.');
-    };
-  }
-
-  if ($('btnSaveNews')) {
-    $('btnSaveNews').onclick = async () => {
-      const pane = $('tab-news');
-      if (!datasetReady.news || pane.inert) return;
-      pane.inert = true;
-      pane.setAttribute('aria-busy', 'true');
-      try {
-        const res = await api('/api/admin/news', { method: 'PUT', body: JSON.stringify({ articles: NEWS }) });
-        NEWS = res.articles;
-        renderNewsList();
-        toast(`Đã lưu ${NEWS.length} bài viết tin tức lên máy chủ!`);
-      } catch (err) { toast(err.message); }
-      finally { pane.inert = false; pane.removeAttribute('aria-busy'); }
-    };
-  }
-
-  if ($('btnResetNews')) {
-    $('btnResetNews').onclick = async () => {
-      if (!confirm('Thay thế các bài viết hiện tại bằng nội dung mẫu?')) return;
-      try {
-        const res = await api('/api/admin/news/reset', { method: 'POST' });
-        NEWS = res.articles;
-        renderNewsList();
-        toast('Đã khôi phục các bài viết mẫu.');
-      } catch (err) { toast(err.message); }
-    };
-  }
-
-  
   // ---------- CUSTOMER LEADS CRM ----------
   const nfLead = new Intl.NumberFormat('vi-VN');
   function fmtLeadTime(iso) {
@@ -1239,7 +642,6 @@
               ${(USERS && USERS.length ? USERS : [{ username: 'admin', displayName: 'admin' }]).map(u => `<option value="${escapeAttr(u.username)}" ${(l.assignedTo || 'admin') === u.username ? 'selected' : ''}>@${escapeAttr(u.username)}</option>`).join('')}
             </select>
             ${l.botSentAt ? '<span style="background:#DCFCE7;color:#166534;padding:2px 6px;border-radius:99px;font-weight:700">🤖 Bot OK</span>' : ''}
-            ${l.webhookSentAt ? '<span style="background:#DBEAFE;color:#1E40AF;padding:2px 6px;border-radius:99px;font-weight:700">🗄 CSDL OK</span>' : ''}
           </div>
           <button type="button" class="btn-ghost small" data-l-push="${escapeAttr(l.id)}">Gửi Telegram</button>
         </div>` : ''}
@@ -1359,8 +761,8 @@
     $('gsheetHeaderBadge').hidden = !can('gsheet');
     tabs.forEach(btn => {
       const tab = btn.dataset.tab;
-      if (tab === 'overview') btn.hidden = !['leads', 'products', 'news'].some(can);
-      else btn.hidden = !(tab === 'users' || tab === 'security' ? isSuper : tab === 'account' || can(tab));
+      if (tab === 'overview') btn.hidden = !can('leads');
+      else btn.hidden = !(tab === 'users' ? isSuper : tab === 'account' || can(tab));
     });
     document.querySelectorAll('.adm-nav-group').forEach(group => { group.hidden = !group.querySelector('[data-tab]:not([hidden])'); });
     const available = tabs.filter(btn => !btn.hidden);
@@ -1375,7 +777,7 @@
     if (!grid) return;
     grid.innerHTML = PERM_LABELS.map(([k, lbl]) => `
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;cursor:pointer">
-        <input type="checkbox" data-nu-perm="${k}" ${['products', 'news', 'leads'].includes(k) ? 'checked' : ''}>
+        <input type="checkbox" data-nu-perm="${k}" ${k === 'leads' ? 'checked' : ''}>
         <span>${lbl}</span>
       </label>
     `).join('');
@@ -1458,27 +860,6 @@
   }
 
   
-  if ($('btnSyncSheet')) {
-    $('btnSyncSheet').onclick = async () => {
-      const url = $('gs_url') ? $('gs_url').value.trim() : '';
-      if (!url) return toast('Vui lòng dán link Google Sheet trước.');
-      const btn = $('btnSyncSheet');
-      btn.disabled = true; btn.textContent = '⏳ Đang đồng bộ từ Google Sheet...';
-      try {
-        const res = await api('/api/admin/products/sync-sheet', { method: 'POST', body: JSON.stringify({ url }) });
-        if (Array.isArray(res.products)) setLoadedProducts(res.products);
-        if (res.config) CONFIG.sheetSync = res.config.sheetSync;
-        renderProdList();
-        if ($('gs_status')) $('gs_status').innerHTML = `✅ Đồng bộ xong (${escapeAttr(fmtLeadTime(res.lastSyncedAt))}): <b>${escapeAttr(res.summary)}</b>`;
-        toast('Đồng bộ Google Sheet thành công: ' + res.summary);
-      } catch (err) {
-        toast(err.message || 'Lỗi đồng bộ Google Sheet.');
-      } finally {
-        btn.disabled = false; btn.textContent = '🔄 Đồng bộ sản phẩm từ Google Sheet';
-      }
-    };
-  }
-
   if ($('btnCreateUser')) {
     $('btnCreateUser').onclick = async () => {
       const username = $('nu_username').value.trim();
@@ -1511,10 +892,6 @@
       setVal('gs_webhookUrl', settings.webhookUrl || '');
       setVal('gs_secretKey', settings.secretKey || '');
       setChk('gs_syncLeads', settings.syncLeads !== false);
-      setChk('gs_syncProducts', settings.syncProducts !== false);
-      setChk('gs_syncNews', settings.syncNews !== false);
-      setChk('gs_autoPullProducts', settings.autoPullProducts);
-      setVal('gs_pullIntervalSec', settings.pullIntervalSec || 60);
       $('btnSaveGsheet').disabled = false;
     } catch (err) {
       toast('Không tải được cài đặt Google Sheets. ' + err.message);
@@ -1602,11 +979,7 @@
             enabled: $('gs_enabled').checked,
             webhookUrl: $('gs_webhookUrl').value.trim(),
             secretKey: $('gs_secretKey').value.trim(),
-            syncLeads: $('gs_syncLeads').checked,
-            syncProducts: $('gs_syncProducts').checked,
-            syncNews: $('gs_syncNews').checked,
-            autoPullProducts: $('gs_autoPullProducts').checked,
-            pullIntervalSec: Number($('gs_pullIntervalSec').value) || 60
+            syncLeads: $('gs_syncLeads').checked
           })
         });
         renderGsheetStatus(res.status);
@@ -1646,21 +1019,6 @@
     };
   }
 
-  if ($('btnPullProdGsheet')) {
-    $('btnPullProdGsheet').onclick = async () => {
-      try {
-        toast('Đang kéo Kho sản phẩm từ Google Sheets...');
-        const res = await api('/api/admin/gsheet/pull-products', { method: 'POST' });
-        if (Array.isArray(res.products)) { setLoadedProducts(res.products); renderProdList(); }
-        renderGsheetStatus(res.status);
-        toast(`Đã kéo ${res.count} sản phẩm từ Google Sheets!`);
-      } catch (err) {
-        fetchGsheetStatus();
-        toast(err.message || 'Không thể kéo dữ liệu từ Google Sheets.');
-      }
-    };
-  }
-
   if ($('btnCopyAppsScript')) {
     $('btnCopyAppsScript').onclick = () => {
       if (!GS_SCRIPT_TEMPLATE) return toast('Đang tải mã script, vui lòng thử lại sau giây lát.');
@@ -1672,78 +1030,26 @@
 
   // ---------- MAINTENANCE & FULL BACKUP ----------
   function updateMaintUI() {
-    if (!CONFIG) return;
-    const mt = CONFIG.maintenance || { enabled: false, mode: 'error404', allowedRoute: '/tuvan' };
-    const isAllow = ($('m_mode') ? $('m_mode').value : mt.mode) === 'allow_page';
-    if ($('mAllowedWrap')) $('mAllowedWrap').hidden = !isAllow;
-    if ($('maintStatusBox')) {
-      if (mt.enabled) {
-        const rMap = { '/': 'Trang chủ', '/tuvan': 'Tư vấn', '/products': 'Sản phẩm', '/news': 'Tin tức', '/demo': 'Demo 3D' };
-        const configured = Array.isArray(mt.allowedRoutes) && mt.allowedRoutes.length ? mt.allowedRoutes : (mt.allowedRoute ? [mt.allowedRoute] : []);
-        const ar = configured.filter(route => route !== '/demo' || CONFIG.sections.showSolarDemo !== false);
-        const names = ar.map(r => rMap[r] || r).join(', ');
-        $('maintStatusBox').style.background = '#FEF2F2';
-        $('maintStatusBox').style.color = '#B91C1C';
-        $('maintStatusBox').style.borderColor = '#FECACA';
-        $('maintStatusBox').textContent = (mt.mode === 'allow_page' && ar.length)
-          ? `🔴 ĐANG BẢO TRÌ — Chỉ mở: ${names}`
-          : '🔴 ĐANG BẢO TRÌ — Toàn bộ trang khách đang báo 404 Error';
-      } else {
-        $('maintStatusBox').style.background = '#ECFDF5';
-        $('maintStatusBox').style.color = '#047857';
-        $('maintStatusBox').style.borderColor = '#A7F3D0';
-        $('maintStatusBox').textContent = '🟢 Website đang hoạt động bình thường';
-      }
-    }
-    if ($('btnToggleMaint')) {
-      $('btnToggleMaint').textContent = mt.enabled ? '✅ Tắt bảo trì (Mở lại web)' : '🔧 Bật bảo trì ngay';
-      $('btnToggleMaint').style.background = mt.enabled ? '#059669' : '';
-    }
+    const enabled = Boolean(CONFIG?.maintenance?.enabled);
+    $('maintStatusBox').textContent = enabled ? 'Trang tư vấn đang bảo trì.' : 'Trang tư vấn đang mở.';
+    $('btnToggleMaint').textContent = enabled ? 'Tắt bảo trì' : 'Bật bảo trì';
   }
 
-  function populateMaintForm() {
-    const maintenance = CONFIG.maintenance || {};
-    const routes = Array.isArray(maintenance.allowedRoutes) && maintenance.allowedRoutes.length
-      ? maintenance.allowedRoutes : [maintenance.allowedRoute || '/tuvan'];
-    setVal('m_mode', maintenance.mode || 'error404');
-    document.querySelectorAll('[data-m-route]').forEach(box => { box.checked = routes.includes(box.dataset.mRoute); });
-    updateMaintUI();
-  }
-
-  async function saveMaintState(enabledVal) {
-    const payload = {
-      enabled: enabledVal,
-      mode: $('m_mode') ? $('m_mode').value : 'error404',
-      allowedRoutes: Array.from(document.querySelectorAll('[data-m-route]')).filter(c => c.checked).map(c => c.dataset.mRoute),
-      title: '404 — Hệ thống đang bảo trì',
-      message: 'Website đang được nâng cấp và bảo trì định kỳ. Quý khách vui lòng quay lại sau ít phút hoặc liên hệ hotline bên dưới để được hỗ trợ ngay.'
-    };
-    if (payload.mode === 'allow_page' && !payload.allowedRoutes.length) {
-      toast('Chọn ít nhất một trang được mở trong thời gian bảo trì.');
-      return;
-    }
+  $('btnToggleMaint').onclick = async () => {
+    const button = $('btnToggleMaint');
+    if (!CONFIG || button.disabled) return;
+    button.disabled = true;
     try {
-      const res = await api('/api/admin/maintenance', { method: 'PUT', body: JSON.stringify(payload) });
+      const enabled = !CONFIG.maintenance?.enabled;
+      const res = await api('/api/admin/maintenance', { method: 'PUT', body: JSON.stringify({ enabled }) });
       CONFIG.maintenance = res.config.maintenance;
       updateMaintUI();
       pushPreview();
-      toast(payload.enabled ? 'Đã BẬT chế độ bảo trì ngay lập tức!' : 'Đã TẮT chế độ bảo trì — website hoạt động lại bình thường!');
+      toast(enabled ? 'Đã bật bảo trì.' : 'Đã mở lại trang tư vấn.');
     } catch (err) { toast(err.message); }
-  }
+    finally { button.disabled = false; }
+  };
 
-  $('m_mode').onchange = updateMaintUI;
-  if ($('btnToggleMaint')) {
-    $('btnToggleMaint').onclick = () => {
-      const cur = Boolean(CONFIG && CONFIG.maintenance && CONFIG.maintenance.enabled);
-      saveMaintState(!cur);
-    };
-  }
-  if ($('btnSaveMaint')) {
-    $('btnSaveMaint').onclick = () => {
-      const cur = Boolean(CONFIG && CONFIG.maintenance && CONFIG.maintenance.enabled);
-      saveMaintState(cur);
-    };
-  }
   if ($('btnFullBackup')) {
     $('btnFullBackup').onclick = async () => {
       try {
@@ -1755,139 +1061,17 @@
     };
   }
   
-  function setUpdateProgress(pct, text, state = 'working', filename = null) {
-    const box = $('updateProgressBox');
-    if (!box) return;
-    box.hidden = false;
-    if (filename !== null && $('updFileName')) $('updFileName').textContent = filename;
-    const p = Math.max(0, Math.min(100, Math.round(pct)));
-    if ($('updPercent')) {
-      $('updPercent').textContent = p + '%';
-      $('updPercent').style.color = state === 'error' ? '#DC2626' : state === 'done' ? '#059669' : '#EA580C';
-    }
-    if ($('updBarFill')) {
-      $('updBarFill').style.width = p + '%';
-      $('updBarFill').style.background = state === 'error' ? '#EF4444' : state === 'done' ? 'linear-gradient(90deg,#10B981,#059669)' : 'linear-gradient(90deg,#F26A1B,#FFB400)';
-    }
-    if ($('updStatusText')) {
-      $('updStatusText').textContent = text;
-      $('updStatusText').style.color = state === 'error' ? '#B91C1C' : state === 'done' ? '#047857' : '#475569';
-    }
-  }
-
-  function postWithProgress(url, jsonBody, onUploadPct) {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', url, true);
-      xhr.withCredentials = true;
-      xhr.setRequestHeader('Content-Type', 'application/json');
-      const token = getStoredToken();
-      if (token) xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-      xhr.upload.onprogress = ev => {
-        if (ev.lengthComputable && onUploadPct) onUploadPct(ev.loaded / ev.total);
-      };
-      xhr.onload = () => {
-        let data = {};
-        try { data = JSON.parse(xhr.responseText || '{}'); } catch {}
-        if (xhr.status >= 200 && xhr.status < 300) resolve(data);
-        else reject(new Error(data.error || `Lỗi máy chủ (${xhr.status})`));
-      };
-      xhr.onerror = () => reject(new Error('Mất kết nối máy chủ khi tải tệp lên.'));
-      xhr.send(jsonBody);
-    });
-  }
-
-  if ($('siteUpdateZipFile')) {
-    $('siteUpdateZipFile').addEventListener('change', async e => {
-      const file = e.target.files[0];
-      e.target.value = '';
-      if (!file) return;
-      const box = $('updateStatusBox');
-      if (box) box.hidden = true;
-      const kb = Math.max(1, Math.round(file.size / 1024));
-      setUpdateProgress(8, 'Đang đọc gói cập nhật từ máy tính...', 'working', `📦 ${file.name} (${kb} KB)`);
-
-      try {
-        if (!file.name.toLowerCase().endsWith('.zip')) {
-          throw new Error('Vui lòng chọn tệp gói cập nhật định dạng .zip.');
-        }
-        if (file.size > 24 * 1024 * 1024) {
-          throw new Error('Gói cập nhật ZIP tối đa 24MB.');
-        }
-        const buf = await file.arrayBuffer();
-        setUpdateProgress(22, 'Đang kiểm tra chữ ký & cấu trúc gói ZIP...', 'working');
-        const bytes = new Uint8Array(buf);
-        if (bytes.length < 22 || bytes[0] !== 0x50 || bytes[1] !== 0x4b) {
-          throw new Error('Tệp không phải định dạng ZIP hợp lệ hoặc bị hỏng.');
-        }
-        let bin = '';
-        const chunk = 0x8000;
-        for (let i = 0; i < bytes.length; i += chunk) {
-          bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
-        }
-        const b64 = btoa(bin);
-        const autoRestart = $('updAutoRestart') ? $('updAutoRestart').checked : true;
-        setUpdateProgress(35, 'Đang tải gói cập nhật lên máy chủ...', 'working');
-        const res = await postWithProgress(
-          '/api/admin/update-package',
-          JSON.stringify({ filename: file.name, base64: b64, autoRestart }),
-          ratio => setUpdateProgress(35 + ratio * 45, `Đang tải gói cập nhật lên máy chủ (${Math.round(ratio * 100)}%)...`, 'working')
-        );
-        setUpdateProgress(92, 'Đang giải nén, kiểm tra & đồng bộ dữ liệu...', 'working');
-        await new Promise(r => setTimeout(r, 250));
-        setUpdateProgress(100, `✅ Hoàn tất cập nhật ${res.updatedCount} tệp mã nguồn!`, 'done');
-        if (box) {
-          box.hidden = false;
-          box.style.background = '#ECFDF5'; box.style.color = '#047857'; box.style.borderColor = '#A7F3D0';
-          const pr = res.preserved || {};
-          box.innerHTML = `✅ <b>Cập nhật hoàn tất!</b><br>• Đã cập nhật <b>${res.updatedCount}</b> tệp mới (bỏ qua ${res.skippedCount || 0} tệp hệ thống).<br>• Đã bảo toàn 100%: <b>${pr.products || 0}</b> sản phẩm, <b>${pr.news || 0}</b> tin tức, <b>${pr.leads || 0}</b> khách hàng, <b>${pr.uploads || 0}</b> tệp tải lên.<br>• Bản sao lưu an toàn: <code>${escapeAttr(res.backupFile || '')}</code>${(autoRestart && res.needsRestart) ? '<br>🔄 Đang tự khởi động lại server và tải lại trang...' : (res.needsRestart ? '<br>👉 Khởi động lại <code>node server.js</code> để áp dụng bản mới.' : '<br>🔄 Đang tải lại giao diện...')}`;
-        }
-        toast('Cập nhật trang web thành công!');
-        if (autoRestart || !res.needsRestart) {
-          setTimeout(() => { window.location.reload(); }, 3000);
-        }
-      } catch (err) {
-        setUpdateProgress(100, '❌ Lỗi: ' + (err.message || 'Cập nhật thất bại.'), 'error');
-        if (box) {
-          box.hidden = false;
-          box.style.background = '#FEF2F2'; box.style.color = '#B91C1C'; box.style.borderColor = '#FECACA';
-          box.textContent = '❌ Lỗi cập nhật: ' + (err.message || 'Gói ZIP không hợp lệ.');
-        }
-        toast(err.message || 'Cập nhật thất bại.');
-      }
-    });
-  }
-
-  if ($('fullRestoreFile')) {
-    $('fullRestoreFile').addEventListener('change', async e => {
-      const f = e.target.files[0];
-      e.target.value = '';
-      if (!f || !confirm('Khôi phục dữ liệu từ tệp này có thể thay thế dữ liệu hiện tại. Tiếp tục?')) return;
-      const kb = Math.max(1, Math.round(f.size / 1024));
-      setUpdateProgress(12, 'Đang đọc tệp sao lưu JSON...', 'working', `📄 ${f.name} (${kb} KB)`);
-      try {
-        const text = await f.text();
-        setUpdateProgress(32, 'Đang kiểm tra tính hợp lệ của dữ liệu JSON...', 'working');
-        let parsed;
-        try { parsed = JSON.parse(text); } catch { throw new Error('Tệp JSON bị lỗi cú pháp.'); }
-        setUpdateProgress(48, 'Đang tải dữ liệu khôi phục lên máy chủ...', 'working');
-        const res = await postWithProgress(
-          '/api/admin/restore-full',
-          JSON.stringify(parsed),
-          ratio => setUpdateProgress(48 + ratio * 36, `Đang tải dữ liệu (${Math.round(ratio * 100)}%)...`, 'working')
-        );
-        setUpdateProgress(92, 'Đang đồng bộ lại giao diện quản trị...', 'working');
-        const refreshed = await loadAdminData();
-        const sec = Array.isArray(res.updatedSections) ? res.updatedSections.join(', ') : 'toàn bộ dữ liệu';
-        const msg = `Đã khôi phục: ${sec}.${refreshed ? '' : ' Tải lại trang để xem dữ liệu mới.'}`;
-        setUpdateProgress(100, msg, 'done');
-        toast(msg);
-      } catch (err) {
-        setUpdateProgress(100, '❌ ' + (err.message || 'Tệp sao lưu JSON không hợp lệ.'), 'error');
-        toast(err.message || 'Tệp sao lưu JSON không hợp lệ.');
-      }
-    });
-  }
+  $('fullRestoreFile').addEventListener('change', async event => {
+    const file = event.target.files[0];
+    event.target.value = '';
+    if (!file || !confirm('Khôi phục cấu hình và hồ sơ tư vấn từ tệp này?')) return;
+    try {
+      const data = JSON.parse(await file.text());
+      const res = await api('/api/admin/restore-full', { method: 'POST', body: JSON.stringify(data) });
+      const refreshed = await loadAdminData();
+      toast('Đã khôi phục: ' + res.updatedSections.join(', ') + (refreshed ? '.' : '. Tải lại để xem.'));
+    } catch (err) { toast(err.message || 'Không thể khôi phục tệp JSON.'); }
+  });
 
   // ---------- TELEGRAM BOT SETTINGS (IN TAB TÀI KHOẢN) ----------
   if ($('btnSaveTelegram')) {
@@ -1960,33 +1144,6 @@
   bind('t_stickyResult', el => { CONFIG.theme.stickyResult = el.checked; });
 
   
-  function syncSliderControls() {
-    const sliderEnabled = $('hm_showSlider').checked;
-    $('hm_autoSlide').disabled = !sliderEnabled;
-    $('hm_sliderIntervalSec').disabled = !sliderEnabled || !$('hm_autoSlide').checked;
-  }
-
-  bind('hm_showSlider', el => { CONFIG.home.showSlider = el.checked; syncSliderControls(); });
-  bind('hm_autoSlide', el => { CONFIG.home.autoSlide = el.checked; syncSliderControls(); });
-  bind('hm_sliderKicker', el => { CONFIG.home.sliderKicker = el.value; });
-  bind('hm_sliderTitle', el => { CONFIG.home.sliderTitle = el.value; });
-  bind('hm_sliderIntervalSec', el => { CONFIG.home.sliderIntervalSec = Math.max(2, Number(el.value) || 4.5); });
-  bind('hm_sliderHeight', el => { CONFIG.home.sliderHeight = Number(el.value) || 430; if ($('hmSliderHVal')) $('hmSliderHVal').textContent = el.value; });
-  bind('hm_showQuickCards', el => { CONFIG.home.showQuickCards = el.checked; });
-  bind('hm_showQuickDemo', el => { CONFIG.home.showQuickDemo = el.checked; });
-  bind('hm_showFeaturedProducts', el => { CONFIG.home.showFeaturedProducts = el.checked; });
-  bind('hm_productsKicker', el => { CONFIG.home.productsKicker = el.value; });
-  bind('hm_productsTitle', el => { CONFIG.home.productsTitle = el.value; });
-  bind('hm_productsCount', el => { CONFIG.home.productsCount = Number(el.value) || 4; });
-  bind('hm_showContactCta', el => { CONFIG.home.showContactCta = el.checked; });
-
-  bind('h_show', el => { CONFIG.hero.show = el.checked; });
-  bind('h_style', el => { CONFIG.hero.style = el.value; });
-  bind('h_align', el => { CONFIG.hero.align = el.value; });
-  bind('h_badge', el => { CONFIG.hero.badge = el.value; });
-  bind('h_title', el => { CONFIG.hero.title = el.value; });
-  bind('h_subtitle', el => { CONFIG.hero.subtitle = el.value; });
-
   [
     'showCustomerName', 'showCustomerPhone', 'showCustomerAddress', 'showQuickChips',
     'showSliders', 'showAdvancedSettings', 'showDayNightBar', 'showCalcSteps',
@@ -2047,31 +1204,6 @@
   };
 
   // ---------- SAVE / RESET / PASSWORD / BACKUP ----------
-  async function toggleDemo() {
-    if (!CONFIG || configSaving || !can('layout')) return;
-    const showSolarDemo = CONFIG.sections.showSolarDemo === false;
-    configSaving = true;
-    $('btnSave').disabled = true;
-    renderDemoStatus(true);
-    try {
-      const { config } = await api('/api/admin/config', {
-        method: 'PUT',
-        body: JSON.stringify({ sections: { showSolarDemo } })
-      });
-      CONFIG.sections.showSolarDemo = config.sections.showSolarDemo;
-      CONFIG.updatedAt = config.updatedAt;
-      updateMaintUI();
-      pushPreview();
-      toast(showSolarDemo ? 'Đã bật Demo 3D.' : 'Đã tắt Demo 3D.');
-    } catch (err) { toast(err.message); }
-    finally {
-      configSaving = false;
-      $('btnSave').disabled = !dirty;
-      renderDemoStatus();
-    }
-  }
-  $('btnToggleMaintenanceDemo').addEventListener('click', toggleDemo);
-
   $('btnSave').onclick = async () => {
     if (!CONFIG || configSaving || !dirty) return;
     const baseConfig = savedEditorConfig;
@@ -2085,7 +1217,6 @@
     configSaving = true;
     $('btnSave').disabled = true;
     $('btnSave').textContent = 'Đang lưu…';
-    renderDemoStatus();
     try {
       const res = await api('/api/admin/config', {
         method: 'PUT', body: JSON.stringify({ ...patch, expectedConfig })
@@ -2109,7 +1240,6 @@
       configSaving = false;
       $('btnSave').disabled = !dirty;
       $('btnSave').textContent = 'Lưu giao diện';
-      renderDemoStatus();
     }
   };
 
@@ -2164,7 +1294,6 @@
 
   // ---------- TABS & VIEWPORT ----------
   const tabs = [...document.querySelectorAll('.adm-navigation [data-tab]')];
-  const previewPages = [...document.querySelectorAll('[data-preview-page]')];
   const previewSizes = [...document.querySelectorAll('[data-vp]')];
 
   function highlightButton(buttons, selected) {
@@ -2180,7 +1309,7 @@
     $('btnToggleMobilePreview').textContent = open ? 'Đóng xem trước' : 'Xem trước';
     $('btnToggleMobilePreview').setAttribute('aria-expanded', open);
     if (!open) return;
-    const source = previewPages.find(btn => btn.classList.contains('active')).dataset.previewPage;
+    const source = '/?preview=1';
     if ($('previewFrame').getAttribute('src') !== source) $('previewFrame').src = source;
     else pushPreview();
   }
@@ -2192,7 +1321,6 @@
     if (activeTab !== next) {
       document.querySelector('.adm-panel-scroll').scrollTop = 0;
       $('adminMore').open = false;
-      if (page) highlightButton(previewPages, previewPages.find(btn => btn.dataset.previewPage === page));
     }
     activeTab = next;
     $('workspaceTitle').textContent = title;
@@ -2242,9 +1370,6 @@
     renderPreview();
     $('btnToggleMobilePreview').focus();
   };
-  previewPages.forEach(btn => {
-    btn.onclick = () => { highlightButton(previewPages, btn); renderPreview(); };
-  });
   previewSizes.forEach(btn => {
     btn.onclick = () => {
       highlightButton(previewSizes, btn);

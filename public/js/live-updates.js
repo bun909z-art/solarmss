@@ -1,118 +1,60 @@
 (function () {
   'use strict';
 
-  const fields = { config: 'config', products: 'products', news: 'articles' };
-  const routes = ['/', '/tuvan', '/products', '/news', '/demo'];
-  const aliases = { '/home': '/', '/home.html': '/', '/index.html': '/tuvan', '/products.html': '/products', '/news.html': '/news', '/demo.html': '/demo' };
-  const isDemo = /^\/demo(?:\/|\.html)?$/.test(location.pathname);
-  const preview = !isDemo && new URLSearchParams(location.search).has('preview');
+  const preview = new URLSearchParams(location.search).get('preview') === '1';
+  const maintenancePage = document.body.hasAttribute('data-maintenance-page');
 
-  function maintenanceRoutes(config) {
-    const maintenance = config.maintenance;
-    if (!maintenance?.enabled) return null;
-    if (maintenance.mode !== 'allow_page') return [];
-    const allowed = Array.isArray(maintenance.allowedRoutes) && maintenance.allowedRoutes.length
-      ? maintenance.allowedRoutes : [maintenance.allowedRoute];
-    return [...new Set(allowed.filter(route => routes.includes(route) &&
-      (route !== '/demo' || config.sections?.showSolarDemo !== false)))];
-  }
-
-  function shouldReload(config) {
-    const path = location.pathname.replace(/\/$/, '') || '/';
-    const allowed = maintenanceRoutes(config);
-    const isMaintenancePage = document.body.hasAttribute('data-maintenance-page');
-    return isMaintenancePage ? allowed === null || allowed.length > 0 : allowed && !allowed.includes(aliases[path] || path);
-  }
-
-  function updateNavigation(config) {
-    const allowed = maintenanceRoutes(config);
-    document.getElementById('hqMaintCss')?.remove();
-    const nav = document.querySelector('.main-nav');
-    if (nav) {
-      nav.querySelectorAll('a[href]').forEach(link => {
-        const route = link.getAttribute('href');
-        if (routes.includes(route)) link.hidden = Boolean(allowed && !allowed.includes(route));
-      });
-      nav.hidden = Boolean(allowed && allowed.length === 1);
-    }
-    document.querySelectorAll('.demo-button[href]').forEach(link => {
-      link.hidden = Boolean(allowed && !allowed.includes(link.getAttribute('href')));
-    });
-    document.body.classList.toggle('maint-single-page', Boolean(allowed && allowed.length === 1));
-  }
-
-  function watch(resources, render, onError = () => {}) {
-    const snapshot = {};
-    const signatures = {};
-    const pending = new Set(resources);
-    let timer;
+  function watch(render, onError = () => {}) {
+    let signature;
     let loading = false;
+    let pending = false;
+    let timer;
 
-    function queue(names, delay = 65) {
-      for (const name of names) if (resources.includes(name)) pending.add(name);
-      if (!loading && pending.size) {
-        clearTimeout(timer);
-        timer = setTimeout(refresh, delay);
-      }
+    function queue(delay = 65) {
+      pending = true;
+      if (loading) return;
+      clearTimeout(timer);
+      timer = setTimeout(refresh, delay);
     }
 
     async function refresh() {
       loading = true;
-      const batch = [...pending];
-      pending.clear();
-      const changed = new Set();
-      const failures = [];
+      pending = false;
+      let retry = false;
       try {
-        await Promise.all(batch.map(async name => {
-          try {
-            const response = await fetch('/api/' + name, { cache: 'no-store' });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const value = (await response.json())[fields[name]];
-            if (name === 'config' ? !value || typeof value !== 'object' || Array.isArray(value) : !Array.isArray(value)) {
-              throw new Error('Dữ liệu cập nhật không hợp lệ.');
-            }
-            const signature = JSON.stringify(value);
-            if (signature !== signatures[name]) {
-              snapshot[name] = value;
-              signatures[name] = signature;
-              changed.add(name);
-            }
-          } catch {
-            failures.push(name);
-          }
-        }));
-        if (failures.length) onError(failures, snapshot);
-        if (!changed.size) return;
-        if (!preview && changed.has('config') && shouldReload(snapshot.config)) {
+        const response = await fetch('/api/config', { cache: 'no-store' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const { config } = await response.json();
+        if (!config || typeof config !== 'object' || Array.isArray(config)) throw new Error('Cấu hình không hợp lệ.');
+        const nextSignature = JSON.stringify(config);
+        if (nextSignature === signature) return;
+        if (!preview && maintenancePage !== Boolean(config.maintenance?.enabled)) {
           location.reload();
           return;
         }
-        render(snapshot, changed);
-        if (!preview && changed.has('config')) updateNavigation(snapshot.config);
+        render(config);
+        signature = nextSignature;
       } catch (error) {
-        console.error('Không thể hiển thị dữ liệu cập nhật:', error);
+        retry = !preview;
+        onError();
+        console.error('Không thể cập nhật cấu hình:', error);
       } finally {
         loading = false;
-        const delay = pending.size ? 65 : 5000;
-        queue(preview ? [] : failures, delay);
+        if (pending || retry) queue(pending ? 65 : 5000);
       }
     }
 
-    queue([], 0);
+    queue(0);
     if (preview) return;
 
     const stream = typeof EventSource === 'function' ? new EventSource('/api/live') : null;
-    if (stream) {
-      stream.addEventListener('open', () => queue(resources));
-      stream.addEventListener('update', event => queue([event.data]));
-    }
-    setInterval(() => {
-      if (!stream || stream.readyState !== EventSource.OPEN) queue(resources);
-    }, 15000);
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) queue(resources); });
-    window.addEventListener('pageshow', event => { if (event.persisted) queue(resources); });
+    stream?.addEventListener('open', () => queue());
+    stream?.addEventListener('update', event => { if (event.data === 'config') queue(); });
+    setInterval(() => { if (!stream || stream.readyState !== EventSource.OPEN) queue(); }, 15000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) queue(); });
+    window.addEventListener('pageshow', event => { if (event.persisted) queue(); });
   }
 
-  window.HQLive = { watch, maintenanceRoutes };
-  if (document.body.hasAttribute('data-maintenance-page')) watch(['config'], () => {});
+  window.HQLive = { watch };
+  if (maintenancePage) watch(() => {});
 })();
