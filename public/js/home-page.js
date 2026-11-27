@@ -10,11 +10,13 @@
   };
 
   let CFG = null;
-  let ALL_ARTICLES = [];
   let ALL_PRODUCTS = [];
   let SLIDES = [];
   let slideIdx = 0;
   let autoTimer = null;
+  let scrollTimer;
+  let pointerOverSlider = false;
+  let touchingSlider = false;
 
   function esc(str) {
     return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -99,7 +101,7 @@
 
     const hm = cfg.home || {};
     document.documentElement.style.setProperty('--hero-slide-h', (Number(hm.sliderHeight) || 430) + 'px');
-    if ($('homeSliderSection')) $('homeSliderSection').hidden = hm.showSlider === false;
+    slider.hidden = hm.showSlider === false || SLIDES.length === 0;
     if ($('homeSliderKicker')) $('homeSliderKicker').textContent = hm.sliderKicker || '★ Nổi bật';
     if ($('homeSliderTitle')) $('homeSliderTitle').textContent = hm.sliderTitle || 'Tin tức & Dự án nổi bật';
     if ($('homeQuickGrid')) {
@@ -122,13 +124,12 @@
     applyMaintenanceNav(cfg);
   }
 
-  function scrollToSlide(idx) {
-    const track = $('featuredSliderTrack');
-    if (!track || !SLIDES.length) return;
+  function scrollToSlide(idx, behavior = reducedMotion.matches ? 'instant' : 'smooth') {
+    if (!SLIDES.length) return;
     slideIdx = ((idx % SLIDES.length) + SLIDES.length) % SLIDES.length;
     const card = track.children[slideIdx];
     if (card) {
-      track.scrollTo({ left: card.offsetLeft, behavior: reducedMotion.matches ? 'instant' : 'smooth' });
+      track.scrollTo({ left: card.offsetLeft, behavior });
     }
     updateDots();
   }
@@ -142,8 +143,8 @@
 
   function startAutoSlide() {
     stopAutoSlide();
-    if (SLIDES.length <= 1 || reducedMotion.matches || $('homeSliderSection').hidden ||
-        $('homeSliderSection').matches(':focus-within')) return;
+    if (SLIDES.length <= 1 || reducedMotion.matches || slider.hidden || document.hidden ||
+        pointerOverSlider || touchingSlider || slider.matches(':focus-within')) return;
     const hm = (CFG && CFG.home) || {};
     if (hm.autoSlide === false) return;
     const ms = Math.max(2000, Math.min(15000, (Number(hm.sliderIntervalSec) || 4.5) * 1000));
@@ -154,18 +155,12 @@
   }
 
   function renderSlider(articles) {
-    const pub = (articles || []).filter(a => a && a.published !== false);
-    const featured = pub.filter(a => a.featured !== false);
-    SLIDES = featured.length ? featured : pub.slice(0, 6);
-    const track = $('featuredSliderTrack');
+    SLIDES = (articles || []).filter(a => a && a.published !== false && a.featured !== false);
     slideIdx = 0;
+    slider.hidden = CFG?.home?.showSlider === false || !SLIDES.length;
     $('sliderControls').hidden = SLIDES.length <= 1;
+    clearTimeout(scrollTimer);
     stopAutoSlide();
-    if (!SLIDES.length) {
-      track.innerHTML = '<p class="card featured-empty">Chưa có bài viết nổi bật nào.</p>';
-      $('sliderDots').innerHTML = '';
-      return;
-    }
 
     track.innerHTML = SLIDES.map(a => `
       <a class="featured-slide-card" href="/news?id=${encodeURIComponent(a.id)}">
@@ -188,7 +183,7 @@
       btn.onclick = () => { scrollToSlide(+btn.dataset.sdot); startAutoSlide(); };
     });
 
-    scrollToSlide(0);
+    scrollToSlide(0, 'instant');
     startAutoSlide();
   }
 
@@ -246,31 +241,48 @@
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   reducedMotion.addEventListener('change', startAutoSlide);
   const slider = $('homeSliderSection');
-  slider.addEventListener('mouseenter', stopAutoSlide);
-  slider.addEventListener('mouseleave', startAutoSlide);
-  slider.addEventListener('touchstart', stopAutoSlide, { passive: true });
+  document.addEventListener('visibilitychange', startAutoSlide);
+  slider.addEventListener('pointerenter', e => {
+    if (e.pointerType === 'touch') return;
+    pointerOverSlider = true;
+    stopAutoSlide();
+  });
+  slider.addEventListener('pointerleave', e => {
+    if (e.pointerType === 'touch') return;
+    pointerOverSlider = false;
+    startAutoSlide();
+  });
+  slider.addEventListener('touchstart', () => {
+    touchingSlider = true;
+    stopAutoSlide();
+  }, { passive: true });
+  for (const eventName of ['touchend', 'touchcancel']) {
+    slider.addEventListener(eventName, () => {
+      touchingSlider = false;
+      startAutoSlide();
+    }, { passive: true });
+  }
   slider.addEventListener('focusin', stopAutoSlide);
   slider.addEventListener('focusout', e => {
     if (!slider.contains(e.relatedTarget)) requestAnimationFrame(startAutoSlide);
   });
   const track = $('featuredSliderTrack');
   track.addEventListener('scroll', () => {
-    if (!SLIDES.length) return;
-    const visibleIndex = Math.round(track.scrollLeft / track.clientWidth);
-    if (Number.isFinite(visibleIndex) && visibleIndex !== slideIdx) {
-      slideIdx = visibleIndex;
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(() => {
+      if (!SLIDES.length || !track.clientWidth) return;
+      slideIdx = Math.max(0, Math.min(SLIDES.length - 1, Math.round(track.scrollLeft / track.clientWidth)));
       updateDots();
-    }
+    }, 120);
   }, { passive: true });
   $('slidePrev').onclick = () => { scrollToSlide(slideIdx - 1); startAutoSlide(); };
   $('slideNext').onclick = () => { scrollToSlide(slideIdx + 1); startAutoSlide(); };
 
   let previewConfig = null;
   HQLive.watch(['config', 'news', 'products'], ({ config, news, products }, changed) => {
-    if (changed.has('news')) ALL_ARTICLES = news;
     if (changed.has('products')) ALL_PRODUCTS = products;
     if (changed.has('config')) applyTheme(previewConfig || config);
-    if (changed.has('news')) renderSlider(ALL_ARTICLES);
+    if (changed.has('news')) renderSlider(news);
     else if (changed.has('config')) startAutoSlide();
     if (changed.has('config') || changed.has('products')) renderFeaturedProducts(ALL_PRODUCTS);
   });
@@ -281,7 +293,7 @@
     if (e.data.config) {
       previewConfig = e.data.config;
       applyTheme(previewConfig);
-      renderSlider(ALL_ARTICLES);
+      startAutoSlide();
       renderFeaturedProducts(ALL_PRODUCTS);
     }
   });

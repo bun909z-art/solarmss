@@ -138,10 +138,11 @@
             <input type="text" id="b_companyName" class="f-input">
           </div>
 
-          <div class="toggle-row">
-            <span>Hiển thị nút "Quản trị" trên đầu trang</span>
-            <input type="checkbox" id="b_showAdminLink">
-          </div>
+          <label class="toggle-row">
+            <span>Hiển thị nút Quản trị trên đầu các trang khách</span>
+            <input type="checkbox" id="b_showAdminLink" aria-describedby="adminLinkHint">
+          </label>
+          <p class="hint" id="adminLinkHint">Nút này dẫn đến trang đăng nhập quản trị. Khi ẩn nút, bạn vẫn có thể truy cập bằng địa chỉ /admin.</p>
 
           <hr class="sep">
           <h3>Hotline tư vấn</h3>
@@ -161,21 +162,23 @@
                 <!-- TAB HOME -->
         <section class="tab-pane" id="tab-home">
           <h3>Thanh trượt Bài viết nổi bật</h3>
-          <div class="toggle-row">
+          <label class="toggle-row">
             <span>Hiển thị slider bài viết nổi bật</span>
-            <input type="checkbox" id="hm_showSlider">
-          </div>
-          <div class="toggle-row">
+            <input type="checkbox" id="hm_showSlider" aria-describedby="homeSliderHint">
+          </label>
+          <p class="hint" id="homeSliderHint">Trong tab <b>Tin tức</b>, đăng bài và chọn <b>⭐ Nổi bật Trang chủ</b> để đưa bài lên slider.</p>
+          <label class="toggle-row">
             <span>Tự động trượt ngang</span>
-            <input type="checkbox" id="hm_autoSlide">
-          </div>
+            <input type="checkbox" id="hm_autoSlide" aria-describedby="homeAutoSlideHint">
+          </label>
+          <p class="hint" id="homeAutoSlideHint">Cần ít nhất 2 bài nổi bật đã đăng để tự trượt. Khách vẫn có thể chuyển bài bằng tay khi tắt tùy chọn này.</p>
           <div class="two-col">
             <div class="field-row">
               <label class="f-lbl">Nhãn nhỏ trên tiêu đề</label>
               <input type="text" id="hm_sliderKicker" class="f-input" placeholder="★ Nổi bật">
             </div>
             <div class="field-row">
-              <label class="f-lbl">Thời gian trượt (giây)</label>
+              <label class="f-lbl" for="hm_sliderIntervalSec">Thời gian giữa hai lần tự trượt (giây)</label>
               <input type="number" id="hm_sliderIntervalSec" class="f-input" min="2" max="15" step="0.5">
             </div>
           </div>
@@ -223,7 +226,6 @@
             <span>Hiển thị khung "Liên hệ ngay" cuối Trang chủ</span>
             <input type="checkbox" id="hm_showContactCta">
           </div>
-          <p class="hint">Để chọn bài viết nào hiện trên thanh trượt, vào tab <b>Tin tức</b> và tick <b>⭐ Nổi bật Trang chủ</b>.</p>
         </section>
 
         <section class="tab-pane" id="tab-theme">
@@ -951,6 +953,6 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="/js/admin.js?v=40"></script>
+<script src="/js/admin.js?v=41"></script>
 </body>
 </html>

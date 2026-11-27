@@ -44,6 +44,7 @@ body {
 .main-nav .nav-link.active { box-shadow: inset 0 -2px var(--solar-gold); }
 .hotline-label { color: var(--solar-muted); }
 .hotline-list a { color: var(--solar-gold); }
+body:not(.show-admin-link) .topbar .admin-pill { display: none; }
 .topbar .admin-pill { color: var(--solar-light); border-color: #c8e5d345; background: #edf9ef16; }
 .topbar :focus-visible { outline-color: var(--solar-gold); outline-offset: 0; }
 
@@ -254,7 +255,6 @@ body:has(.home-main) { background: var(--solar-night); }
 .fslide-body p { margin: 0; color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .fslide-cta { margin-top: 4px; color: var(--accent-ink); font-weight: 700; }
 .featured-slide-card:hover .fslide-cta { text-decoration: underline; }
-.featured-empty { margin: 0; flex: 0 0 100%; }
 .slider-controls, .slider-dots { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px; }
 .slider-controls { margin-top: 12px; gap: 8px; }
 .hero-slider-arrow, .slider-dot { display: grid; place-items: center; padding: 0; cursor: pointer; }
@@ -408,6 +408,8 @@ body.coordinated-theme .topbar { background: var(--theme-band); }
     height: min(var(--logo-h), 44px);
   }
   .topbar-right { min-width: 0; margin-left: auto; }
+  .topbar .admin-pill { flex: 0 0 36px; justify-content: center; padding: 9px; }
+  .topbar .admin-pill span { display: none; }
   .hotline { min-width: 0; overflow-wrap: anywhere; }
   .hotline-label {
     font-size: 12px;

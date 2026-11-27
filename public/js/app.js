@@ -71,7 +71,6 @@
     $('hotlineList').innerHTML = hotlines.map(item =>
       `<a href="tel:${escapeHtml(item.tel || item.number)}">${escapeHtml(item.number)}</a>`
     ).join('');
-    $('adminLink').hidden = isPreview || b.showAdminLink === false;
 
     // Hero
     const showHero = h.show !== false;

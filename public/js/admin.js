@@ -465,6 +465,7 @@
     });
     setChk('hm_showSlider', hm.showSlider !== false);
     setChk('hm_autoSlide', hm.autoSlide !== false);
+    syncSliderControls();
     setVal('hm_sliderKicker', hm.sliderKicker || '★ Nổi bật');
     setVal('hm_sliderTitle', hm.sliderTitle || 'Tin tức & Dự án nổi bật');
     setVal('hm_sliderIntervalSec', hm.sliderIntervalSec || 4.5);
@@ -1930,8 +1931,14 @@
   bind('t_stickyResult', el => { CONFIG.theme.stickyResult = el.checked; });
 
   
-  bind('hm_showSlider', el => { CONFIG.home.showSlider = el.checked; });
-  bind('hm_autoSlide', el => { CONFIG.home.autoSlide = el.checked; });
+  function syncSliderControls() {
+    const sliderEnabled = $('hm_showSlider').checked;
+    $('hm_autoSlide').disabled = !sliderEnabled;
+    $('hm_sliderIntervalSec').disabled = !sliderEnabled || !$('hm_autoSlide').checked;
+  }
+
+  bind('hm_showSlider', el => { CONFIG.home.showSlider = el.checked; syncSliderControls(); });
+  bind('hm_autoSlide', el => { CONFIG.home.autoSlide = el.checked; syncSliderControls(); });
   bind('hm_sliderKicker', el => { CONFIG.home.sliderKicker = el.value; });
   bind('hm_sliderTitle', el => { CONFIG.home.sliderTitle = el.value; });
   bind('hm_sliderIntervalSec', el => { CONFIG.home.sliderIntervalSec = Math.max(2, Number(el.value) || 4.5); });
