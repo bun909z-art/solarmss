@@ -260,7 +260,26 @@
       commit('', false, 'balanced');
       reportPacking();
     });
-    return { sync, reflow() { roof = null; mode = 'balanced'; } };
+    function restore(positions) {
+      if (!roof || !Array.isArray(positions) || positions.length > requested) return false;
+      const restored = [];
+      for (const position of positions) {
+        if (!position || !Number.isFinite(position.x) || !Number.isFinite(position.z) || typeof position.rotated !== 'boolean') return false;
+        const panel = { x: position.x, z: position.z, rotated: position.rotated, id: nextId + restored.length + 1 };
+        if (!SolarRoof.fits(panel, restored, size, roof)) return false;
+        restored.push(panel);
+      }
+      nextId += restored.length;
+      panels = restored;
+      selected = null;
+      placing = false;
+      mode = 'manual';
+      render();
+      reportPacking();
+      return true;
+    }
+
+    return { sync, restore, reflow() { roof = null; mode = 'balanced'; } };
   }
 
   window.SolarRoofPlanner = { create };

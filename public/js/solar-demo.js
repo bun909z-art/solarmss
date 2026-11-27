@@ -518,10 +518,81 @@
   }
 
   let hasCatalog = false;
+  let hasConfig = false;
+  const planInputs = [];
+  for (const editor of [form, $('demoRoofGeometry'), $('demoRoofGeometryAux')]) {
+    planInputs.push(...editor.querySelectorAll('input[id], select[id]'));
+  }
+  planInputs.push(enableAnnex, hourInput);
+
+  function planAvailability() {
+    if (!hasConfig || !hasCatalog) return 'loading';
+    return enabled() ? 'ready' : 'disabled';
+  }
+
+  function capturePlan() {
+    if (planAvailability() !== 'ready') throw new Error('Chưa thể lưu phương án lúc này.');
+    if (form.matches(':invalid') || $('demoRoofInputStatus').textContent) {
+      throw new Error('Hãy sửa các thông số đang báo lỗi trước khi lưu phương án.');
+    }
+    const fields = Object.fromEntries(planInputs.map(input => [input.id,
+      input.type === 'checkbox' ? input.checked : input.value]));
+    const positions = panels => panels.map(({ x, z, rotated }) => ({ x, z, rotated }));
+    return {
+      version: 1,
+      fields,
+      mainPanels: positions(settings.panels),
+      annexPanels: positions(settings.annex?.panels || []),
+      summary: {
+        panelCount: settings.panelCount, solarKw: model.dcKw, batteryKwh: model.capacity,
+        dailySolarKwh: model.totals.pv, dailyLoadKwh: model.totals.load, dailyGridKwh: model.totals.grid
+      }
+    };
+  }
+
+  function restorePlan(plan) {
+    if (planAvailability() !== 'ready') throw new Error('Demo 3D chưa sẵn sàng.');
+    if (plan?.version !== 1 || !plan.fields || !Array.isArray(plan.mainPanels) || !Array.isArray(plan.annexPanels)) {
+      throw new Error('Phương án đã lưu không hợp lệ.');
+    }
+    const changes = [];
+    let catalogChanged = false;
+    for (const input of planInputs) {
+      const value = plan.fields[input.id];
+      if (input.type === 'checkbox' ? typeof value !== 'boolean' : typeof value !== 'string') {
+        throw new Error('Phương án thiếu thông số bắt buộc.');
+      }
+      if (input.tagName === 'SELECT' && !Array.from(input.options).some(option => option.value === value)) {
+        catalogChanged = true;
+        continue;
+      }
+      changes.push([input, value]);
+    }
+    stop();
+    for (const [input, value] of changes) {
+      if (input.type === 'checkbox') input.checked = value;
+      else input.value = value;
+    }
+    // The change handler initializes the annex bearing only for newly added roofs.
+    if (enableAnnex.checked) annexInitialized = true;
+    enableAnnex.dispatchEvent(new Event('change'));
+    const mainRestored = roofPlanner.restore(plan.mainPanels);
+    const annexRestored = !enableAnnex.checked || annexPlanner.restore(plan.annexPanels);
+    if (!mainRestored) roofPlanner.reflow();
+    if (!annexRestored) annexPlanner.reflow();
+    simulate();
+    if (catalogChanged || !mainRestored || !annexRestored) {
+      return 'Danh mục hoặc kích thước thiết bị đã thay đổi. Hãy kiểm tra cấu hình và cách xếp tấm sau khi mở phương án.';
+    }
+    return '';
+  }
+
+  window.MaiSonSolarPlans = { availability: planAvailability, capture: capturePlan, restore: restorePlan };
   setEquipment([], true);
   simulate();
   HQLive.watch(['config', 'products'], ({ config, products }, changed) => {
     if (changed.has('config')) {
+      hasConfig = true;
       const wasEnabled = enabled();
       const moveFocus = wasEnabled && $('solarDemo').contains(document.activeElement);
       applyBranding(config);

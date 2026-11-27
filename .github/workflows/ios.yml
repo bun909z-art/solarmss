@@ -1,0 +1,41 @@
+name: iOS Simulator
+
+on:
+  push:
+    paths:
+      - 'ios/**'
+      - '.github/workflows/ios.yml'
+  pull_request:
+    paths:
+      - 'ios/**'
+      - '.github/workflows/ios.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build unsigned iPhone simulator app
+        run: >-
+          xcodebuild -project ios/MaiSonSolar.xcodeproj -scheme MaiSonSolar
+          -configuration Debug -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath build/ios CODE_SIGNING_ALLOWED=NO build
+      - name: Archive simulator app
+        run: ditto -c -k --sequesterRsrc --keepParent build/ios/Build/Products/Debug-iphonesimulator/MaiSonSolar.app MaiSonSolar-Simulator.zip
+      - name: Launch app on iPhone Simulator
+        run: |
+          device=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; p=json.load(sys.stdin); print(next(d["udid"] for r,ds in reversed(list(p["devices"].items())) if "iOS" in r for d in ds if d["name"].startswith("iPhone")))')
+          xcrun simctl boot "$device"
+          xcrun simctl bootstatus "$device" -b
+          xcrun simctl install "$device" build/ios/Build/Products/Debug-iphonesimulator/MaiSonSolar.app
+          xcrun simctl launch "$device" com.maison.solar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MaiSonSolar-iOS-Simulator
+          path: MaiSonSolar-Simulator.zip
+          if-no-files-found: error
