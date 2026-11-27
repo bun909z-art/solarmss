@@ -6,7 +6,9 @@
 
 1. Mở `MaiSonSolar.xcodeproj` trên máy Mac bằng Xcode. Chọn scheme **MaiSonSolar**.
 2. Với iPhone thật, chọn **Signing & Capabilities**, bật ký tự động và chọn Team của bạn. Đổi Bundle Identifier nếu cần để dùng định danh đã đăng ký cho công ty.
-3. Chọn thiết bị và bấm **Run**. Với iPhone Simulator, có thể chạy trực tiếp. Bản dựng tự động nằm trong mục **Actions → iOS Simulator** trên GitHub.
+3. Chọn thiết bị và bấm **Run**. Với iPhone Simulator, có thể chạy trực tiếp. Bản dựng tự động nằm trong mục **Actions → iOS Builds** trên GitHub.
+
+Để tải gói dành cho iPhone thật, mở lượt chạy **iOS Builds** và tải artifact **MaiSonSolar-iPhone-IPA-unsigned**. Giải nén tệp tải xuống để lấy `MaiSonSolar-unsigned.ipa`. Gói này chứa bản Release arm64 và cần được ký trước khi cài lên iPhone.
 
 App tải website qua HTTPS. Để lưu và mở phương án, máy chủ phải chạy bản web có `MaiSonSolarPlans` trong Demo 3D. Sau khi mở Demo và bố trí xong, bấm biểu tượng lưu ở thanh trên. Mục **Đã lưu** giữ các phương án trên thiết bị và cho phép chọn hai phương án để so sánh. App báo lại nếu một thiết bị trong phương án đã thay đổi khỏi danh mục khi mở lại.
 

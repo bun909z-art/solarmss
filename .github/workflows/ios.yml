@@ -1,4 +1,4 @@
-name: iOS Simulator
+name: iOS Builds
 
 on:
   push:
@@ -40,3 +40,31 @@ jobs:
           xcrun simctl bootstatus "$device" -b
           xcrun simctl install "$device" build/ios/Build/Products/Debug-iphonesimulator/MaiSonSolar.app
           xcrun simctl launch "$device" com.maison.solar
+
+  ipa:
+    name: Unsigned iPhone IPA
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build for arm64 iPhone devices
+        run: >-
+          xcodebuild -project ios/MaiSonSolar.xcodeproj -scheme MaiSonSolar
+          -configuration Release -destination 'generic/platform=iOS' -sdk iphoneos
+          -derivedDataPath build/iphone CODE_SIGNING_ALLOWED=NO build
+      - name: Verify and package the IPA
+        run: |
+          app=build/iphone/Build/Products/Release-iphoneos/MaiSonSolar.app
+          xcrun lipo -verify_arch arm64 "$app/MaiSonSolar"
+          xcrun vtool -show-build "$app/MaiSonSolar" | grep -E 'platform[[:space:]]+IOS$'
+          test "$(plutil -extract CFBundleIdentifier raw "$app/Info.plist")" = com.maison.solar
+          mkdir -p build/package/Payload
+          ditto "$app" build/package/Payload/MaiSonSolar.app
+          ditto -c -k --keepParent build/package/Payload MaiSonSolar-unsigned.ipa
+          unzip -tq MaiSonSolar-unsigned.ipa
+          shasum -a 256 MaiSonSolar-unsigned.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MaiSonSolar-iPhone-IPA-unsigned
+          path: MaiSonSolar-unsigned.ipa
+          if-no-files-found: error
