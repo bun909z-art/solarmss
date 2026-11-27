@@ -6,7 +6,6 @@ const path = require('path');
 const store = require('../lib/store');
 const leadStore = require('../lib/leads');
 const telegram = require('../lib/telegram');
-const { triggerRealtimeSheetPush } = require('./admin-gsheet');
 const { UPLOAD_DIR, sendJson, readJsonBody, requireAdmin } = require('../lib/http-helpers');
 
 
@@ -23,7 +22,6 @@ async function handleAdminData(req, res, pathname, method, authState) {
     if (curUser.role !== 'admin') delete body.assignedTo;
     const updated = leadStore.updateLead(String(body.id || ''), body);
     if (!updated) return sendJson(res, 404, { error: 'Không tìm thấy khách hàng.' }), true;
-    triggerRealtimeSheetPush(updated);
     return sendJson(res, 200, { ok: true, lead: updated }), true;
   }
   if (pathname === '/api/admin/leads' && method === 'DELETE') {

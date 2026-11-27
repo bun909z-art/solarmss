@@ -11,7 +11,6 @@ const { handlePublicApi } = require('./routes/public-api');
 const { handleAdminAuth } = require('./routes/admin-auth');
 const { handleAdminConfig } = require('./routes/admin-config');
 const { handleAdminData } = require('./routes/admin-data');
-const { handleAdminGsheet } = require('./routes/admin-gsheet');
 const { handlePagesAndStatic } = require('./routes/pages');
 
 const PORT = Number(process.env.PORT) || 3000;
@@ -27,7 +26,6 @@ const server = http.createServer(async (req, res) => {
     if (await handleAdminAuth(req, res, pathname, method, authState)) return;
     if (await handleAdminConfig(req, res, pathname, method, authState)) return;
     if (await handleAdminData(req, res, pathname, method, authState)) return;
-    if (await handleAdminGsheet(req, res, pathname, method, authState)) return;
     if (handlePagesAndStatic(req, res, pathname, parsedUrl)) return;
 
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });

@@ -57,27 +57,31 @@
 .adm-body:has(.adm-preview:not([hidden])) { grid-template-columns: 208px minmax(330px, 1fr) minmax(350px, 1.1fr); }
 .adm-sidebar { gap: 12px; padding: 16px 12px; background: #e8efe9; }
 .adm-navigation { align-content: start; display: grid; flex: 1; gap: 18px; padding: 0; overflow: auto; background: none; border: 0; }
-.adm-nav-group { display: grid; gap: 3px; }
+.adm-nav-group { display: grid; grid-template-columns: minmax(0, 1fr); gap: 3px; }
 .adm-nav-group p { margin: 4px 8px 6px; color: var(--a-muted); font-size: .75rem; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
 .adm-navigation .tab-btn {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 39px;
+  width: 100%;
+  height: 44px;
+  gap: 6px;
   padding: 7px 9px;
   border: 1px solid transparent;
   border-radius: 7px;
   background: transparent;
   color: var(--a-muted);
   font-size: .875rem;
+  line-height: 1.2;
   text-align: left;
   white-space: normal;
+  transition: background-color .15s, border-color .15s, color .15s;
 }
-.adm-navigation .tab-btn:hover { border-color: #adc4b7; color: var(--a-ink); }
+.adm-navigation .tab-btn:hover:not(.active) { background: #f6faf7; border-color: #adc4b7; color: var(--a-ink); }
+.adm-navigation .tab-btn:focus-visible { outline: 2px solid #527765; outline-offset: -3px; }
 .adm-navigation .tab-btn.active { background: #23483e; border-color: #23483e; color: #fff; }
 .adm-navigation .tab-btn span { padding: 2px 6px; border-radius: 5px; background: #ceded2; color: #24473c; font-size: .75rem; font-variant-numeric: tabular-nums; }
 .adm-navigation .tab-btn.active span { background: var(--adm-gold); color: #292116; }
-.adm-sync { padding: 8px 9px; border: 1px solid var(--a-border); border-radius: 8px; background: var(--a-surface); color: var(--a-ink); font-size: .75rem; text-align: left; font-weight: 700; cursor: pointer; }
 
 .adm-workspace { min-width: 0; min-height: 0; display: flex; container: admin-workspace / inline-size; }
 .adm-panel-scroll { width: 100%; min-width: 0; padding: clamp(15px, 2.75vw, 39px); }
@@ -170,8 +174,8 @@
   .adm-sidebar { position: sticky; top: 0; z-index: 25; padding: 7px 9px; border-right: 0; border-bottom: 1px solid var(--a-border); }
   .adm-navigation { display: flex; flex-wrap: nowrap; position: static; gap: 10px; padding: 2px; }
   .adm-nav-group { display: flex; gap: 3px; }
-  .adm-nav-group p, .adm-sync { display: none; }
-  .adm-navigation .tab-btn { min-height: 42px; padding: 7px 8px; white-space: nowrap; }
+  .adm-nav-group p { display: none; }
+  .adm-navigation .tab-btn { flex: 0 0 162px; width: 162px; padding: 7px 8px; }
   .adm-panel-scroll { padding: 18px 12px 27px; }
   .adm-preview:not([hidden]) { display: flex; height: min(76dvh, 640px); scroll-margin-top: 64px; border-left: 0; }
 }

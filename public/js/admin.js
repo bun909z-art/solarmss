@@ -12,7 +12,6 @@
     layout: ['Bố cục & tiêu đề', 'Chọn thông tin hiển thị trên công cụ tính pin.', '/?preview=1'],
     tariffs: ['Thông số & biểu giá', 'Thiết lập thông số tính pin và các bậc giá điện.', '/?preview=1'],
     footer: ['Chân trang', 'Sửa phần liên hệ và lưu ý cho khách hàng.', '/?preview=1'],
-    gsheet: ['Google Sheets', 'Thiết lập đồng bộ và theo dõi các lần kết nối.'],
     security: ['Sao lưu & bảo trì', 'Bảo trì trang tư vấn và sao lưu hồ sơ.'],
     users: ['Phân quyền & dữ liệu', 'Cấp quyền cho nhân viên và quản lý kết nối hệ thống.'],
     account: ['Tài khoản của tôi', 'Xem thông tin và đổi mật khẩu.']
@@ -32,7 +31,6 @@
     ['tariffs', 'EVN & Mặc định'],
     ['leads', 'Khách hàng'],
     ['footer', 'Chân trang'],
-    ['gsheet', 'Google Sheets'],
     ['security', 'Sao lưu & Bảo trì']
   ];
   let leadRecordId = '';
@@ -286,10 +284,6 @@
       updateMaintUI();
       setDirty(false);
       pushPreview();
-      if (can('gsheet')) {
-        loadGsheetSettings();
-        fetchGsheetStatus();
-      }
       return true;
     } catch (err) {
       toast('Lỗi tải dữ liệu cấu hình: ' + (err.message || err));
@@ -758,7 +752,6 @@
     if ($('myAccName')) $('myAccName').textContent = CURRENT_USER ? (CURRENT_USER.displayName || CURRENT_USER.username) : 'Quản trị viên';
     if ($('myAccRole')) $('myAccRole').textContent = isSuper ? 'Admin (Full tính năng)' : 'Nhân viên phân quyền';
     $('adminMore').hidden = !isSuper;
-    $('gsheetHeaderBadge').hidden = !can('gsheet');
     tabs.forEach(btn => {
       const tab = btn.dataset.tab;
       if (tab === 'overview') btn.hidden = !can('leads');
@@ -880,154 +873,6 @@
 
   
   
-  // ---------- GOOGLE SHEETS REAL-TIME SYNC UI ----------
-  let GS_SCRIPT_TEMPLATE = '';
-  let gsPollTimer = null;
-
-  async function loadGsheetSettings() {
-    $('btnSaveGsheet').disabled = true;
-    try {
-      const { settings } = await api('/api/admin/gsheet/config');
-      setChk('gs_enabled', settings.enabled);
-      setVal('gs_webhookUrl', settings.webhookUrl || '');
-      setVal('gs_secretKey', settings.secretKey || '');
-      setChk('gs_syncLeads', settings.syncLeads !== false);
-      $('btnSaveGsheet').disabled = false;
-    } catch (err) {
-      toast('Không tải được cài đặt Google Sheets. ' + err.message);
-    }
-  }
-
-  function renderGsheetStatus(st) {
-    if (!st) return;
-    const badge = $('gsheetHeaderBadge');
-    const card = $('gsStatusCard');
-    const stateEl = $('gsStateText');
-    const lastEl = $('gsLastSyncText');
-    const okEl = $('gsOkCnt');
-    const errEl = $('gsErrCnt');
-    const errMsg = $('gsErrMsg');
-    const logsEl = $('gsLogsList');
-
-    const fmtT = iso => {
-      if (!iso) return 'Chưa có';
-      try { const d = new Date(iso); return d.toLocaleTimeString('vi-VN') + ' · ' + d.toLocaleDateString('vi-VN'); } catch { return iso; }
-    };
-
-    if (st.state === 'connected') {
-      if (badge) { badge.textContent = '🟢 Sheets: Đang đồng bộ Real-time'; badge.style.background = '#ECFDF5'; badge.style.color = '#047857'; badge.style.borderColor = '#A7F3D0'; }
-      if (card) { card.style.background = '#ECFDF5'; card.style.borderColor = '#A7F3D0'; }
-      if (stateEl) { stateEl.textContent = '🟢 Đã kết nối Google Sheets' + (st.sheetName ? ` (${st.sheetName})` : ''); stateEl.style.color = '#047857'; }
-    } else if (st.state === 'syncing') {
-      if (badge) { badge.textContent = '🟡 Sheets: Đang đồng bộ...'; badge.style.background = '#FFFBEB'; badge.style.color = '#B45309'; badge.style.borderColor = '#FDE68A'; }
-      if (stateEl) { stateEl.textContent = '🟡 Đang gửi dữ liệu lên Google Sheets...'; stateEl.style.color = '#B45309'; }
-    } else if (st.state === 'error') {
-      if (badge) { badge.textContent = '🔴 Sheets: Lỗi đồng bộ'; badge.style.background = '#FEF2F2'; badge.style.color = '#B91C1C'; badge.style.borderColor = '#FECACA'; }
-      if (card) { card.style.background = '#FEF2F2'; card.style.borderColor = '#FECACA'; }
-      if (stateEl) { stateEl.textContent = '🔴 Lỗi đồng bộ Google Sheets'; stateEl.style.color = '#B91C1C'; }
-    } else {
-      if (badge) { badge.textContent = '⚪ Sheets: Chưa kết nối'; badge.style.background = '#F1F5F9'; badge.style.color = '#475569'; badge.style.borderColor = '#CBD5E1'; }
-      if (card) { card.style.background = '#F8FAFC'; card.style.borderColor = '#E2E8F0'; }
-      if (stateEl) { stateEl.textContent = '⚪ Chưa kết nối Google Sheets'; stateEl.style.color = '#475569'; }
-    }
-
-    if (lastEl) lastEl.textContent = `Lần đồng bộ cuối: ${fmtT(st.lastSyncAt)}${st.lastAction ? ' (' + st.lastAction + ')' : ''}`;
-    if (okEl) okEl.textContent = st.successCount || 0;
-    if (errEl) errEl.textContent = st.errorCount || 0;
-    if (errMsg) { errMsg.hidden = !st.lastError; errMsg.textContent = st.lastError ? 'Chi tiết lỗi: ' + st.lastError : ''; }
-
-    if (logsEl) {
-      const logs = Array.isArray(st.logs) ? st.logs : [];
-      logsEl.innerHTML = logs.map(l => `
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:6px 8px;border-radius:8px;background:${l.ok ? '#F8FAFC' : '#FEF2F2'};border:1px solid ${l.ok ? '#E2E8F0' : '#FECACA'}">
-          <span style="font-weight:700;color:${l.ok ? '#0F172A' : '#B91C1C'}">${l.ok ? '✅' : '❌'} ${escapeAttr(l.action || '')} — <span style="font-weight:500;color:#64748B">${escapeAttr(l.detail || '')}</span></span>
-          <span style="white-space:nowrap;color:#64748B;font-size:11px">${fmtT(l.time)}${l.ms ? ' · ' + l.ms + 'ms' : ''}</span>
-        </div>
-      `).join('') || '<p class="hint">Chưa có lịch sử đồng bộ nào.</p>';
-    }
-  }
-
-  async function fetchGsheetStatus() {
-    if (!can('gsheet')) return;
-    try {
-      const res = await api('/api/admin/gsheet/status');
-      if (res.scriptTemplate) GS_SCRIPT_TEMPLATE = res.scriptTemplate;
-      if (res.status) renderGsheetStatus(res.status);
-    } catch {}
-    if (!gsPollTimer) {
-      gsPollTimer = setInterval(() => {
-        if (!$('adminApp').hidden && can('gsheet')) {
-          api('/api/admin/gsheet/status').then(r => renderGsheetStatus(r.status)).catch(() => {});
-        }
-      }, 10000);
-    }
-  }
-
-  if ($('gsheetHeaderBadge')) {
-    $('gsheetHeaderBadge').onclick = () => {
-      const btn = document.querySelector('.adm-tabs .tab-btn[data-tab="gsheet"]');
-      if (btn && !btn.hidden) btn.click();
-    };
-  }
-
-  if ($('btnSaveGsheet')) {
-    $('btnSaveGsheet').onclick = async () => {
-      try {
-        const res = await api('/api/admin/gsheet/config', {
-          method: 'PUT',
-          body: JSON.stringify({
-            enabled: $('gs_enabled').checked,
-            webhookUrl: $('gs_webhookUrl').value.trim(),
-            secretKey: $('gs_secretKey').value.trim(),
-            syncLeads: $('gs_syncLeads').checked
-          })
-        });
-        renderGsheetStatus(res.status);
-        toast('Đã lưu cấu hình đồng bộ Google Sheets!');
-      } catch (err) { toast(err.message); }
-    };
-  }
-
-  if ($('btnTestGsheet')) {
-    $('btnTestGsheet').onclick = async () => {
-      try {
-        toast('Đang kiểm tra kết nối Google Sheets...');
-        const res = await api('/api/admin/gsheet/test', {
-          method: 'POST',
-          body: JSON.stringify({ webhookUrl: $('gs_webhookUrl').value.trim(), secretKey: $('gs_secretKey').value.trim() })
-        });
-        renderGsheetStatus(res.status);
-        toast(`Kết nối thành công${res.data && res.data.sheetName ? ' tới "' + res.data.sheetName + '"' : ''} (${res.ms}ms)!`);
-      } catch (err) {
-        fetchGsheetStatus();
-        toast(err.message || 'Kết nối Google Sheets thất bại.');
-      }
-    };
-  }
-
-  if ($('btnPushAllGsheet')) {
-    $('btnPushAllGsheet').onclick = async () => {
-      try {
-        toast('Đang đẩy toàn bộ dữ liệu lên Google Sheets...');
-        const res = await api('/api/admin/gsheet/sync-all', { method: 'POST' });
-        renderGsheetStatus(res.status);
-        toast('Đã đồng bộ toàn bộ dữ liệu lên Google Sheets!');
-      } catch (err) {
-        fetchGsheetStatus();
-        toast(err.message || 'Lỗi đồng bộ Google Sheets.');
-      }
-    };
-  }
-
-  if ($('btnCopyAppsScript')) {
-    $('btnCopyAppsScript').onclick = () => {
-      if (!GS_SCRIPT_TEMPLATE) return toast('Đang tải mã script, vui lòng thử lại sau giây lát.');
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(GS_SCRIPT_TEMPLATE).then(() => toast('Đã sao chép mã Google Apps Script!')).catch(() => toast('Không thể sao chép tự động.'));
-      }
-    };
-  }
-
   // ---------- MAINTENANCE & FULL BACKUP ----------
   function updateMaintUI() {
     const enabled = Boolean(CONFIG?.maintenance?.enabled);

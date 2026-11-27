@@ -6,7 +6,7 @@
 <title>Quản trị website – Công Ty TNHH Mai Sơn Solar</title>
 <link rel="icon" type="image/png" href="/assets/favicon.png?v=mss" id="adminFavicon">
 <link rel="stylesheet" href="/css/admin.css?v=33">
-<link rel="stylesheet" href="/css/admin-workspace.css?v=40">
+<link rel="stylesheet" href="/css/admin-workspace.css?v=41">
 </head>
 <body>
 
@@ -69,13 +69,11 @@
         </div>
         <div class="adm-nav-group" role="presentation">
           <p role="presentation">Hệ thống</p>
-          <button type="button" class="tab-btn" data-tab="gsheet">Google Sheets</button>
           <button type="button" class="tab-btn" data-tab="security" id="tabBtnSecurity" hidden>Sao lưu &amp; bảo trì</button>
           <button type="button" class="tab-btn" data-tab="users" id="tabBtnUsers" hidden>Phân quyền &amp; dữ liệu</button>
           <button type="button" class="tab-btn" data-tab="account" id="tabBtnAccount">Tài khoản của tôi</button>
         </div>
       </nav>
-      <button type="button" id="gsheetHeaderBadge" class="adm-sync" hidden>Sheets chưa kết nối</button>
     </aside>
 
     <main class="adm-workspace">
@@ -420,57 +418,6 @@
 
         <!-- TAB 6: SECURITY & BACKUP -->
         
-        <!-- TAB GOOGLE SHEETS REAL-TIME SYNC -->
-        <section class="tab-pane" id="tab-gsheet">
-          <h3>Trạng thái đồng bộ Google Sheets (Real-time)</h3>
-          <div id="gsStatusCard" style="padding:12px;border-radius:12px;background:#F8FAFC;border:1px solid #E2E8F0;margin-bottom:12px;font-size:12.5px">
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:6px">
-              <strong id="gsStateText" style="font-size:13px;color:#475569">⚪ Chưa kết nối Google Sheets</strong>
-              <span id="gsLatencyText" style="font-size:11px;color:#64748B"></span>
-            </div>
-            <div id="gsLastSyncText" style="font-size:12px;color:#64748B">Lần đồng bộ cuối: Chưa có</div>
-            <div id="gsStatsRow" style="display:flex;gap:12px;margin-top:6px;font-size:11.5px;font-weight:700">
-              <span style="color:#047857">✓ Thành công: <b id="gsOkCnt">0</b></span>
-              <span style="color:#B91C1C">✕ Lỗi: <b id="gsErrCnt">0</b></span>
-            </div>
-            <div id="gsErrMsg" style="margin-top:6px;font-size:11.5px;color:#B91C1C;font-weight:700" hidden></div>
-          </div>
-
-          <div class="toggle-row">
-            <span>Bật đồng bộ thời gian thực (Real-time)</span>
-            <input type="checkbox" id="gs_enabled">
-          </div>
-          <div class="field-row">
-            <label class="f-lbl">Google Apps Script Web App URL</label>
-            <input type="url" id="gs_webhookUrl" class="f-input" placeholder="https://script.google.com/macros/s/.../exec">
-          </div>
-          <div class="field-row">
-            <label class="f-lbl">Mã bảo mật (Secret Token — tùy chọn)</label>
-            <input type="password" id="gs_secretKey" class="f-input" autocomplete="off" placeholder="Để trống hoặc nhập mã khớp với Apps Script">
-          </div>
-          <label class="toggle-row">
-            <span>Tự động đồng bộ hồ sơ tư vấn</span><input type="checkbox" id="gs_syncLeads">
-          </label>
-
-          <div class="two-col" style="margin-bottom:8px">
-            <button type="button" class="btn-primary full" id="btnSaveGsheet">💾 Lưu cài đặt</button>
-            <button type="button" class="btn-ghost full" id="btnTestGsheet">🔌 Kiểm tra kết nối</button>
-          </div>
-          <div class="two-col" style="margin-bottom:10px">
-            <button type="button" class="btn-ghost full" id="btnPushAllGsheet">⬆ Đồng bộ toàn bộ hồ sơ</button>
-          </div>
-
-          <hr class="sep">
-          <h3>Mã kết nối Google Apps Script (1 phút cài đặt)</h3>
-          <p class="hint">Mở Google Sheets → <b>Tiện ích mở rộng → Apps Script</b> → dán mã dưới đây → <b>Triển khai → Ứng dụng web</b> (Quyền truy cập: <i>Bất kỳ ai</i>) → dán URL nhận được vào ô phía trên.</p>
-          <p class="hint">Nếu đã kết nối Google Sheets, cập nhật và triển khai lại mã Apps Script để đồng bộ cột thời điểm khách yêu cầu báo giá.</p>
-          <button type="button" class="btn-ghost full" id="btnCopyAppsScript" style="margin-top:6px">📋 Sao chép mã Google Apps Script</button>
-
-          <hr class="sep">
-          <h3>Nhật ký đồng bộ gần nhất</h3>
-          <div id="gsLogsList" style="display:flex;flex-direction:column;gap:5px;font-size:11.5px"></div>
-        </section>
-
         <section class="tab-pane" id="tab-security">
           <h3>Bảo trì trang tư vấn</h3>
           <p id="maintStatusBox" class="hint" role="status"></p>
@@ -593,6 +540,6 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="/js/admin.js?v=47"></script>
+<script src="/js/admin.js?v=48"></script>
 </body>
 </html>

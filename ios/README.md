@@ -14,4 +14,4 @@ App tải website qua HTTPS. Để lưu và mở phương án, máy chủ phải
 
 ## Phát hành
 
-Để cài qua TestFlight hoặc App Store, cần ký bản dựng bằng tài khoản Apple Developer của công ty. Dự án có manifest quyền riêng tư để khai báo dữ liệu dùng trong luồng tư vấn. Trước khi phát hành, đối chiếu thông tin quyền riêng tư trên App Store Connect với website thực tế và cấu hình Google Sheets, Telegram của công ty.
+Để cài qua TestFlight hoặc App Store, cần ký bản dựng bằng tài khoản Apple Developer của công ty. Dự án có manifest quyền riêng tư để khai báo dữ liệu dùng trong luồng tư vấn. Trước khi phát hành, đối chiếu thông tin quyền riêng tư trên App Store Connect với website thực tế và cấu hình Telegram của công ty.

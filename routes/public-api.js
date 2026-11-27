@@ -5,7 +5,6 @@ const calculator = require('../public/js/calculator');
 const leadStore = require('../lib/leads');
 const telegram = require('../lib/telegram');
 const liveUpdates = require('../lib/live-updates');
-const { triggerRealtimeSheetPush } = require('./admin-gsheet');
 const { sendJson, readJsonBody } = require('../lib/http-helpers');
 
 async function handlePublicApi(req, res, pathname, method) {
@@ -75,7 +74,6 @@ async function handlePublicApi(req, res, pathname, method) {
     }
     const tgCfg = (store.loadAuth().telegram) || (store.loadConfig().telegram);
     telegram.notifyLeadIfEnabled(tgCfg, saved).catch(() => {});
-    triggerRealtimeSheetPush(saved);
     return sendJson(res, 200, { ok: true, lead: saved }), true;
   }
 
