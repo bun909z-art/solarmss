@@ -43,6 +43,37 @@
     };
   }
 
+  function defaultTiers(cfg) {
+    return cfg.tariffs?.tiers?.length ? cfg.tariffs.tiers : HQCalc.DEFAULT_TIERS;
+  }
+
+  function restoreLocal(config) {
+    const defaults = defaultInputs(config.defaults);
+    const tiers = defaultTiers(config).map(tier => ({ ...tier }));
+    Object.assign(S, defaults, { tiers });
+    try {
+      const saved = JSON.parse(localStorage.getItem(LOCAL_KEY) || 'null');
+      if (!saved) return;
+      const legacyDraft = Boolean(saved._cfgUpdatedAt && saved._cfgUpdatedAt === config.updatedAt);
+      const inputs = saved.inputs || (legacyDraft ? saved : {});
+      for (const [key, value] of Object.entries(defaults)) {
+        const input = inputs[key];
+        if (key === 'mode' ? input === 'bill' || input === 'kwh' : Number.isFinite(input) && input >= 0) {
+          S[key] = input;
+        }
+      }
+      const prices = saved.baseTiers === JSON.stringify(defaultTiers(config)) ? saved.prices
+        : legacyDraft && Array.isArray(saved.tiers) ? saved.tiers.map(tier => tier?.price) : [];
+      if (Array.isArray(prices)) {
+        tiers.forEach((tier, index) => {
+          const price = prices[index];
+          if (Number.isFinite(price) && price >= 0) tier.price = price;
+        });
+      }
+      return legacyDraft;
+    } catch {}
+  }
+
   function applyConfig(cfg, resetStateToDefaults) {
     const previous = CFG;
     CFG = cfg;
@@ -129,9 +160,8 @@
         if (S[key] === oldInputs[key]) S[key] = value;
       }
     }
-    if (resetStateToDefaults || isPreview || (previous && JSON.stringify(tar.tiers) !== JSON.stringify(previous.tariffs?.tiers))) {
-      const tiers = Array.isArray(tar.tiers) && tar.tiers.length ? tar.tiers : HQCalc.DEFAULT_TIERS;
-      S.tiers = tiers.map(tier => ({ ...tier }));
+    if (resetStateToDefaults || isPreview || (previous && JSON.stringify(defaultTiers(cfg)) !== JSON.stringify(defaultTiers(previous)))) {
+      S.tiers = defaultTiers(cfg).map(tier => ({ ...tier }));
     }
 
     buildPriceGrid();
@@ -154,7 +184,7 @@
     document.querySelectorAll('[data-price]').forEach(el => {
       el.addEventListener('input', () => {
         S.tiers[+el.dataset.price].price = Math.max(0, parseFloat(el.value) || 0);
-        update();
+        update(true);
       });
     });
   }
@@ -191,18 +221,22 @@
   }
 
   function saveLocal() {
-    if (isPreview) return;
+    if (isPreview || !CFG) return;
     try {
-      const { name, phone, address, ...settings } = S;
-      localStorage.setItem(LOCAL_KEY, JSON.stringify({
-        ...settings,
-        _cfgUpdatedAt: CFG ? CFG.updatedAt : null
-      }));
+      const defaults = defaultInputs(CFG.defaults);
+      const inputs = Object.fromEntries(Object.keys(defaults).filter(key => S[key] !== defaults[key]).map(key => [key, S[key]]));
+      const tiers = defaultTiers(CFG);
+      const settings = { inputs };
+      if (S.tiers.some((tier, index) => tier.price !== tiers[index]?.price)) {
+        settings.baseTiers = JSON.stringify(tiers);
+        settings.prices = S.tiers.map(tier => tier.price);
+      }
+      localStorage.setItem(LOCAL_KEY, JSON.stringify(settings));
     } catch {}
   }
 
-  function update() {
-    saveLocal();
+  function update(saveDraft = false) {
+    if (saveDraft) saveLocal();
     const isBill = S.mode === 'bill';
     $('modeBill').setAttribute('aria-pressed', isBill);
     $('modeKwh').setAttribute('aria-pressed', !isBill);
@@ -236,7 +270,9 @@
     const perDay = kwhUsed / S.days;
 
     $('rBat').textContent = has ? nf1.format(bat) : '—';
-    if (has && S.mod > 0) {
+    if (has && bat === 0) {
+      $('rMods').textContent = 'Không cần pin lưu trữ với mức sử dụng điện buổi tối này.';
+    } else if (has && S.mod > 0) {
       $('rMods').innerHTML = `Gợi ý cấu hình: <b>${modules} module × ${nf2.format(S.mod)} kWh = ${nf2.format(modules * S.mod)} kWh</b>`;
     } else {
       $('rMods').textContent = has ? 'Nhập dung lượng module để xem gợi ý cấu hình.' : 'Nhập hóa đơn hoặc số kWh để bắt đầu.';
@@ -288,12 +324,12 @@
     $('scBody').innerHTML = scenarios.map(p => {
       const b = HQCalc.batteryKwh(kwhUsed, p / 100, dod, eff, S.days);
       const e = (kwhUsed / S.days) * p / 100;
-      const n = has && S.mod > 0 ? Math.max(1, Math.ceil(b / S.mod - 1e-9)) : null;
+      const n = HQCalc.countModules(b, S.mod);
       return `<tr${p === S.eve ? ' class="cur"' : ''}>
         <td>${p}%</td>
         <td>${has ? nf2.format(e) : '—'}</td>
         <td>${has ? nf1.format(b) : '—'}</td>
-        <td>${n ? `${n} × ${nf2.format(S.mod)} kWh` : '—'}</td>
+        <td>${n ? `${n} × ${nf2.format(S.mod)} kWh` : has && b === 0 ? '0' : '—'}</td>
       </tr>`;
     }).join('');
 
@@ -352,6 +388,10 @@
           keepalive: true,
           signal: controller.signal
         });
+        if (payload.autosave && response.status === 404) {
+          lastLeadSig = sig;
+          return;
+        }
         const result = await response.json();
         if (!response.ok || result.ok !== true || (payload.requestQuote && !result.lead?.quoteRequestedAt)) {
           throw new Error(result.error || 'Không thể lưu thông tin tư vấn.');
@@ -380,7 +420,7 @@
       const payload = buildLeadPayload();
       if (payload.customerName.length < 2 || payload.customerPhone.replace(/\D/g, '').length < 9 ||
           payload.customerAddress.length < 2) return;
-      saveLead(payload).catch(() => showToast('Không thể lưu thay đổi tư vấn. Vui lòng kiểm tra kết nối.'));
+      saveLead({ ...payload, autosave: true }).catch(() => showToast('Không thể lưu thay đổi tư vấn. Vui lòng kiểm tra kết nối.'));
     }, 1200);
   }
 
@@ -424,12 +464,12 @@
     }
     try { el.setSelectionRange(np, np); } catch {}
     S.bill = Number(el.value.replace(/\D/g, '')) || 0;
-    update();
+    update(true);
   });
 
   $('kwh').addEventListener('input', e => {
     S.kwh = Math.max(0, parseFloat(e.target.value) || 0);
-    update();
+    update(true);
   });
   $('name').addEventListener('input', e => { S.name = e.target.value; update(); });
   if ($('custPhone')) $('custPhone').addEventListener('input', e => { S.phone = e.target.value; update(); });
@@ -437,31 +477,31 @@
   ['eve', 'dod', 'eff'].forEach(id => {
     $(id).addEventListener('input', e => {
       S[id] = Number(e.target.value);
-      update();
+      update(true);
     });
   });
   $('mod').addEventListener('input', e => {
-    S.mod = parseFloat(e.target.value) || 0;
-    update();
+    S.mod = Math.max(0, parseFloat(e.target.value) || 0);
+    update(true);
   });
   $('vat').addEventListener('input', e => {
     S.vat = Math.max(0, parseFloat(e.target.value) || 0);
-    update();
+    update(true);
   });
   $('days').addEventListener('input', e => {
     S.days = Math.min(31, Math.max(1, parseInt(e.target.value, 10) || 30));
-    update();
+    update(true);
   });
 
-  $('modeBill').onclick = () => { S.mode = 'bill'; update(); };
-  $('modeKwh').onclick = () => { S.mode = 'kwh'; update(); };
+  $('modeBill').onclick = () => { S.mode = 'bill'; update(true); };
+  $('modeKwh').onclick = () => { S.mode = 'kwh'; update(true); };
 
   document.body.addEventListener('click', e => {
     const c = e.target.closest('.chip');
     if (!c) return;
-    if (c.dataset.bill) { S.bill = +c.dataset.bill; setBillField(S.bill); update(); }
-    if (c.dataset.kwh) { S.kwh = +c.dataset.kwh; $('kwh').value = S.kwh; update(); }
-    if (c.dataset.mod) { S.mod = +c.dataset.mod; $('mod').value = S.mod; update(); }
+    if (c.dataset.bill) { S.bill = +c.dataset.bill; setBillField(S.bill); update(true); }
+    if (c.dataset.kwh) { S.kwh = +c.dataset.kwh; $('kwh').value = S.kwh; update(true); }
+    if (c.dataset.mod) { S.mod = +c.dataset.mod; $('mod').value = S.mod; update(true); }
   });
 
   $('reset').onclick = () => {
@@ -484,20 +524,9 @@
 
   HQLive.watch(config => {
     if (receivedPreview) return;
-    let restored = false;
-    if (!CFG && !isPreview) {
-      try {
-        const raw = localStorage.getItem(LOCAL_KEY);
-        if (raw) {
-          const { name, phone, address, _cfgUpdatedAt, ...settings } = JSON.parse(raw);
-          if (_cfgUpdatedAt === config.updatedAt) {
-            Object.assign(S, settings);
-            restored = true;
-          }
-        }
-      } catch {}
-    }
-    applyConfig(config, !CFG && !restored);
+    const migrateDraft = !CFG && !isPreview && restoreLocal(config);
+    applyConfig(config, isPreview);
+    if (migrateDraft) saveLocal();
   }, () => {
     if (!CFG && !receivedPreview && !window._hqLastResult) {
       buildPriceGrid();

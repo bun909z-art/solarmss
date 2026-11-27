@@ -1,7 +1,7 @@
 'use strict';
 
 const store = require('../lib/store');
-const calculator = require('../lib/calculator');
+const calculator = require('../public/js/calculator');
 const leadStore = require('../lib/leads');
 const telegram = require('../lib/telegram');
 const liveUpdates = require('../lib/live-updates');
@@ -65,6 +65,10 @@ async function handlePublicApi(req, res, pathname, method) {
 
   if (pathname === '/api/leads' && method === 'POST') {
     const body = await readJsonBody(req, 64 * 1024);
+    if (body?.autosave === true && body.requestQuote !== true &&
+        !leadStore.loadLeads().some(lead => lead.id === body.sessionId)) {
+      return sendJson(res, 404, { ok: false, error: 'Phiên tư vấn không còn trong danh sách khách hàng.' }), true;
+    }
     const saved = leadStore.upsertLead(body);
     if (!saved) {
       return sendJson(res, 400, { ok: false, error: 'Vui lòng nhập họ tên, số điện thoại hợp lệ và địa chỉ.' }), true;

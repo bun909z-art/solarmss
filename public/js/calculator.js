@@ -72,6 +72,10 @@
     return d > 0 ? (kwhMonth * eve) / d : 0;
   }
 
+  function countModules(battery, moduleKwh) {
+    return battery > 0 && moduleKwh > 0 ? Math.max(1, Math.ceil(battery / moduleKwh - 1e-9)) : 0;
+  }
+
   function calculateRecommendation({ mode, bill, kwh, eve, dod, eff, mod, vat, days, tiers }) {
     const isBill = mode === 'bill';
     const taxRate = vat / 100;
@@ -82,17 +86,16 @@
     const eveRate = eve / 100;
     const eveDay = (kwhUsed / days) * eveRate;
     const bat = batteryKwh(kwhUsed, eveRate, dod / 100, eff / 100, days);
-    const modules = kwhUsed > 0 && mod > 0 ? Math.max(1, Math.ceil(bat / mod - 1e-9)) : 0;
+    const modules = countModules(bat, mod);
     return { kwhExact, kwhUsed, preVat, billTotal, bat, modules, eveDay };
   }
 
   const calculator = {
     DEFAULT_TIERS,
-    normalizeTiers,
     preVatFromKwh,
-    kwhFromPreVat,
     tierBreakdown,
     batteryKwh,
+    countModules,
     calculateRecommendation
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = calculator;

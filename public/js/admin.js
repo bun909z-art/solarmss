@@ -630,7 +630,7 @@
         </div>` : ''}
         <div class="lead-record-energy">
           <div>⚡ Hóa đơn: <b>${nfLead.format(l.billTotal || 0)} đ/tháng</b> (${nfLead.format(l.kwhUsed || 0)} kWh)</div>
-          <div>🔋 Pin lưu trữ cần: <b>${Number(l.batNeededKwh || 0).toFixed(1)} kWh</b> (${l.modulesCount || 0} × ${l.moduleKwh || 5.12} kWh · tối ${l.evePct ?? 70}%)</div>
+          <div>🔋 Pin lưu trữ cần: <b>${Number(l.batNeededKwh || 0).toFixed(1)} kWh</b> (${l.modulesCount || 0} × ${l.moduleKwh ?? 5.12} kWh · tối ${l.evePct ?? 70}%)</div>
         </div>
         ${l.quoteRequestedAt ? `<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:7px 9px;font-size:12px;color:#9A3412">
           <strong>Khách yêu cầu báo giá</strong> · ${escapeAttr(fmtLeadTime(l.quoteRequestedAt))}

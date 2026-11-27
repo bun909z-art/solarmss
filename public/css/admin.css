@@ -73,15 +73,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 .adm-header-left { display: flex; align-items: center; gap: 12px; font-size: 15px; }
-.adm-badge {
-  background: var(--a-primary);
-  color: #FFFFFF;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  padding: 4px 9px;
-  border-radius: 6px;
-}
 .dirty-pill {
   background: rgba(251, 191, 36, 0.2);
   color: #FCD34D;
@@ -314,7 +305,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
   align-items: center;
   justify-content: space-between;
 }
-.preview-title { font-size: 13px; font-weight: 700; color: var(--a-muted); }
 .viewport-btns { display: flex; gap: 6px; }
 .vp-btn {
   border: 1px solid var(--a-border);
@@ -394,11 +384,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 #currentUserBadge { white-space: nowrap; }
 
 /* ==================== MOBILE ADMIN OPTIMIZATION ==================== */
-.mobile-preview-toggle { display: none; }
-
 @media (max-width: 960px) {
   body { overflow-y: auto; }
-  .admin-shell { height: auto; min-height: 100vh; }
   .adm-header {
     position: sticky;
     top: 0;
@@ -420,17 +407,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
     font-size: 12px;
     min-height: 36px;
   }
-  .mobile-preview-toggle { display: inline-flex; }
-
   .adm-body {
     display: block;
-    height: auto;
-    overflow: visible;
-  }
-  .adm-panel {
-    width: 100% !important;
-    max-width: 100% !important;
-    border-right: 0;
     height: auto;
     overflow: visible;
   }

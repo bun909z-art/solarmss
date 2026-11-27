@@ -146,17 +146,8 @@
 .overview-row strong { overflow-wrap: anywhere; }
 .overview-row > span:not(.adm-tag) { color: var(--a-muted); font-size: .8125rem; }
 .adm-tag { width: fit-content; padding: 3px 9px; border-radius: 6px; background: #e9f3ed; color: #23483e; font-size: .8125rem; font-weight: 700; }
-.adm-tag-draft { background: #fff3db; color: #774913; }
-.adm-disclosure { padding: 10px 13px; border: 1px solid var(--a-border); border-radius: 9px; background: #f6faf7; }
-.adm-disclosure summary { min-height: 26px; color: #23483e; font-weight: 750; cursor: pointer; }
-.adm-disclosure[open] summary { margin-bottom: 15px; }
-.adm-action-group, .adm-bulk-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .adm-filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 164px), 1fr)); gap: 8px; margin: 8px 0; }
-.adm-filter-results, .adm-bulk-tools > p { margin: 7px 0; color: var(--a-muted); font-size: .875rem; }
-.adm-bulk-update { margin: 0 0 12px; padding: 9px 12px; border: 1px solid #d7e5dc; border-radius: 7px; background: #eff6f1; }
-.adm-bulk-update .f-input { width: min(100%, 225px); }
-.adm-bulk-update .hint { flex-basis: 100%; margin: 0; }
-.adm-check { display: flex; gap: 6px; align-items: center; margin: 3px 0 6px; color: var(--a-muted); font-size: .8125rem; font-weight: 700; }
+.adm-filter-results { margin: 7px 0; color: var(--a-muted); font-size: .875rem; }
 
 @container admin-workspace (min-width: 800px) {
   #leadsListEditor { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
