@@ -55,8 +55,8 @@ jobs:
       - name: Verify and package the IPA
         run: |
           app=build/iphone/Build/Products/Release-iphoneos/MaiSonSolar.app
-          xcrun lipo -verify_arch arm64 "$app/MaiSonSolar"
-          xcrun vtool -show-build "$app/MaiSonSolar" | grep -E 'platform[[:space:]]+IOS$'
+          xcrun lipo "$app/MaiSonSolar" -verify_arch arm64
+          xcrun vtool -show-build "$app/MaiSonSolar" | grep -Ei '^[[:space:]]*platform[[:space:]]+(IOS|2)[[:space:]]*$'
           test "$(plutil -extract CFBundleIdentifier raw "$app/Info.plist")" = com.maison.solar
           mkdir -p build/package/Payload
           ditto "$app" build/package/Payload/MaiSonSolar.app
